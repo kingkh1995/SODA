@@ -2,36 +2,39 @@
 
 ## 项目概述
 
-这是一个 **DDD 脚手架项目**，旨在将 [yudao](https://gitee.com/zhijiantianya/yudao-cloud)（芋道）微服务平台改造为领域驱动设计架构。项目结合了三个参考来源：
+DDD 脚手架项目，将 [yudao](https://gitee.com/zhijiantianya/yudao-cloud) 改造为领域驱动架构。结合三个只读参考项目：
 
-| 来源 | 角色 | 状态 |
+| 来源 | 目录 | 角色 |
 |------|------|------|
-| **yudao-cloud/** | 业务功能参考 — 14 个模块（system、infra、member、bpm、pay、mall、crm、erp、iot、mes、wms、im、mp、report） | 只读，已加入 gitignore |
-| **COLA/** | 架构框架参考 — 阿里巴巴 DDD 脚手架（v5） | 只读，已加入 gitignore |
-| **kk-ddd/** | 之前的 DDD 实现尝试 — 经验教训 | 只读，已加入 gitignore |
+| **yudao-cloud** | `yudao-cloud/` | 业务功能参考（14 模块） |
+| **COLA** | `COLA/` | 架构框架参考（v5） |
+| **kk-ddd** | `kk-ddd/` | 前序 DDD 尝试 |
+
+> **使用守则**：三个参考项目均为只读，严禁修改。代码搜索时主动忽略。仅在确定方案时查阅。
 
 **目标技术栈**：Java 25、Spring Boot 4、Gradle（Groovy DSL）
 
 **groupId**：`com.soda`
 
----
+## 架构
 
-## 架构与数据流
+**读写分离** — 每个业务模块 7 个子模块：
 
-### 核心理念：读写分离
+```
+soda-xxx/
+├── api/          共享 DTO / Feign 接口（读写共用）
+├── start/        写侧启动入口
+├── adapter/      写 Controller（COLA）
+├── app/          写 ApplicationService（COLA）
+├── domain/       领域层（COLA）
+├── infrastructure/  写 Repository 实现（COLA）
+└── query-server/    读服务（yudao 混装风格）
+```
 
-每个业务模块拆分为 7 个子模块：`api`（共享 DTO/Feign）、`start`（写侧启动入口）、`adapter` + `app` + `domain` + `infrastructure`（写侧 DDD 4 层）、`query-server`（读服务简单混装）。读服务保持简单追求性能，写服务使用 DDD 追求质量。
+写侧 DDD 分层追求质量，读侧简单混装追求性能。
 
 ## Agent skills
 
-### Issue tracker
-
-Issues and PRDs live as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage roles use their default label strings. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context — `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
+- **Issue tracker**：`.scratch/` 下 markdown 文件。详见 `docs/agents/issue-tracker.md`
+- **Triage**：五个角色使用默认标签。详见 `docs/agents/triage-labels.md`
+- **Domain docs**：单上下文 — `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`

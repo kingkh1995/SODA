@@ -29,6 +29,17 @@ replay_pid*
 # Agent harness / tooling
 .agents/
 
+# Eclipse/Gradle Buildship
+
+# Eclipse annotation processor config
+*.factorypath
+
+# Eclipse build output
+bin/
+.project
+.classpath
+.settings/
+
 # Reference projects (read-only)
 /COLA/
 /kk-ddd/
@@ -38,5 +49,14 @@ replay_pid*
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+# macOS
+.DS_Store
+
+# IntelliJ module files (not fully covered by .idea/)
+*.iml
+*.ipr
+*.iws
+
+# IDE local settings
+out/
+local.properties

@@ -1,0 +1,60 @@
+plugins {
+    id 'org.springframework.boot'                version '4.0.7' apply false
+    id 'io.spring.dependency-management'         version '1.1.7' apply false
+}
+
+group = 'com.soda'
+version = '1.0.0-SNAPSHOT'
+
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    repositories {
+        maven { url 'https://mirrors.huaweicloud.com/repository/maven/' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+    }
+
+    ext {
+        set('springModulithVersion', "2.0.6")
+    }
+
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'org.springframework.modulith:spring-modulith-starter-core'
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+        testCompileOnly 'org.projectlombok:lombok'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+}

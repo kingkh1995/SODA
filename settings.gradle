@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        maven { url 'https://mirrors.huaweicloud.com/repository/maven/' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'soda'
+
+
+// —— Shared domain components ——
+include 'soda-components'
+include 'soda-components:soda-component-domain-starter'
+
+// —— Business modules (added incrementally) ——
+// include 'soda-user'

@@ -9,7 +9,7 @@
 - **领域共享**放 `soda-components/`，子模块按 `soda-component-xxx` 命名。纯 jar 或 starter 皆可，依赖原始 spring-core / lombok。参考 COLA 组件列表。
 - **基础设施共享**放 `soda-supports/`，子模块按 `soda-support-starter-xxx` 命名。每个子模块是 Spring Boot starter（autoconfigure）。参考 yudao-framework。
 - **业务模块**两层平铺：根模块 `soda-xxx/`，所有子模块平级放在根下，无中间 pom 模块。
-- 写服务用 DDD（COLA 5 层：adapter + app + domain + infra），读服务用简单混装（yudao `-server` 风格）。
+- 写服务用 DDD（COLA 4 层：adapter + app + domain + infra），读服务用简单混装（yudao `-server` 风格）。
 - 读写共用 `soda-xxx-api` 模块存放共享 DTO、Feign 接口。
 - 写侧用 `soda-xxx-start` 模块作为启动入口，聚合 adapter + infra。
 
@@ -62,6 +62,8 @@ soda/                                        ← rootProject
     ├── soda-bpm-infrastructure/
     └── soda-bpm-query-server/
 
+
+> ⚠️ 图中除 `soda-components/soda-component-domain-starter` 外，其余所有子模块均为计划中模块，尚未创建。
 
 ## Module details
 
@@ -172,7 +174,7 @@ soda/                                        ← rootProject
 - 所有持久化和外部依赖都通过防腐层接口抽象
 
 **依赖**:
-- `soda-component-*` — Entity/Aggregate/Identifier 基类、领域异常、DTO 基类
+- `soda-component-domain-starter` — Entity/Aggregate/Identifier 基类和接口（另有 `soda-component-exception`、`soda-component-dto` 计划中）
 
 **被依赖**:
 - `soda-user-app` — 调用领域方法
@@ -234,18 +236,17 @@ soda/                                        ← rootProject
 |--------|------|
 | `soda-component-dto` | DTO/Command/Query 基类、`Page` 等通用数据容器 |
 | `soda-component-exception` | `BizException`、`SysException` 异常体系 |
-| `soda-component-domain-starter` | `Entity`/`Aggregate`/`Identifier` 注解和基类、`DomainFactory` |
+| `soda-component-domain-starter` | `Entity`/`Aggregate`/`Identifier` 基类和接口 |
 | `soda-component-extension-starter` | 扩展点机制（可选） |
 | `soda-component-statemachine` | 状态机引擎（可选） |
 | `soda-component-ruleengine` | 规则引擎（可选） |
 
-**依赖**: spring-core、lombok、validation-api 等基础库。
+**依赖**: spring-core、lombok 等基础库。
 
 **被依赖**:
 - `soda-user-domain` 等各业务模块的 domain 层
+### `soda-supports` — 基础设施共享 ⚠️ 计划中
 
-
-### `soda-supports` — 基础设施共享
 
 **父模块**: `soda-supports`（聚合 pom），子模块按 `soda-support-starter-xxx` 命名。
 
@@ -279,5 +280,5 @@ soda/                                        ← rootProject
 
 **Consequences**:
 - 单个业务模块最多 7 个 Gradle 子模块（api + start + 4 写 + 1 读），拆得细但依赖路径清晰
-- 领域共享 starter（如 `domain-starter`）轻量，不依赖 Spring Boot autoconfigure（待定，看具体实现）
+- 领域共享 starter（如 `domain-starter`）轻量 JAR，通过根 subprojects 统一获得 spring-boot-starter 依赖
 - 读服务的 query-server 模块是 yudao 风格混装，没有 domain/app/infra 分层 — 读写两侧架构不一致，但这是有意的 CQRS 权衡
