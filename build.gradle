@@ -33,6 +33,7 @@ subprojects {
 
     dependencies {
         implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'com.fasterxml.jackson.core:jackson-annotations'
         implementation 'org.springframework.modulith:spring-modulith-starter-core'
         compileOnly 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok'

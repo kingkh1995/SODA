@@ -6,6 +6,3 @@ bootJar {
 jar {
     enabled = true
 }
-
-dependencies {
-}

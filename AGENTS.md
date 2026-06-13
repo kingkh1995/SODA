@@ -38,3 +38,4 @@ soda-xxx/
 - **Issue tracker**：`.scratch/` 下 markdown 文件。详见 `docs/agents/issue-tracker.md`
 - **Triage**：五个角色使用默认标签。详见 `docs/agents/triage-labels.md`
 - **Domain docs**：单上下文 — `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`
+

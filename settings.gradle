@@ -14,5 +14,8 @@ rootProject.name = 'soda'
 include 'soda-components'
 include 'soda-components:soda-component-domain-starter'
 
+
+// —— Shared domain support (optional concrete DPs, factories, mappers) ——
+include 'soda-components:soda-component-support'
 // —— Business modules (added incrementally) ——
 // include 'soda-user'

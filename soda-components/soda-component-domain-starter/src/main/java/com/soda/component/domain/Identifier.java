@@ -6,26 +6,19 @@ package com.soda.component.domain;
  * 标识符是 <strong>不可变</strong> 的领域原语，在限界上下文内唯一标识一个实体。
  * 每个具体的标识符类型必须：
  * <ul>
- *   <li>基于内部值实现 {@link #equals(Object)} 和 {@link #hashCode()}
- *       （通常使用 Lombok {@code @EqualsAndHashCode}）</li>
+ *   <li>不可变 — 优先使用 {@code record}（自动提供 {@code equals}/{@code hashCode}/{@code toString}）</li>
+ *   <li>自校验 — 紧凑构造中完成值验证</li>
  *   <li>可序列化（继承自 {@link Type}）</li>
  *   <li>可比较，用于排序和有序集合</li>
  * </ul>
  * <p>
  * 由于 {@code Identifier<T>} 中 {@code T extends Comparable<T>}，
- * {@link #compareTo(Type)} 默认实现直接委托给底层值的 {@code compareTo}，
- * 具体实现类无需覆写。
- * <p>
- * 使用示例：
+ * 使用示例（record 风格，JDK 16+）：
  * <pre>{@code
- * @EqualsAndHashCode
- * public final class UserId implements Identifier<Long> {
- *     private final Long value;
- *
- *     public UserId(Long value) {
- *         this.value = Objects.requireNonNull(value);
+ * public record UserId(@JsonValue Long value) implements Identifier<Long> {
+ *     public UserId {
+ *         Objects.requireNonNull(value);
  *     }
- *
  *     @Override
  *     public Long identifier() {
  *         return value;
