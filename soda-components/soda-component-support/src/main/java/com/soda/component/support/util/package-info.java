@@ -1,4 +1,4 @@
-@ApplicationModule(type = ApplicationModule.Type.OPEN, allowedDependencies = {})
+@ApplicationModule(type = ApplicationModule.Type.OPEN, allowedDependencies = {"support.spi"})
 @NullMarked
 package com.soda.component.support.util;
 

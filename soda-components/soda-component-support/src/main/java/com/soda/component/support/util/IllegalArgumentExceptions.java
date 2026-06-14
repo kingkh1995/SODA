@@ -1,5 +1,7 @@
 package com.soda.component.support.util;
 
+import java.math.BigDecimal;
+
 /**
  * 参数异常工厂 — 生成通用格式的 {@link IllegalArgumentException}。
  * <p>
@@ -26,6 +28,7 @@ public final class IllegalArgumentExceptions {
     public static IllegalArgumentException forWrongFormat(String value) {
         return new IllegalArgumentException("invalid number format: '" + value + "'");
     }
+
     public static IllegalArgumentException forInvalidFormat(String value) {
         return new IllegalArgumentException("invalid format: '" + value + "'");
     }
@@ -35,5 +38,16 @@ public final class IllegalArgumentExceptions {
         if (inclusive) sb.append("or equal to ");
         sb.append(min).append(", got: ").append(value);
         return new IllegalArgumentException(sb.toString());
+    }
+
+    public static IllegalArgumentException forMinValue(BigDecimal value, BigDecimal min, boolean inclusive) {
+        var sb = new StringBuilder("must be greater than ");
+        if (inclusive) sb.append("or equal to ");
+        sb.append(min).append(", got: ").append(value);
+        return new IllegalArgumentException(sb.toString());
+    }
+
+    public static IllegalArgumentException forMaxScale(int scale, int max) {
+        return new IllegalArgumentException("scale must not exceed " + max + ", got: " + scale);
     }
 }

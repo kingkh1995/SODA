@@ -16,7 +16,7 @@
 | 实现接口 | `Identifier<T>` | `Type` |
 | `compareTo` | 默认实现来自 `Identifier` | 需自行实现 `compareTo(Type)` |
 | 领域方法 | 无（仅 `identifier()`） | 按领域提供（如 `Email.localPart()`） |
-| 示例 | `LongId`, `StringId`, `UserId` | `Email`, `Money`, `Age` |
+| 示例 | `LongId`, `UUId`, `UserId` | `Email`, `Money`, `Age` |
 
 ## 类结构模板（标识符 DP — record 风格）
 
@@ -64,6 +64,64 @@ public record Xxx(@JsonValue String value) implements Type {
 }
 ```
 
+## 类结构模板（非标识符 DP — class + Lombok 风格）
+
+当 record 无法满足需求时（如需要缓存实例），使用普通 class + Lombok 注解代替 record。
+通过 `@Accessors(fluent = true)` 保持访问器命名与 record 一致（`value()` 而非 `getValue()`）。
+`toString()` 手写为 record 方括号格式 `"Xxx[value=…]"`。
+
+```java
+@EqualsAndHashCode
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@Accessors(fluent = true)
+public final class Version implements Type {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    // 缓存示例（参考 Integer 缓存设计）
+    private static final Version[] CACHE = new Version[100];
+
+    static {
+        for (int i = 0; i < CACHE.length; i++) {
+            CACHE[i] = new Version(i);
+        }
+    }
+
+    public static final Version PRIMARY = CACHE[0];
+
+    @Getter
+    @JsonValue
+    private final int value;
+
+    @JsonCreator                                                   // class 需要显式 @JsonCreator
+    public static Version of(int value) {
+        ValidateUtils.minValue(value, 0, true);
+        if (value < CACHE.length) {
+            return CACHE[value];
+        }
+        return new Version(value);
+    }
+
+    public static Version valueOf(Object value) {
+        return of(ParseUtils.parseInt(value));
+    }
+
+    public Version next() {
+        return of(value + 1);
+    }
+
+    @Override
+    public int compareTo(Type other) {
+        return Integer.compare(this.value, ((Version) other).value);
+    }
+
+    @Override
+    public String toString() {                                     // 手写，对齐 record 方括号格式
+        return "Version[value=" + value + "]";
+    }
+}
+```
 ## 命名与包结构
 
 | 元素 | 规范 | 示例 |
@@ -71,7 +129,7 @@ public record Xxx(@JsonValue String value) implements Type {
 | 包 | `com.soda.component.support.types` | — |
 | 类名 | 名词 + `Id`（标识符）或领域名词 | `LongId`, `UserId`, `Money`, `Email` |
 | 工厂方法 | 单一 `valueOf(Object)` 委托 `ParseUtils` 转换 | — |
-| Accessor | record 组件（如 `value()`），被 `@JsonValue` 标注 | — |
+| Accessor | `value()`（record 自动，class 通过 `@Accessors(fluent = true)`） | — |
 
 ## 职责分层
 
@@ -114,54 +172,34 @@ new XxxId(convertedValue)
 XxxId (valid, normalized)
 ```
 
-类型匹配发生在 `ParseUtils` 内部，DP 不关心分发细节。DP 的 `valueOf` 只做两件事：
-委托转换、委托构造。
+## 对比一致性
 
-针对数值型转换，`ParseUtils.parseLong(Object)` 使用 `case Number n` 统一处理所有数字类型（Integer、Long、Double、BigDecimal 等），不需要为每个数字子类型写单独 case：
-
-```java
-public static long parseLong(Object o) {
-    ...
-    return switch (o) {
-        case Number n -> n.longValue();   // 所有数字类型
-        case String s -> Long.parseLong(s.trim());
-        default -> throw ...;
-    };
-}
-```
-
-针对字符串型转换，`ParseUtils.parseString(Object)` 直接调用 `toString()`：
-
-```java
-public static String parseString(Object o) {
-    ...
-    return o.toString();  // 任意 Object → String
-}
-```
-
-优势：一个入口，调用方不必关心类型转换；DP 本身不操心 null 检查，全部委托给工具类。
+| 检查项 | LongId (record) | UUId (record) | WanYuan (record) | Version (class+Lombok) |
+|---|---|---|---|---|
+| 实现接口 | `Identifier<Long>` | `Identifier<String>` | `Type` | `Type` |
+| 构造校验 | `minValue(…, 0, false)` | `nonBlank(…)` + `matches(uuidPattern, …)` | `notNull(…)` + `minValue(…, 0, true)` + `maxScale(…, 2)` | `minValue(…, 0, true)` |
+| `valueOf` 入口 | `ParseUtils.parseLong(value)` | `ParseUtils.parseString(value)` | `ParseUtils.parseBigDecimal(value)` | `ParseUtils.parseInt(value)` |
+| `@JsonValue` | record 组件 `value` | record 组件 `value` | record 组件 `value` | 字段 `value` |
+| `@JsonCreator` | 无需 | 无需 | 无需 | `of(T)` 显式 |
+| 引用 `IllegalArgumentExceptions` | 否 | 否 | 否 | 否 |
+| `toString()` 格式 | `"LongId[value=…]"` | `"UUId[value=…]"` | `"WanYuan[value=…]"` | `"Version[value=…]"` 手写对齐方括号 |
+| 访问器来源 | record 自动 | record 自动 | record 自动 | `@Accessors(fluent = true)` |
+| 缓存 | 无 | 无 | 无 | [0, 99] 缓存实例 |
+| 随机生成 | 无 | `random()` | 无 | 无 |
 
 ## Jackson 集成
 
 Record 的典范构造器被 Jackson 自动识别（Jackson 2.12+ 原生支持），不需要额外注解标注反序列化入口。
+Class + Lombok 风格的 DP 需显式标注 `@JsonCreator` 在 factory method 上。
 
-| 用途 | 注解 | 位置 |
+| 实现方式 | 序列化 | 反序列化 |
 |---|---|---|
-| 序列化 | `@JsonValue` | record 组件（如 `@JsonValue long value`）或对应访问器方法 |
-| 反序列化 | 无需（Jackson 自动识别 record 典范构造器） | — |
-
-## 对比一致性
-
-LongId 与 StringId 对比如下，创建新 DP 时应保持同一种风格：
-| 检查项 | LongId | StringId |
-|---|---|---|
-| 构造校验 | `ValidateUtils.minValue(…)` | `ValidateUtils.nonBlank(…)` |
-| `valueOf` 入口 | `new LongId(ParseUtils.parseLong(value))` | `new StringId(ParseUtils.parseString(value))` |
-| `@JsonValue` | record 组件 `value` | record 组件 `value` |
-| 引用 `IllegalArgumentExceptions` | 否 | 否 |
-| `toString()` 格式 | `"LongId[value=…]"` (record 默认) | `"StringId[value=…]"` (record 默认) |
+| record | `@JsonValue` 在 record 组件上 | 自动（典范构造器） |
+| class + Lombok | `@JsonValue` 在字段上 | `@JsonCreator` 在 `of(T)` 上 |
 
 ## 创建新 DP 的步骤
+
+### record 风格（默认）
 
 1. 在 `com.soda.component.support.types` 包下创建 record
 2. 选模板：标识符 → `implements Identifier<T>`；非标识符 → `implements Type`
@@ -170,3 +208,13 @@ LongId 与 StringId 对比如下，创建新 DP 时应保持同一种风格：
 5. 如需要新校验类型，先在 `ValidateUtils` 中添加通用方法
 6. 如需要新类型转换，先在 `ParseUtils` 中添加 `parseXxx(Object)` 方法
 7. 运行 `:soda-components:soda-component-support:build` 验证
+
+### class + Lombok 风格（record 不适用时）
+
+当需要缓存实例或无法使用 record 时，采用 class + Lombok 风格。替代步骤：
+
+1. `@EqualsAndHashCode` + `@RequiredArgsConstructor(access = AccessLevel.PRIVATE)` + `@Accessors(fluent = true)`
+2. `@Getter` 在 `value` 字段上，`@JsonValue` 也在字段上
+3. `@JsonCreator` 在静态 `of(T)` 工厂方法上（class 不能自动识别）
+4. `toString()` 手写为方括号格式（如 `"Version[value=5]"`）
+5. 其余步骤同 record 风格

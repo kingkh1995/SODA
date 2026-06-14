@@ -9,9 +9,8 @@ import org.springframework.modulith.core.ApplicationModules;
  * 验证规则：
  * <ul>
  *   <li>所有模块默认为 {@code type = OPEN}，允许被任何模块引用</li>
- *   <li>基础模块（domain、support、support.util）不引用其他模块</li>
- *   <li>有依赖的模块（support.types）通过 {@code allowedDependencies} 白名单声明</li>
- *   <li>未声明的跨模块引用将被拒绝</li>
+ *   <li>基础模块（domain、support、support.spi）不引用其他模块</li>
+ *   <li>有依赖的模块（support.util、support.types）通过 {@code allowedDependencies} 白名单声明</li>
  *   <li>禁止循环依赖</li>
  * </ul>
  * <p>
@@ -25,10 +24,9 @@ import org.springframework.modulith.core.ApplicationModules;
  * ├────────────────┼──────────┼──────────────────────────┤
  * │ domain         │ OPEN     │ (none)                   │
  * │ support        │ OPEN     │ (none)                   │
- * │ support.util   │ OPEN     │ (none)                   │
- * │ support.types  │ OPEN     │ domain, support.util     │
- * └────────────────┴──────────┴──────────────────────────┘
- * </pre>
+ * │ support.util   │ OPEN     │ support.spi              │
+ * │ support.types  │ OPEN     │ domain, support.util, support.spi │
+ * │ support.spi    │ OPEN     │ (none)                   │
  */
 class ModulithTest {
 

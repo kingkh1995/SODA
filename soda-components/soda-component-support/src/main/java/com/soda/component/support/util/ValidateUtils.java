@@ -2,6 +2,7 @@ package com.soda.component.support.util;
 
 import org.jspecify.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.util.regex.Pattern;
 
 /**
@@ -34,9 +35,22 @@ public final class ValidateUtils {
         }
     }
 
+    public static void minValue(BigDecimal value, BigDecimal min, boolean minInclusive) {
+        var cmp = value.compareTo(min);
+        if ((minInclusive && cmp < 0) || (!minInclusive && cmp <= 0)) {
+            throw IllegalArgumentExceptions.forMinValue(value, min, minInclusive);
+        }
+    }
+
     public static void matches(Pattern pattern, String value) {
         if (!pattern.matcher(value).matches()) {
             throw IllegalArgumentExceptions.forInvalidFormat(value);
+        }
+    }
+
+    public static void maxScale(BigDecimal value, int max) {
+        if (value.scale() > max) {
+            throw IllegalArgumentExceptions.forMaxScale(value.scale(), max);
         }
     }
 }

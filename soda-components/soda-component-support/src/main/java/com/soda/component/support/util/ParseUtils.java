@@ -3,6 +3,8 @@ package com.soda.component.support.util;
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
 import org.jspecify.annotations.Nullable;
 
+import java.math.BigDecimal;
+
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
 
 /**
@@ -51,5 +53,27 @@ public final class ParseUtils {
     public static String parseString(@Nullable Object o) {
         ValidateUtils.notNull(o);
         return o.toString();
+    }
+
+    public static BigDecimal parseBigDecimal(@Nullable Object o) {
+        ValidateUtils.notNull(o);
+        return switch (o) {
+            case BigDecimal bd -> bd;
+            case Number n -> {
+                try {
+                    yield new BigDecimal(n.toString());
+                } catch (NumberFormatException e) {
+                    throw forWrongFormat(n.toString());
+                }
+            }
+            case String s -> {
+                try {
+                    yield new BigDecimal(s.trim());
+                } catch (NumberFormatException e) {
+                    throw forWrongFormat(s);
+                }
+            }
+            default -> throw forWrongType(EXPECTED_NUM, o.getClass());
+        };
     }
 }
