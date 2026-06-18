@@ -167,8 +167,8 @@ soda/                                        ← rootProject
 | Gateway 接口 | 其他外部依赖的防腐层接口 | 屏蔽底层实现 |
 | Factory | `UserFactory`（可选） | 复杂聚合的创建 |
 
-**关键特征**（参考 kk-ddd）:
-- Entity 拥有业务方法，如 `user.save(…)`、`account.unbind()`、`account.validate()`
+- Entity 拥有事件注册方法，如 {@code registerEvent(event)}、{@code flushEvents()}
+- EntityGateway 负责持久化，ApplicationService 编排：{@code gateway.save(user) → eventBus.fireAll(user.flushEvents())}
 - 业务方法内部完成所有校验和规则判断
 - Repository = 防腐层接口的一种，名称不强制 `Gateway` 结尾
 - 所有持久化和外部依赖都通过防腐层接口抽象
@@ -236,7 +236,7 @@ soda/                                        ← rootProject
 |--------|------|
 | `soda-component-dto` | DTO/Command/Query 基类、`Page` 等通用数据容器 |
 | `soda-component-exception` | `BizException`、`SysException` 异常体系 |
-| `soda-component-domain-starter` | `Entity`/`Aggregate`/`Identifier` 基类和接口 |
+| `soda-component-domain-starter` | `Entity`/`Aggregate`/`Identifier` 基类和接口、`Gateway`/`EntityGateway` 契约、`DomainEvent`/`DomainEventBus`/`EventSource` 领域事件基础设施、`Identifiable`/`Type` 标记接口 |
 | `soda-component-extension-starter` | 扩展点机制（可选） |
 | `soda-component-statemachine` | 状态机引擎（可选） |
 | `soda-component-ruleengine` | 规则引擎（可选） |

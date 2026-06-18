@@ -4,6 +4,8 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * 领域实体的抽象基类。
@@ -22,9 +24,11 @@ import java.util.function.Supplier;
  * @param <ID> 标识符类型
  * @see Aggregate
  */
-public abstract class Entity<ID extends Identifier<?>> implements Identifiable<ID> {
+public abstract class Entity<ID extends Identifier<?>> implements Identifiable<ID>, EventSource<ID> {
 
     private @Nullable ID id;
+
+    private @Nullable transient List<DomainEvent<ID>> domainEvents;
 
     /** 手动设置 / 已有数据恢复（reconstitution）。 */
     protected Entity(ID id) {
@@ -47,14 +51,46 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     /**
      * 持久化后由 Repository 填补 ID。
      * <p>
-     * 仅限服务端生成场景调用（{@link #Entity()} 构造），已有 ID 时抛出异常确保只赋值一次。
+     * 仅限服务端生成场景调用（{@link #Entity()} 构造），已有 ID 时忽略。
      *
-     * @throws IllegalStateException Entity 已有 ID
+     * @throws NullPointerException id 为 null
      */
     public final void assignId(ID id) {
         if (this.isIdentified()) {
-            throw new IllegalStateException("entity already identified");
+            return;
         }
         this.id = Objects.requireNonNull(id);
+    }
+
+    /**
+     * 注册领域事件，在 {@link #flushEvents} 时被获取并发送。
+     * <p>
+     * 在业务方法中调用，一个业务方法可注册多个事件。
+     *
+     * @param event 领域事件，非 null
+     */
+    protected void registerEvent(DomainEvent<ID> event) {
+        Objects.requireNonNull(event);
+        if (domainEvents == null) {
+            domainEvents = new LinkedList<>();
+        }
+        domainEvents.add(event);
+    }
+
+    /**
+     * 取出当前所有未发送的领域事件并清空内部列表。
+     * <p>
+     * 供 ApplicationService 在持久化后取出事件并通过 {@link DomainEventBus#fireAll} 发送。
+     *
+     * @return 未发送的领域事件列表；无事件时返回空列表
+     */
+    @Override
+    public List<DomainEvent<ID>> flushEvents() {
+        if (domainEvents == null) {
+            return List.of();
+        }
+        var events = domainEvents;
+        domainEvents = null;
+        return events;
     }
 }

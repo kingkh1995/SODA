@@ -79,7 +79,7 @@ archRule.failOnEmptyShould=false
 不可变的值对象，承载领域含义，通过类型系统表达业务约束。所有 DP 必须：不可变、自校验（构造时验证）、可序列化、可比较。参见 `Type` 接口。
 
 ### Entity
-具有连续身份标识（identity thread）的领域对象。实现 {@link Identifiable} 接口，直接持有 {@link Identifier} DP 作为身份标识。三个构造器对应不同场景：{@code Entity(ID)}（手动 / 已有数据恢复）、{@code Entity(Supplier)}（客户端生成，构造器内部调用 generator）、{@code Entity()}（服务端生成，由 Repository 调用 {@code assignId()} 填补）。不覆写 {@code equals}/{@code hashCode}。
+具有连续身份标识（identity thread）的领域对象。实现 {@link Identifiable}、{@link EventSource} 接口，直接持有 {@link Identifier} DP 作为身份标识。三个构造器对应不同场景：{@code Entity(ID)}（手动 / 已有数据恢复）、{@code Entity(Supplier)}（客户端生成，构造器内部调用 generator）、{@code Entity()}（服务端生成，由上层调用 {@code assignId()} 填补）。不覆写 {@code equals}/{@code hashCode}。
 
 ### Aggregate
 聚合一致性边界内的顶层实体，负责保证聚合内部的所有不变量不被破坏。对聚合的所有操作必须通过聚合根进行。
@@ -119,3 +119,23 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 
 ### KeyUtils
 工具方法，位于 `com.soda.component.support.util`，用于从 Entity 推导缓存/锁资源 key。不在 Entity 基类上实现 `cacheKey()` / `lockKey()`，防止领域层膨胀。
+
+### Gateway
+标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。
+
+### EntityGateway
+实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。
+提供 `save(T)`, `remove(T)`, `findById(ID)`, `findAllById(Iterable<ID>)` 四个方法。
+`save` 返回 `ID`（可能新生成），`remove` 接收实体。ApplicationService 先通过 Gateway 持久化，再调用 {@link EventSource#flushEvents} 取出事件并通过 {@link DomainEventBus#fireAll} 发送。
+
+### DomainEvent
+领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()` 两个方法，扩展 `Serializable`。业务模块用 `record` 实现，`entityId` 和 `occurredAt` 作为 record 组件自动实现接口方法。
+类型参数 `ID` 与 Entity 一致，编译期确保事件来源不混用。
+
+### DomainEventBus
+领域事件总线接口，继承 `Gateway`（DIP：领域层定义契约，基础设施层实现）。
+提供 `fire(DomainEvent<?>)` 和 `fireAll(Iterable<? extends DomainEvent<?>>)`。
+实现在基础设施层，对接 Spring ApplicationEventPublisher、Modulith 事件总线或 MQ。
+
+### EventSource
+领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。{@link Entity} 实现此接口表明自身可作为领域事件来源。通过 {@link #flushEvents} 取出已注册但未发送的事件。ApplicationService 在 {@link EntityGateway} 持久化后调用此方法取出事件，再通过 {@link DomainEventBus#fireAll} 发送。
