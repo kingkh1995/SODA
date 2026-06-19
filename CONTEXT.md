@@ -128,6 +128,18 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 提供 `save(T)`, `remove(T)`, `findById(ID)`, `findAllById(Iterable<ID>)` 四个方法。
 `save` 返回 `ID`（可能新生成），`remove` 接收实体。ApplicationService 先通过 Gateway 持久化，再调用 {@link EventSource#flushEvents} 取出事件并通过 {@link DomainEventBus#fireAll} 发送。
 
+### PasswordEncoder (Gateway)
+密码编码器契约（{@code soda-user.domain.PasswordEncoder}），继承 {@link Gateway}。提供 {@code encode(rawPassword)} 和 {@code matches(rawPassword, encodedPassword)} 两个方法。实现层对接 Spring Security 的 BCryptPasswordEncoder。
+
+### CodeGenerator (Gateway)
+验证码生成器契约（{@code soda-user.domain.CodeGenerator}），继承 {@link Gateway}。提供 {@code generate(length)}，返回指定位数的随机验证码字符串。
+
+### SmsSender (Gateway)
+短信发送器契约（{@code soda-user.domain.SmsSender}），继承 {@link Gateway}。提供 {@code send( mobile, code)}。实现层对接短信渠道（阿里云、腾讯云等）。
+
+### EmailSender (Gateway)
+邮件发送器契约（{@code soda-user.domain.EmailSender}），继承 {@link Gateway}。提供 {@code send(email, code)}。实现层对接邮件服务器或邮件 SDK。
+
 ### DomainEvent
 领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()` 两个方法，扩展 `Serializable`。业务模块用 `record` 实现，`entityId` 和 `occurredAt` 作为 record 组件自动实现接口方法。
 类型参数 `ID` 与 Entity 一致，编译期确保事件来源不混用。
@@ -139,3 +151,52 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 
 ### EventSource
 领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。{@link Entity} 实现此接口表明自身可作为领域事件来源。通过 {@link #flushEvents} 取出已注册但未发送的事件。ApplicationService 在 {@link EntityGateway} 持久化后调用此方法取出事件，再通过 {@link DomainEventBus#fireAll} 发送。
+
+
+### VerificationCodePolicy
+验证码策略 DP（{@code soda-user.domain.VerificationCodePolicy}），实现 {@link Type}。封装 {@code codeLength}（验证码位数）和 {@code expiry}（过期时长）。各 Account 子类持有静态 {@code DEFAULT_POLICY} 常量，可通过 {@link ServiceLoader} 机制全局替换。Account 实例上也可设置非空 {@code verificationCodePolicy} 字段覆写。
+
+### User
+用户身份聚合根（{@code soda-user.domain.User}），{@link Aggregate} 子类。持有一组 {@link Account} 子实体。提供 {@code authenticate(AccountType, credential)} 域方法，委托给对应 Account 验证。
+
+### Username
+用户账号 DP（{@code soda-user.domain.Username}），实现 {@link Type}。规则：4-30 位字母数字。可通过 {@code User.changeUsername()} 变更，变更时需保证全局唯一。
+
+### Nickname
+用户昵称 DP（{@code soda-user.domain.Nickname}），实现 {@link Type}。显示名，最长 30 字符。
+
+### Mobile
+手机号 DP（{@code soda-user.domain.Mobile}），实现 {@link Type}。格式校验，归一化。同时是 {@link SmsAccountId} 的派生源。
+
+### Sex
+性别 DP 枚举（{@code soda-user.domain.Sex}），实现 {@link Type}。取值：{@code MALE}、{@code FEMALE}、{@code UNKNOWN}。
+
+### Avatar
+头像 URL DP（{@code soda-user.domain.Avatar}），实现 {@link Type}。URL 格式校验。
+
+### UserStatus
+用户状态 DP 枚举（{@code soda-user.domain.UserStatus}），实现 {@link Type}。取值：{@code ENABLED}、{@code DISABLED}。
+
+### SocialType
+社交平台类型 DP 枚举（{@code soda-user.domain.SocialType}），实现 {@link Type}。取值：{@code GITEE}、{@code DINGTALK}、{@code WECHAT_ENTERPRISE}、{@code WECHAT_MP}、{@code WECHAT_OPEN}、{@code WECHAT_MINI_PROGRAM}、{@code ALIPAY_MINI_PROGRAM}。与 JustAuth 枚举对齐。
+
+### Account
+用户认证账号实体（{@code soda-user.domain.Account}），为 {@link Entity} 的子类。子类多态，每个子类对应一种认证方式。作为 {@link User} 聚合的子实体，由聚合根管理生命周期。{@code accountId} 由子类各自的业务键派生（例：{@code SmsAccountId(mobile)}），不自增。
+
+### AccountType
+认证方式枚举 DP（{@code soda-user.domain.AccountType}），实现 {@link Type}。取值：{@code PASSWORD}、{@code SMS}、{@code EMAIL}、{@code SOCIAL}。
+
+### PasswordAccount
+密码认证账号（{@code soda-user.domain.PasswordAccount}），{@link Account} 子类。{@code accountId = PasswordAccountId(userId)}。持有一个不可变的 {@code passwordHash}（BCrypt）。
+
+### SmsAccount
+短信认证账号（{@code soda-user.domain.SmsAccount}），{@link Account} 子类。{@code accountId = SmsAccountId(mobile)}。持有一个可选的 {@link VerificationCode} DP，用于持久化短信验证码。
+
+### EmailAuthAccount
+邮箱认证账号（{@code soda-user.domain.EmailAuthAccount}），{@link Account} 子类。{@code accountId = EmailAuthAccountId(email)}。持有一个可选的 {@link VerificationCode} DP。
+
+### SocialAccount
+社交认证账号（{@code soda-user.domain.SocialAccount}），{@link Account} 子类。{@code accountId = SocialAccountId(socialType, openId)}。标识第三方平台（Gitee、钉钉、微信等）到本地用户的映射。
+
+### VerificationCode
+验证码 DP（{@code soda-user.domain.VerificationCode}），实现 {@link Type}。封装验证码值、过期时间、是否已使用。提供 {@code isExpired()}、{@code isUsed()}、{@code verify(code)}、{@code use()} 等业务方法。
