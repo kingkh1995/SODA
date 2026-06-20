@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import com.soda.component.support.testutil.JacksonTestUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@code fromYuan()}, {@code toYuan()}, {@code compareTo()}, and Jackson round-trip.
  */
 class WanYuanTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // ——— constructor ———
 
@@ -158,17 +161,13 @@ class WanYuanTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var mapper = new ObjectMapper();
         var original = new WanYuan(new BigDecimal("1.5"));
-        var json = mapper.writeValueAsString(original);
-        var restored = mapper.readValue(json, WanYuan.class);
-        assertEquals(original, restored);
+        JacksonTestUtil.assertRoundTrip(original, WanYuan.class);
     }
 
     @Test
     void jackson_serializesAsBareNumber() throws Exception {
-        var mapper = new ObjectMapper();
-        var json = mapper.writeValueAsString(new WanYuan(new BigDecimal("1.5")));
+        var json = MAPPER.writeValueAsString(new WanYuan(new BigDecimal("1.5")));
         assertEquals("1.5", json);
     }
 }

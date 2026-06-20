@@ -26,10 +26,9 @@ import java.io.Serial;
  * @see Type
  * @see TypeConfig
  */
-@EqualsAndHashCode
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Accessors(fluent = true)
-public final class Version implements Type {
+public final class Version implements Type, Comparable<Version> {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -51,13 +50,17 @@ public final class Version implements Type {
 
     @Getter
     @JsonValue
+    @EqualsAndHashCode.Include
     private final int value;
+    private Version(int value) {
+        ValidateUtils.minValue(0, true, value);
+        this.value = value;
+    }
 
     /** 从可靠输入构造。缓存范围内的值返回缓存实例。 */
     @JsonCreator
     public static Version of(int value) {
-        ValidateUtils.minValue(value, 0, true);
-        if (value < Cache.INSTANCES.length) {
+        if (0 <= value && value < Cache.INSTANCES.length) {
             return Cache.INSTANCES[value];
         }
         return new Version(value);
@@ -74,8 +77,8 @@ public final class Version implements Type {
     }
 
     @Override
-    public int compareTo(Type other) {
-        return Integer.compare(this.value, ((Version) other).value);
+    public int compareTo(Version other) {
+        return Integer.compare(this.value, other.value);
     }
 
     @Override

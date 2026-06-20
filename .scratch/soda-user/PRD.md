@@ -68,7 +68,7 @@ Fields:
 - `nickname: Nickname` — 显示名
 - `mobile: Mobile` — 手机号，可选；也是 SmsAccountId 派生源
 - `email: Email` — 邮箱，可选；也是 EmailAuthAccountId 派生源
-- `sex: Sex` — MALE / FEMALE / UNKNOWN
+- `sex: Sex` — MALE / FEMALE
 - `avatar: Avatar` — 头像 URL
 - `status: UserStatus` — ENABLED / DISABLED
 - `accounts: List<Account>` — 子实体集合

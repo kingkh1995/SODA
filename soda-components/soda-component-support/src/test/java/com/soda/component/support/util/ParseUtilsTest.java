@@ -1,5 +1,8 @@
 package com.soda.component.support.util;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,14 +39,11 @@ class ParseUtilsTest {
         assertEquals(456, ParseUtils.parseInt("  456  "));
     }
 
-    @Test
-    void parseInt_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseInt(null));
-    }
-
-    @Test
-    void parseInt_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseInt("abc"));
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"abc"})
+    void parseInt_invalid_throws(String value) {
+        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseInt(value));
     }
 
     @Test
@@ -82,15 +82,11 @@ class ParseUtilsTest {
     void parseLong_stringWithSpaces_trimmed() {
         assertEquals(789L, ParseUtils.parseLong("  789  "));
     }
-
-    @Test
-    void parseLong_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseLong(null));
-    }
-
-    @Test
-    void parseLong_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseLong("xyz"));
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"xyz"})
+    void parseLong_invalid_throws(String value) {
+        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseLong(value));
     }
 
     @Test
@@ -113,5 +109,24 @@ class ParseUtilsTest {
     @Test
     void parseString_null_throws() {
         assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseString(null));
+    }
+
+    // ——— parseEnum ———
+
+    @Test
+    void parseEnum_validString_parsed() {
+        assertEquals(Thread.State.RUNNABLE, ParseUtils.parseEnum(Thread.State.class, "RUNNABLE"));
+    }
+
+    @Test
+    void parseEnum_enumInstance_identity() {
+        assertEquals(Thread.State.BLOCKED, ParseUtils.parseEnum(Thread.State.class, Thread.State.BLOCKED));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"NO_SUCH_STATE"})
+    void parseEnum_invalid_throws(String value) {
+        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseEnum(Thread.State.class, value));
     }
 }

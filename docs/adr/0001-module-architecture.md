@@ -9,7 +9,7 @@
 - **领域共享**放 `soda-components/`，子模块按 `soda-component-xxx` 命名。纯 jar 或 starter 皆可，依赖原始 spring-core / lombok。参考 COLA 组件列表。
 - **基础设施共享**放 `soda-supports/`，子模块按 `soda-support-starter-xxx` 命名。每个子模块是 Spring Boot starter（autoconfigure）。参考 yudao-framework。
 - **业务模块**两层平铺：根模块 `soda-xxx/`，所有子模块平级放在根下，无中间 pom 模块。
-- 写服务用 DDD（COLA 4 层：adapter + app + domain + infra），读服务用简单混装（yudao `-server` 风格）。
+- 写服务用 DDD（COLA 4 层：adapter + app + domain + infra），读服务用简单混装（yudao `-server` 风格：query-server）。
 - 读写共用 `soda-xxx-api` 模块存放共享 DTO、Feign 接口。
 - 写侧用 `soda-xxx-start` 模块作为启动入口，聚合 adapter + infra。
 
@@ -24,6 +24,7 @@ soda/                                        ← rootProject
 │   ├── soda-component-dto/
 │   ├── soda-component-exception/
 │   ├── soda-component-domain-starter/
+│   ├── soda-component-support/
 │   ├── soda-component-extension-starter/
 │   ├── soda-component-statemachine/
 │   └── soda-component-ruleengine/
@@ -41,8 +42,8 @@ soda/                                        ← rootProject
 │   ├── soda-user-adapter/          ← COLA adapter — 写 Controller
 │   ├── soda-user-app/              ← COLA app — 写 ApplicationService
 │   ├── soda-user-domain/           ← COLA domain — 领域层
-│   ├── soda-user-infrastructure/   ← COLA infra — 写 Repository 实现
-│   └── soda-user-query-server/     ← 读 Controller + Service + DAO
+│   ├── soda-user-infrastructure/   ← COLA infra — Gateway 实现
+│   └── soda-user-query-server/     ← 读 Controller + Service + DAO（可复用infrastructure）
 │
 ├── soda-order/                     ← [聚合 pom]
 │   ├── soda-order-api/
@@ -53,17 +54,8 @@ soda/                                        ← rootProject
 │   ├── soda-order-infrastructure/
 │   └── soda-order-query-server/
 │
-└── soda-bpm/                       ← [聚合 pom]
-    ├── soda-bpm-api/
-    ├── soda-bpm-start/
-    ├── soda-bpm-adapter/
-    ├── soda-bpm-app/
-    ├── soda-bpm-domain/
-    ├── soda-bpm-infrastructure/
-    └── soda-bpm-query-server/
-
-
-> ⚠️ 图中除 `soda-components/soda-component-domain-starter` 外，其余所有子模块均为计划中模块，尚未创建。
+└── soda-xxx/                       ← [聚合 pom]
+    └── .../
 
 ## Module details
 
@@ -85,8 +77,7 @@ soda/                                        ← rootProject
 
 **被依赖**:
 - `soda-user-app` — 直接依赖
-- `soda-user-query-server` — 直接依赖
-- `soda-user-adapter` — 间接依赖（通过 app）
+- `soda-user-query-server` — 使用 DTO
 
 ### `soda-user-start` — 写侧启动入口
 
@@ -141,13 +132,12 @@ soda/                                        ← rootProject
 
 | 类别 | 示例 | 说明 |
 |------|------|------|
-| ApplicationService | `UserCreateService` | 接受 Command → 返回 Void/Identifier |
-| | `UserUpdateService` | 接受 Command → 返回 DTO |
+| ApplicationService | `UserCreateService` | 接受 Command → 返回 DTO/Void/Identifier |
 | EventPublisher | `UserEventPublisher` | 发布领域事件 |
 | DTOConverter | `UserDTOConverter` | DTO ↔ Domain 对象互转 |
 
 **依赖**:
-- `soda-user-domain` — 调用领域对象和 Repository 接口
+- `soda-user-domain` — 调用领域对象和 Gateway 接口
 - `soda-user-api` — 引用 Command/Query/DTO
 
 ### `soda-user-domain` — 领域层
@@ -159,18 +149,16 @@ soda/                                        ← rootProject
 | 类别 | 示例 | 说明 |
 |------|------|------|
 | Aggregate Root | `User extends Aggregate<UserId>` | 聚合根，实体聚合入口 |
-| Entity | `Account extends Entity<AccountId>` | 拥有标识和业务行为的对象 |
-| Value Object | `UserId`、`AccountType`、`Username`、`Hash` | 不可变值对象，封装领域概念 |
+| Entity | `AuthAccount extends Entity<AuthAccountId>` | 拥有标识和业务行为的对象 |
+| Value Object | `UserId`、`Username`、`PasswordHash` | 不可变值对象，封装领域概念 |
 | Domain Service 接口 | `UserService extends EntityService` | 跨实体的业务逻辑契约 |
-| Domain Service 实现 | `UserServiceImpl`、`AccountServiceImpl` | 领域服务实现 |
-| Repository 接口 | `UserRepository`、`AccountRepository` | 持久化契约（防腐层） |
-| Gateway 接口 | 其他外部依赖的防腐层接口 | 屏蔽底层实现 |
+| Domain Service 实现 | `UserServiceImpl`、`AuthAccountServiceImpl` | 领域服务实现 |
+| Gateway 接口 | `UserGateway`、其他外部依赖的防腐层接口 | 持久化契约（防腐层）、屏蔽底层实现 |
 | Factory | `UserFactory`（可选） | 复杂聚合的创建 |
 
 - Entity 拥有事件注册方法，如 {@code registerEvent(event)}、{@code flushEvents()}
 - EntityGateway 负责持久化，ApplicationService 编排：{@code gateway.save(user) → eventBus.fireAll(user.flushEvents())}
 - 业务方法内部完成所有校验和规则判断
-- Repository = 防腐层接口的一种，名称不强制 `Gateway` 结尾
 - 所有持久化和外部依赖都通过防腐层接口抽象
 
 **依赖**:
@@ -178,17 +166,17 @@ soda/                                        ← rootProject
 
 **被依赖**:
 - `soda-user-app` — 调用领域方法
-- `soda-user-infrastructure` — 实现 Repository/Gateway 接口
+- `soda-user-infrastructure` — 实现 Gateway 接口
 
 ### `soda-user-infrastructure` — 基础设施层
 
-**职责**: 实现 domain 层定义的 Repository/Gateway 接口。对接数据库、外部服务、消息中间件等。
+**职责**: 实现 domain 层定义的 Gateway 接口。对接数据库、外部服务、消息中间件等。
 
 **包含的类**:
 
 | 类别 | 示例 | 说明 |
 |------|------|------|
-| Repository 实现 | `UserRepositoryImpl`、`AccountRepositoryImpl` | 实现 domain 的 Repository 接口 |
+| Gateway 实现 | `UserGatewayImpl`、`AuthAccountGatewayImpl` | 实现 domain 的 Gateway 接口 |
 | DAO / Mapper | `UserMapper`、`UserDOMapper` | 数据库访问 |
 | PO / DataObject | `UserPO`、`UserDO` | 持久化对象 |
 | Converter | `UserConverter` | PO ↔ Domain 互转 |
@@ -198,7 +186,7 @@ soda/                                        ← rootProject
 | 配置类 | `MyBatisConfig`、`RedisConfig` | 技术组件配置 |
 
 **依赖**:
-- `soda-user-domain` — 实现其 Repository/Gateway 接口
+- `soda-user-domain` — 实现其 Gateway 接口
 - `soda-support-starter-*` — 按需引用（mybatis、redis、mq 等）
 
 **被依赖**:
@@ -221,6 +209,7 @@ soda/                                        ← rootProject
 
 **依赖**:
 - `soda-user-api` — 使用 DTO
+- `soda-user-infrastructure` — 按需引用，可以复用DAO等基础设施实现
 - `soda-support-starter-*` — 按需引用
 
 **被依赖**: 无（部署单元）
@@ -237,6 +226,7 @@ soda/                                        ← rootProject
 | `soda-component-dto` | DTO/Command/Query 基类、`Page` 等通用数据容器 |
 | `soda-component-exception` | `BizException`、`SysException` 异常体系 |
 | `soda-component-domain-starter` | `Entity`/`Aggregate`/`Identifier` 基类和接口、`Gateway`/`EntityGateway` 契约、`DomainEvent`/`DomainEventBus`/`EventSource` 领域事件基础设施、`Identifiable`/`Type` 标记接口 |
+| `soda-component-support` | 领域层DP、Gateway通用类（可选） |
 | `soda-component-extension-starter` | 扩展点机制（可选） |
 | `soda-component-statemachine` | 状态机引擎（可选） |
 | `soda-component-ruleengine` | 规则引擎（可选） |
@@ -245,15 +235,13 @@ soda/                                        ← rootProject
 
 **被依赖**:
 - `soda-user-domain` 等各业务模块的 domain 层
+
+
 ### `soda-supports` — 基础设施共享 ⚠️ 计划中
-
-
-**父模块**: `soda-supports`（聚合 pom），子模块按 `soda-support-starter-xxx` 命名。
 
 **职责**: 基础设施公共封装，每个子模块是一个 Spring Boot starter（autoconfigure）。
 
 **子模块举例**:
-
 | 子模块 | 提供能力 |
 |--------|----------|
 | `soda-support-starter-mybatis` | MyBatis + 分页自动配置 |

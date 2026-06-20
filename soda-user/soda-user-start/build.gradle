@@ -1,0 +1,9 @@
+// Write-side Spring Boot entry point.
+// Aggregates adapter + infrastructure; query-server dependency is optional
+// (query-server may have its own DAO layer in future).
+dependencies {
+    implementation project(':soda-user:soda-user-adapter')
+    implementation project(':soda-user:soda-user-infrastructure')
+    implementation project(':soda-user:soda-user-query-server')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+}

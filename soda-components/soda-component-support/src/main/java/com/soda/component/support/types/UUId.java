@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  *
  * @see Identifier
  */
-public record UUId(@JsonValue String value) implements Identifier<String> {
+public record UUId(@JsonValue String value) implements Identifier<String>, Comparable<UUId> {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -51,5 +51,10 @@ public record UUId(@JsonValue String value) implements Identifier<String> {
     @Override
     public String identifier() {
         return value;
+    }
+
+    @Override
+    public int compareTo(UUId other) {
+        return this.value.compareTo(other.value);
     }
 }

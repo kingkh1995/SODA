@@ -10,8 +10,7 @@ import org.springframework.modulith.core.ApplicationModules;
  * <ul>
  *   <li>所有模块默认为 {@code type = OPEN}，允许被任何模块引用</li>
  *   <li>基础模块（domain、support、support.spi）不引用其他模块</li>
- *   <li>有依赖的模块（support.util、support.types）通过 {@code allowedDependencies} 白名单声明</li>
- *   <li>禁止循环依赖</li>
+ *   <li>有依赖的模块（support.util、support.types、support.gateway）通过 {@code allowedDependencies} 白名单声明</li>
  * </ul>
  * <p>
  * 全部模块为 OPEN 时 cycle check 无可验证的类，
@@ -27,6 +26,7 @@ import org.springframework.modulith.core.ApplicationModules;
  * │ support.util   │ OPEN     │ support.spi              │
  * │ support.types  │ OPEN     │ domain, support.util, support.spi │
  * │ support.spi    │ OPEN     │ (none)                   │
+ * │ support.gateway│ OPEN     │ domain, support.types    │
  */
 class ModulithTest {
 

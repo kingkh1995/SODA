@@ -13,13 +13,13 @@
 | 异常消息拼接 | `var sb = new StringBuilder(...)` | 省略 `var` |
 ```java
 // ✅ 推荐
-public record LongId(@JsonValue long value) implements Identifier<Long> {
+public record LongId(@JsonValue long value) implements Identifier<Long>, Comparable<LongId> {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     public LongId {                                          // 紧凑构造：校验
-        ValidateUtils.minValue(value, 0, false);
+        ValidateUtils.minValue(0, false, value);
     }
 
     /** 从不可靠输入构造，null 时抛出 IllegalArgumentException。 */
@@ -31,8 +31,23 @@ public record LongId(@JsonValue long value) implements Identifier<Long> {
     public Long identifier() {
         return value;
     }
+
+    @Override
+    public int compareTo(LongId other) {
+        return Long.compare(this.value, other.value);
+    }
 }
 ```
+### 校验方法参数顺序
+
+`ValidateUtils` 中所有校验方法的参数遵循：辅助参数在前，被校验值（命名 `value`）在最后。
+只有被校验值标注 `@Nullable` 并校验，辅助参数视为可信。
+
+```java
+minValue(0, true, value)   // long min, boolean inclusive, long value
+maxLength(30, value)       // int max, String value
+hasPrefix("P:", value)     // String prefix, String value
+
 ## 注解驱动
 
 能使用注解声明语义的地方，**禁止用手写代码替代**。
@@ -61,9 +76,11 @@ Lombok 用于减少实体/基类的 boilerplate，不用于替代 record：
 
 | 注解 | 使用场景 |
 |---|---|
-| `@Getter` | Entity / Aggregate 基类，所有字段需公开 getter 时 |
+| `@Getter` | 字段上的值 getter，替代手写 `getXxx()`；Entity 基类不适用（需 final 语义）|
+| `@Accessors(fluent = true)` | 与 `@Getter` 配合，使访问器名为 `value()` 而非 `getValue()`，对齐 record 风格|
 | `@RequiredArgsConstructor` | 基类构造函数（如 `Entity(access = PROTECTED)`） |
-| `@EqualsAndHashCode` | 仅用于**非 record 的实体类**（record 自带无需加）|
+| `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` | 用于**非 record 的 class DP**，配合 `@EqualsAndHashCode.Include` 显式标记参与比较的字段|
+| `@EqualsAndHashCode.Include` | 标记参与 `equals`/`hashCode` 的字段|
 
 > **注意**：`@UtilityClass` 不用于有 `import static` 交叉引用的工具类（因编译期符号解析先于 Lombok 处理）。此类场景保持显式 `final class` + 私有构造器 + `static` 方法。
 
@@ -72,6 +89,7 @@ Lombok 用于减少实体/基类的 boilerplate，不用于替代 record：
 - `if` / `for` / `while` 必须带 `{}`，禁止省略单行体
 - 非必要不嵌套。优先卫语句（guard clause）快速失败
 - 避免 `else` / `else if`，优先卫语句 + 提前 `return`
+- 禁止类型转换（type cast），用泛型 / {@code Comparable<Self>} / 模式匹配消除强转
 
 ```java
 // ❌ 嵌套 + 无括号

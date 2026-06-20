@@ -11,7 +11,7 @@
 - `Username` — 4-30 位字母数字，可变
 - `Nickname` — 最多 30 字符
 - `Mobile` — 手机号格式校验 + 归一化
-- `Sex` — 枚举 MALE / FEMALE / UNKNOWN
+- `Sex` — 枚举 MALE / FEMALE
 - `Avatar` — URL 格式校验
 - `UserStatus` — 枚举 ENABLED / DISABLED
 - `AccountType` — 枚举 PASSWORD / SMS / EMAIL / SOCIAL

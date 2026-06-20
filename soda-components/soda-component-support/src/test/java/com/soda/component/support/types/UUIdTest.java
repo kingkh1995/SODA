@@ -2,6 +2,7 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import com.soda.component.support.testutil.JacksonTestUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Jackson round-trip, and contract guarantees (immutable, comparable, serializable).
  */
 class UUIdTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final String VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -150,17 +153,13 @@ class UUIdTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var mapper = new ObjectMapper();
         var original = new UUId(VALID_UUID);
-        var json = mapper.writeValueAsString(original);
-        var restored = mapper.readValue(json, UUId.class);
-        assertEquals(original, restored);
+        JacksonTestUtil.assertRoundTrip(original, UUId.class);
     }
 
     @Test
     void jackson_serializesAsBareString() throws Exception {
-        var mapper = new ObjectMapper();
-        var json = mapper.writeValueAsString(new UUId(VALID_UUID));
+        var json = MAPPER.writeValueAsString(new UUId(VALID_UUID));
         assertEquals('"' + VALID_UUID + '"', json);
     }
 }

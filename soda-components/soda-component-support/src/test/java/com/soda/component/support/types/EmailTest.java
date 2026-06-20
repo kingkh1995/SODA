@@ -2,6 +2,7 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import com.soda.component.support.testutil.JacksonTestUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@code localPart()}, {@code domain()}, {@code compareTo()}, and Jackson round-trip.
  */
 class EmailTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // ——— constructor ———
 
@@ -145,17 +148,13 @@ class EmailTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var mapper = new ObjectMapper();
         var original = new Email("jackson@test.org");
-        var json = mapper.writeValueAsString(original);
-        var restored = mapper.readValue(json, Email.class);
-        assertEquals(original, restored);
+        JacksonTestUtil.assertRoundTrip(original, Email.class);
     }
 
     @Test
     void jackson_serializesAsBareString() throws Exception {
-        var mapper = new ObjectMapper();
-        var json = mapper.writeValueAsString(new Email("bare@test.com"));
+        var json = MAPPER.writeValueAsString(new Email("bare@test.com"));
         assertEquals("\"bare@test.com\"", json);
     }
 }

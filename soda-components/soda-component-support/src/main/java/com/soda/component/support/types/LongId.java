@@ -23,13 +23,13 @@ import java.io.Serial;
  *
  * @see Identifier
  */
-public record LongId(@JsonValue long value) implements Identifier<Long> {
+public record LongId(@JsonValue long value) implements Identifier<Long>, Comparable<LongId> {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     public LongId {
-        ValidateUtils.minValue(value, 0, false);
+        ValidateUtils.minValue(0, false, value);
     }
 
     /** 从不可靠输入构造，null 或非法值时抛出 {@link IllegalArgumentException}。 */
@@ -40,5 +40,10 @@ public record LongId(@JsonValue long value) implements Identifier<Long> {
     @Override
     public Long identifier() {
         return value;
+    }
+
+    @Override
+    public int compareTo(LongId other) {
+        return Long.compare(this.value, other.value);
     }
 }

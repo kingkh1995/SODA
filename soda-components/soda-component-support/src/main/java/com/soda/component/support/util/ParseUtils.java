@@ -1,11 +1,11 @@
 package com.soda.component.support.util;
 
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
+import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
+
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
-
-import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
 
 /**
  * 解析工具类 — 将不可靠 {@link Object} 输入解析为指定基础类型。
@@ -76,4 +76,14 @@ public final class ParseUtils {
             default -> throw forWrongType(EXPECTED_NUM, o.getClass());
         };
     }
+
+    public static <T extends Enum<T>> T parseEnum(Class<T> enumClass, @Nullable Object value) {
+        var name = parseString(value);  // null → IAE（notNull）
+        try {
+            return Enum.valueOf(enumClass, name);
+        } catch (IllegalArgumentException e) {
+            throw IllegalArgumentExceptions.forUnknownEnum(name, enumClass.getSimpleName());
+        }
+    }
+
 }

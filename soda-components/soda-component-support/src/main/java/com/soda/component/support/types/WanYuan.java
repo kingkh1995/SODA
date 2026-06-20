@@ -19,15 +19,15 @@ import java.math.BigDecimal;
  *
  * @see Type
  */
-public record WanYuan(@JsonValue BigDecimal value) implements Type {
+public record WanYuan(@JsonValue BigDecimal value) implements Type, Comparable<WanYuan> {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     public WanYuan {
         ValidateUtils.notNull(value);
-        ValidateUtils.minValue(value, BigDecimal.ZERO, true);
-        ValidateUtils.maxScale(value, 2);
+        ValidateUtils.minValue(BigDecimal.ZERO, true, value);
+        ValidateUtils.maxScale(2, value);
         value = value.stripTrailingZeros();
         if (value.scale() < 0) {
             value = value.setScale(0, java.math.RoundingMode.UNNECESSARY);
@@ -42,7 +42,7 @@ public record WanYuan(@JsonValue BigDecimal value) implements Type {
     /** 从元（元/分）构造。舍入到百元精度。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。 */
     public static WanYuan fromYuan(BigDecimal yuan) {
         ValidateUtils.notNull(yuan);
-        ValidateUtils.minValue(yuan, BigDecimal.ZERO, true);
+        ValidateUtils.minValue(BigDecimal.ZERO, true, yuan);
         var result = yuan.divide(BigDecimal.valueOf(10000), 2, java.math.RoundingMode.HALF_UP);
         return new WanYuan(result);
     }
@@ -53,7 +53,7 @@ public record WanYuan(@JsonValue BigDecimal value) implements Type {
     }
 
     @Override
-    public int compareTo(Type other) {
-        return value.compareTo(((WanYuan) other).value);
+    public int compareTo(WanYuan other) {
+        return this.value.compareTo(other.value);
     }
 }

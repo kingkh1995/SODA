@@ -2,6 +2,7 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import com.soda.component.support.testutil.JacksonTestUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * cache reuse, {@code next()}, {@code compareTo()}, and Jackson round-trip.
  */
 class VersionTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // ——— of(int) ———
 
@@ -142,24 +145,19 @@ class VersionTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var mapper = new ObjectMapper();
         var original = Version.of(42);
-        var json = mapper.writeValueAsString(original);
-        var restored = mapper.readValue(json, Version.class);
-        assertEquals(original, restored);
+        JacksonTestUtil.assertRoundTrip(original, Version.class);
     }
 
     @Test
     void jackson_serializesAsBareNumber() throws Exception {
-        var mapper = new ObjectMapper();
-        var json = mapper.writeValueAsString(Version.of(7));
+        var json = MAPPER.writeValueAsString(Version.of(7));
         assertEquals("7", json);
     }
 
     @Test
     void jackson_deserializeReturnsCachedInstance() throws Exception {
-        var mapper = new ObjectMapper();
-        var restored = mapper.readValue("5", Version.class);
+        var restored = MAPPER.readValue("5", Version.class);
         assertSame(Version.of(5), restored);
     }
 

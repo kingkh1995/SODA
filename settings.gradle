@@ -18,4 +18,11 @@ include 'soda-components:soda-component-domain-starter'
 // —— Shared domain support (optional concrete DPs, factories, mappers) ——
 include 'soda-components:soda-component-support'
 // —— Business modules (added incrementally) ——
-// include 'soda-user'
+include 'soda-user'
+include 'soda-user:soda-user-adapter'
+include 'soda-user:soda-user-api'
+include 'soda-user:soda-user-app'
+include 'soda-user:soda-user-domain'
+include 'soda-user:soda-user-infrastructure'
+include 'soda-user:soda-user-query-server'
+include 'soda-user:soda-user-start'
