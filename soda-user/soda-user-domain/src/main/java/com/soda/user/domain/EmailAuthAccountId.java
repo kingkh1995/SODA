@@ -1,9 +1,10 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.util.ParseUtils;
-import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.component.support.util.ValidateUtils;
+import com.soda.user.domain.enums.AuthAccountType;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
@@ -24,7 +25,6 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
     private static final long serialVersionUID = 1L;
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.E;
-
     private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
 
     private final Email email;
@@ -34,6 +34,7 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
         this.email = email;
     }
 
+    @JsonCreator
     public EmailAuthAccountId(String value) {
         super(value);
         ValidateUtils.hasPrefix(PREFIX, value);
@@ -48,6 +49,7 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
 
     /** 从 {@link Email} 构造邮箱认证账户标识符。 */
     public static EmailAuthAccountId from(Email email) {
+        ValidateUtils.notNull(email);
         return new EmailAuthAccountId(PREFIX + email.value(), email);
     }
 

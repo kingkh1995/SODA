@@ -1,5 +1,5 @@
 // Read server — traditional 3-layer (DAO → Service → Controller), reuses infra Mapper.
-// Not a Spring Boot application — bootJar disabled; its controllers are picked up by start module.
+// Not a Spring Boot application — bootJar disabled; runs as a deployable jar.
 bootJar {
     enabled = false
 }
@@ -7,7 +7,7 @@ jar {
     enabled = true
 }
 dependencies {
-    implementation project(':soda-user:soda-user-infrastructure')
     implementation project(':soda-user:soda-user-api')
-    implementation 'org.springframework:spring-webmvc'
+    implementation project(':soda-user:soda-user-infrastructure')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
 }

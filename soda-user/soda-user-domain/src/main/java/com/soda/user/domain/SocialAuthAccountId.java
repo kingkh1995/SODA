@@ -1,5 +1,6 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
@@ -24,7 +25,6 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
     private static final long serialVersionUID = 1L;
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.O;
-
     private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
 
     private final SocialType socialType;
@@ -37,6 +37,7 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         this.openId = openId;
     }
 
+    @JsonCreator
     public SocialAuthAccountId(String value) {
         super(value);
         ValidateUtils.hasPrefix(PREFIX, value);
@@ -58,7 +59,7 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
     /** 从 {@link SocialType} + openId 构造社交认证账户标识符。 */
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
-        ValidateUtils.notNull(openId);
+        ValidateUtils.nonBlank(openId);
         return new SocialAuthAccountId(PREFIX + socialType.name() + ":" + openId, socialType, openId);
     }
 

@@ -1,5 +1,6 @@
 package com.soda.user.domain.enums;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -7,6 +8,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SexTest {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
     void values_containsTwo() {
@@ -19,7 +21,24 @@ class SexTest {
         F,     Female
     """)
     void constant(String name, String desc) {
-        var sex = Sex.valueOf(name);
-        assertEquals(desc, sex.desc());
+        assertEquals(desc, Sex.valueOf(name).desc());
+    }
+
+    @ParameterizedTest(name = "of({0}) → {0}")
+    @CsvSource({"M", "F"})
+    void of(String name) {
+        assertEquals(Sex.valueOf(name), Sex.of(name));
+    }
+
+    @Test
+    void of_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> Sex.of(null));
+    }
+
+    @Test
+    void jackson_serializeDeserialize() throws Exception {
+        assertEquals("\"M\"", MAPPER.writeValueAsString(Sex.M));
+        assertEquals(Sex.M, MAPPER.readValue("\"M\"", Sex.class));
+        assertEquals(Sex.F, MAPPER.readValue("\"F\"", Sex.class));
     }
 }

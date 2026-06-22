@@ -1,5 +1,6 @@
 package com.soda.component.support.util;
 
+import static com.soda.component.support.util.IllegalArgumentExceptions.forInvalidFormat;
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
 
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 public final class ParseUtils {
 
     private static final String EXPECTED_NUM = "Number or String";
+    private static final String EXPECTED_BOOL = "Boolean or String";
 
     private ParseUtils() {
         throw new UnsupportedOperationException();
@@ -32,6 +34,23 @@ public final class ParseUtils {
                 }
             }
             default -> throw forWrongType(EXPECTED_NUM, o.getClass());
+        };
+    }
+
+    public static boolean parseBoolean(@Nullable Object o) {
+        ValidateUtils.notNull(o);
+        return switch (o) {
+            case Boolean b -> b;
+            case String s -> {
+                var trimmed = s.trim();
+                if ("true".equalsIgnoreCase(trimmed) || "1".equals(trimmed)) {
+                    yield true;
+                } else if ("false".equalsIgnoreCase(trimmed) || "0".equals(trimmed)) {
+                    yield false;
+                }
+                throw forInvalidFormat(trimmed);
+            }
+            default -> throw forWrongType(EXPECTED_BOOL, o.getClass());
         };
     }
 

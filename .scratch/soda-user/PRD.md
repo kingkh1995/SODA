@@ -68,23 +68,23 @@ Fields:
 - `nickname: Nickname` — 显示名
 - `mobile: Mobile` — 手机号，可选；也是 SmsAccountId 派生源
 - `email: Email` — 邮箱，可选；也是 EmailAuthAccountId 派生源
-- `sex: Sex` — MALE / FEMALE
+- `sex: Sex` — `M`(Male) / `F`(Female)
 - `avatar: Avatar` — 头像 URL
-- `status: UserStatus` — ENABLED / DISABLED
-- `accounts: List<Account>` — 子实体集合
+- `status: UserStatus` — `E`(Enabled) / `D`(Disabled)
+- `accounts: List<AuthAccount>` — 子实体集合
 
-Key domain methods: `authenticate(AccountType, credential)`, `changeUsername(Username)`, `createPasswordAccount(PasswordEncoder)`, `addSocialAccount(SocialType, openId)`, `removeAccount(AccountId)`, `setMobile(Mobile)`, `setEmail(Email)`, `changeStatus(UserStatus)`
+Key domain methods: `authenticate(AuthAccountType, credential)`, `changeUsername(Username)`, `createPasswordAccount(PasswordEncoder)`, `addSocialAccount(SocialType, openId)`, `removeAccount(AuthAccountId)`, `setMobile(Mobile)`, `setEmail(Email)`, `changeStatus(UserStatus)`
 
-**Account** (abstract Entity)
+**AuthAccount** (abstract Entity, extends `Entity<AuthAccountId>`)  
 
 | Subclass | AccountId | Extra fields | Behavior |
 |---|---|---|---|
 | `PasswordAccount` | `PasswordAccountId(userId)` | `passwordHash` (BCrypt hash) | `verify(rawPassword, PasswordEncoder)` |
 | `SmsAccount` | `SmsAccountId(mobile)` | `VerificationCode?`, `VerificationCodePolicy` | `sendCode(CodeGenerator, SmsSender)`, `verifyCode(code)`, `useCode()` |
 | `EmailAuthAccount` | `EmailAuthAccountId(email)` | `VerificationCode?`, `VerificationCodePolicy` | `sendCode(CodeGenerator, EmailSender)`, `verifyCode(code)`, `useCode()` |
-| `SocialAccount` | `SocialAccountId(socialType, openId)` | none (encoded in ID) | (identity mapping, no credential to verify) |
+| `SocialAuthAccount` | `SocialAuthAccountId(socialType, openId)` | none (encoded in ID) | (identity mapping, no credential to verify) |
 
-**VerificationCode** DP: encapsulates `code`, `expireAt`, `used` (immutable after creation). Methods: `isExpired()`, `isUsed()`, `verify(inputCode)`, `use()`. Created inside `Account.sendCode()`.
+**VerificationCode** DP: encapsulates `code`, `expireAt`, `used` (immutable after creation). Methods: `isExpired()`, `isUsed()`, `verify(inputCode)`, `use()`. Created inside `SmsAuthAccount.sendCode()` / `EmailAuthAccount.sendCode()`.  
 
 **VerificationCodePolicy** DP: `codeLength` + `expiry` (Duration). Resolution order: per-account override → ServiceLoader SPI → subclass static `DEFAULT_POLICY`.
 
@@ -180,18 +180,18 @@ include 'soda-user:soda-user-query-server'
 
 **Phase 1 — DP unit tests** (infrastructure-free, JUnit 5 only)
 - `UserIdTest`, `UsernameTest`, `NicknameTest`, `MobileTest`, `SexTest`, `AvatarTest`, `UserStatusTest`
-- `AccountTypeTest`, `SocialTypeTest`
+- `AuthAccountTypeTest`, `SocialTypeTest`
 - `VerificationCodePolicyTest`, `VerificationCodeTest`
 - `PasswordAccountIdTest`, `SmsAccountIdTest`, `EmailAuthAccountIdTest`, `SocialAccountIdTest`
 
-Each tests: valid construction, invalid construction (throws), equality, Jackson serialization round-trip, `compareTo()`.
+Each tests: valid construction, invalid construction (throws), equality, Jackson serialization round-trip, `compareTo()`（枚举 DP 使用 Java 内置比较）。
 
 **Phase 2 — Domain Entity/Aggregate tests** (infrastructure-free, mocked Gateways)
 - `UserTest` — creation, `authenticate()` dispatch to correct Account, `changeUsername()` (unique constraint enforced via callback), `setMobile()` (auto-creates SmsAccount), `setEmail()` (auto-creates EmailAuthAccount), `addSocialAccount()`, `removeAccount()`, `flushEvents()` contains expected events
 - `PasswordAccountTest` — `verify()` matches/mismatch, `verify()` delegates to `PasswordEncoder`
 - `SmsAccountTest` — `sendCode()` creates VerificationCode + calls SmsSender, `verifyCode()` success/failure/expired, `useCode()` marks used
 - `EmailAuthAccountTest` — same pattern as SmsAccount
-- `SocialAccountTest` — identity test (creation, equality)
+- `SocialAuthAccountTest` — identity test (creation, equality)
 
 **Phase 3 — ApplicationService tests** (Spring boot test, mocked Gateways)
 - `UserCreateAppServiceTest` — happy path + uniqueness violation + event published

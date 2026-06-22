@@ -1,5 +1,7 @@
 package com.soda.component.domain;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
@@ -24,10 +26,17 @@ import java.util.List;
  * @param <ID> 标识符类型
  * @see Aggregate
  */
+@JsonAutoDetect(
+        fieldVisibility = JsonAutoDetect.Visibility.ANY,
+        getterVisibility = JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility = JsonAutoDetect.Visibility.NONE,
+        setterVisibility = JsonAutoDetect.Visibility.NONE
+)
 public abstract class Entity<ID extends Identifier<?>> implements Identifiable<ID>, EventSource<ID> {
 
     private @Nullable ID id;
 
+    @JsonIgnore
     private @Nullable transient List<DomainEvent<ID>> domainEvents;
 
     /** 手动设置 / 已有数据恢复（reconstitution）。 */
@@ -46,6 +55,11 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     @Override
     public final @Nullable ID getId() {
         return id;
+    }
+
+    @Override
+    public boolean isIdentified() {
+        return id != null;
     }
 
     /**

@@ -4,10 +4,12 @@
 
 所有 Domain Primitive（领域原语）必须满足：
 
-- **不可变** — 所有字段不可变（record 隐式保证，class 显式 {@code private final}）
+- **不可变** — 所有字段不可变（record 隐式保证，class 显式 {@code private final}；枚举本身就是不可变的）
 - **自校验** — 构造时验证业务约束，无效值不生成实例
-- **可序列化** — 实现 `Serializable`
-- **可比较** — 实现 `Comparable<Self>` 提供类型安全比较（每个 DP 自行实现 `compareTo(Self)`）
+- **可序列化** — 实现 `Serializable`（class/record 显式实现，枚举通过 Java 内置机制自动支持）
+- **可比较** — 实现 `Comparable<Self>` 提供类型安全比较（class/record 各自实现 `compareTo(Self)`，枚举使用 Java 内置的枚举比较）
+
+> 枚举 DP 遵循 {@link com.soda.component.domain.EnumType} 契约，由于 Java 枚举的特殊性（final class、编译器生成的方法），模板见下节。
 
 ## 标识符 vs 非标识符 DP
 
@@ -436,3 +438,47 @@ private static final int MAX_LENGTH = Math.max(70, TypeConfig.PROVIDER.smsConten
 
 `support.types` → `support.util`（`TypeConfig`）→ `support.spi`（`TypeConfigProvider`）。
 与模块白名单一致：`support.types` 的 `allowedDependencies` 含 `support.util`、`support.spi`。
+
+## 类结构模板（枚举 DP — Java enum + Lombok 风格）
+
+枚举 DP 实现 {@link com.soda.component.domain.EnumType}（继承 {@link com.soda.component.domain.Type}），
+使用 Java {@code enum} + Lombok，不转为 class/record。
+
+### 模板
+
+```java
+@Getter
+@Accessors(fluent = true)
+@RequiredArgsConstructor
+public enum Xxx implements EnumType {
+
+    A("Description A"),
+    B("Description B");
+
+    private final String desc;
+
+    @JsonCreator
+    public static Xxx of(String name) {
+        return ParseUtils.parseEnum(Xxx.class, name);
+    }
+}
+```
+
+### 规则
+
+| 元素 | 规范 |
+|------|------|
+| 接口 | `EnumType`（继承 `Type`，自动满足 DP 契约） |
+| 序列化 | Jackson 默认 {@code name()} — 枚举常量名即为持久化值 |
+| 反序列化 | `@JsonCreator of(String)` — 委托 `ParseUtils.parseEnum()`，提供一致的异常语义 |
+| 不可靠输入 | 编译器生成的 `valueOf(String)` 可直接使用（也抛 IAE） |
+| 字段 | 仅 `private final String desc`，由 `@RequiredArgsConstructor` 生成构造器 |
+| 访问器 | `desc()` — 通过 `@Getter @Accessors(fluent = true)` 生成 |
+| `compareTo` | 使用 Java 内置的枚举比较（按声明顺序） |
+| 包 | 所在模块的 `enums` 子包下（如 `com.soda.user.domain.enums`） |
+
+### 限制
+
+- 不能隐藏编译器生成的 `valueOf(String)` — 用 `of(String)` 作为 `@JsonCreator` 入口
+- 枚举常量名即是持久化值，改名破坏 DB 数据（需 migration）
+- 不可与普通 DP 共用 `valueOf(Object)` 模式（枚举不能覆盖 `valueOf(String)`）

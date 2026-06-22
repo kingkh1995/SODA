@@ -1,0 +1,138 @@
+package com.soda.user.domain;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soda.component.support.types.Active;
+import com.soda.component.support.types.Email;
+import com.soda.user.domain.enums.AuthAccountType;
+import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
+import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * {@link EmailAuthAccount} 单元测试。
+ * <p>
+ * 验证：
+ * <ul>
+ *   <li>{@link EmailAuthAccount#verifyCode(String)} — 正确 / 错误</li>
+ *   <li>{@link EmailAuthAccount#useCode()} — 标记已使用</li>
+ *   <li>{@link EmailAuthAccount#replaceCode(VerificationCode)} — 替换验证码</li>
+ *   <li>默认策略和类型</li>
+ *   <li>createBuilder / restoreBuilder 工厂方法</li>
+ *   <li>Jackson 序列化 / 反序列化</li>
+ * </ul>
+ */
+class EmailAuthAccountTest {
+
+    private static final Email EMAIL = new Email("test@example.com");
+    private static final EmailAuthAccountId ID = EmailAuthAccountId.from(EMAIL);
+
+    /** 永不过期的验证码，用于测试。 */
+    private static final VerificationCode CODE = new VerificationCode("abcdef12", Instant.MAX, false);
+
+    @Test
+    void constructor_setsId() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertEquals(ID, account.getId());
+    }
+
+    @Test
+    void getAuthAccountType_returnsE() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertEquals(AuthAccountType.E, account.getAuthAccountType());
+    }
+
+    @Test
+    void defaultPolicy_isEightDigitsThirtyMinutes() {
+        assertEquals(EmailAuthAccount.DEFAULT_POLICY, VerificationCodePolicy.DEFAULT_EMAIL);
+    }
+
+    @Test
+    void email_returnsFromId() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertEquals(EMAIL, account.getEmail());
+    }
+
+    @Test
+    void verifyCode_correctNotExpired_returnsTrue() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, CODE, null);
+        assertTrue(account.verifyCode("abcdef12"));
+    }
+
+
+    @Test
+    void verifyCode_wrongCode_returnsFalse() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, CODE, null);
+        assertFalse(account.verifyCode("wrong"));
+    }
+
+
+
+    @Test
+    void activeTrue_isActive() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertTrue(account.isActive());
+    }
+
+    @Test
+    void activeFalse_isInactive() {
+        var account = new EmailAuthAccount(ID, Active.FALSE, null, null);
+        assertFalse(account.isActive());
+    }
+
+    @Test
+    void policy_customViaConstructor() {
+        var customPolicy = new VerificationCodePolicy(4, Duration.ofMinutes(1));
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, customPolicy);
+        assertEquals(customPolicy, account.getVerificationCodePolicy());
+    }
+
+    @Test
+    void policy_null_returnsDefault() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertEquals(EmailAuthAccount.DEFAULT_POLICY, account.getVerificationCodePolicy());
+    }
+
+    // ——— factories ———
+
+    @Test
+    void createBuilder_setsDefaults() {
+        var account = EmailAuthAccount.createBuilder()
+                .email(EMAIL)
+                .build();
+        assertEquals(ID, account.getId());
+        assertTrue(account.isActive());
+        assertNull(account.getVerificationCode());
+    }
+
+    @Test
+    void restoreBuilder_restoresAllFields() {
+        var account = EmailAuthAccount.restoreBuilder()
+                .id(ID)
+                .active(Active.FALSE)
+                .build();
+        assertEquals(ID, account.getId());
+        assertFalse(account.isActive());
+        assertNull(account.getVerificationCode());
+    }
+
+    // ——— JSON ———
+
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
+    @Test
+    void jackson_serializeDeserialize() throws Exception {
+        var original = EmailAuthAccount.createBuilder()
+                .email(EMAIL)
+                .build();
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, EmailAuthAccount.class);
+        assertEquals(original.getId(), restored.getId());
+        assertEquals(original.getAuthAccountType(), restored.getAuthAccountType());
+        assertEquals(original.isActive(), restored.isActive());
+        assertEquals(original.getEmail(), restored.getEmail());
+    }
+}

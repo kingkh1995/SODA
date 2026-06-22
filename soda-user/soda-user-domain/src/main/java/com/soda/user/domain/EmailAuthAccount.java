@@ -1,0 +1,91 @@
+package com.soda.user.domain;
+
+import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import org.jspecify.annotations.Nullable;
+
+import com.soda.component.support.types.Active;
+import com.soda.component.support.types.Email;
+
+/**
+ * 邮箱认证账户实体 — 邮箱 + 验证码方式的认证。
+ * <p>
+ * 与 User.email 联动：设置 User.email 时自动创建，清除时自动删除。
+ * 验证码通过 {@link #replaceCode(VerificationCode)} 注入，外部调用方负责实际发送。
+ *
+ * @see AuthAccount
+ */
+@Getter
+public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
+
+    /** 默认邮箱验证码策略：8 位，30 分钟过期。 */
+    public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_EMAIL;
+
+    private @Nullable VerificationCode verificationCode;
+
+    @Getter(AccessLevel.NONE)
+    private @Nullable VerificationCodePolicy verificationCodePolicy;
+
+    // ─── construction ───
+
+    /** 持久化恢复 / JSON 反序列化。 */
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    protected EmailAuthAccount(
+            @JsonProperty("id") EmailAuthAccountId id,
+            @JsonProperty("active") Active active,
+            @JsonProperty("verificationCode") @Nullable VerificationCode verificationCode,
+            @JsonProperty("verificationCodePolicy") @Nullable VerificationCodePolicy verificationCodePolicy) {
+        super(id, active);
+        this.verificationCode = verificationCode;
+        this.verificationCodePolicy = verificationCodePolicy;
+    }
+
+    // ─── factories ───
+
+    /** 创建新邮箱账户 — active 默认 TRUE，ID 从 email 派生。验证码通过 replaceCode() 后续注入。 */
+    @Builder(builderClassName = "EmailAuthAccountCreateBuilder",
+             builderMethodName = "createBuilder")
+    public static EmailAuthAccount create(Email email) {
+        return new EmailAuthAccount(
+                EmailAuthAccountId.from(email),
+                Active.TRUE,
+                null,
+                null
+        );
+    }
+
+    /** 从持久化恢复邮箱账户 — 全部字段显式传入。 */
+    @Builder(builderClassName = "EmailAuthAccountRestoreBuilder",
+             builderMethodName = "restoreBuilder")
+    public static EmailAuthAccount restore(
+            EmailAuthAccountId id, Active active,
+            @Nullable VerificationCode verificationCode,
+            @Nullable VerificationCodePolicy verificationCodePolicy) {
+        return new EmailAuthAccount(id, active, verificationCode, verificationCodePolicy);
+    }
+
+    /** 当前生效的策略。 */
+    public VerificationCodePolicy getVerificationCodePolicy() {
+        return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
+    }
+
+    /**
+     * 校验验证码。
+     *
+     * @param inputCode 待校验的验证码字符串
+     * @return true 若匹配且有效
+     */
+    public boolean verifyCode(String inputCode) {
+        return verificationCode != null && verificationCode.verify(inputCode);
+    }
+
+    /** 从 ID 中提取邮箱（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。 */
+    public Email getEmail() {
+        return getId().email();
+    }
+}

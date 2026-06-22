@@ -54,7 +54,7 @@ class SocialAuthAccountIdTest {
     }
 
     @Test
-    void authAccountType_returnsO() {
+    void type_returnsO() {
         assertEquals(AuthAccountType.O, SocialAuthAccountId.ACCOUNT_TYPE);
     }
 

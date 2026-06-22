@@ -1,6 +1,5 @@
 package com.soda.component.domain;
 
-import java.io.Serializable;
 import java.time.Instant;
 
 /**
@@ -19,7 +18,7 @@ import java.time.Instant;
  * @see DomainEventBus
  * @see Entity
  */
-public interface DomainEvent<ID extends Identifier<?>> extends Serializable {
+public interface DomainEvent<ID extends Identifier<?>> {
 
     /** 来源实体的标识符。 */
     ID entityId();

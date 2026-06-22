@@ -1,9 +1,10 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.Mobile;
 import com.soda.component.support.util.ParseUtils;
-import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.component.support.util.ValidateUtils;
+import com.soda.user.domain.enums.AuthAccountType;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
@@ -24,7 +25,6 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
     private static final long serialVersionUID = 1L;
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.S;
-
     private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
 
     private final Mobile mobile;
@@ -34,13 +34,13 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
         this.mobile = mobile;
     }
 
+    @JsonCreator
     public SmsAuthAccountId(String value) {
         super(value);
         ValidateUtils.hasPrefix(PREFIX, value);
         var suffix = value.substring(PREFIX.length());
         this.mobile = new Mobile(suffix);
     }
-
 
     @Override
     public AuthAccountType authAccountType() {
@@ -49,6 +49,7 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
 
     /** 从 {@link Mobile} 构造短信认证账户标识符。 */
     public static SmsAuthAccountId from(Mobile mobile) {
+        ValidateUtils.notNull(mobile);
         return new SmsAuthAccountId(PREFIX + mobile.value(), mobile);
     }
 

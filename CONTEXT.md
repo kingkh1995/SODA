@@ -94,7 +94,7 @@ archRule.failOnEmptyShould=false
 所有领域原语（Domain Primitive）的根标记接口。扩展 `Serializable` — 类型安全的可比较性由子类各自实现 `Comparable<Self>` 保证。直接实现 Type 的类需提供 `compareTo(Self)`.
 
 ### EnumType
-枚举类型的根标记接口（{@code com.soda.component.domain.EnumType}），实现 {@link java.io.Serializable}。提供 {@code desc()} 返回英文描述。业务模块中所有业务枚举必须实现此接口。区别于 {@link Type}：枚举不共享 DP 的 {@code Comparable} / 校验模式，短名字符串持久化到数据库。
+枚举类型的根标记接口（{@code com.soda.component.domain.EnumType}），继承 {@link Type}，同时也是 Domain Primitive。提供 {@code desc()} 返回英文描述。业务模块中所有业务枚举必须实现此接口。序列化使用枚举自带 {@code name()} 短名（如 {@code "E"}），各枚举额外提供 {@code of(String)}（{@code @JsonCreator} 入口）。
 
 ### Identifier
 不可变的领域原语，扩展 `Type`，在限界上下文内唯一标识一个实体。底层值类型是泛型的（`Identifier<T extends Comparable<T>>`）。子类自行实现 `Comparable<Self>` 提供类型安全的比较。实现类需提供 `identifier()` 返回类型化值，以及基于值的 `equals()`/`hashCode()`。
@@ -156,7 +156,7 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 邮件发送器契约（{@code support.gateway.EmailSender}），继承 {@link Gateway}。提供 {@code send(Email, EmailContent)}。实现层对接邮件服务器或邮件 SDK。
 
 ### DomainEvent
-领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()` 两个方法，扩展 `Serializable`。业务模块用 `record` 实现，`entityId` 和 `occurredAt` 作为 record 组件自动实现接口方法。
+领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()` 两个方法。业务模块用 `record` 实现，`entityId` 和 `occurredAt` 作为 record 组件自动实现接口方法。
 类型参数 `ID` 与 Entity 一致，编译期确保事件来源不混用。
 
 ### DomainEventBus
@@ -184,19 +184,34 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 手机号 DP（{@code support.types.Mobile}），实现 {@link Type}。格式校验，归一化。同时是 {@link SmsAuthAccountId} 的派生源。
 
 ### Sex
-性别枚举（{@code soda-user.domain.enums.Sex}），实现 {@link com.soda.component.domain.EnumType EnumType}。取值：{@code M}（Male）、{@code F}（Female）。
+性别枚举（{@code soda-user.domain.enums.Sex}），实现 {@link EnumType}（同时也是 DP）。取值：{@code M}（Male）、{@code F}（Female）。序列化短名 {@code "M"} / {@code "F"}。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
 
 ### Avatar
 头像 URL DP（{@code soda-user.domain.Avatar}），实现 {@link Type}。URL 格式校验。
 
 ### UserStatus
-用户状态枚举（{@code soda-user.domain.enums.UserStatus}），实现 {@link com.soda.component.domain.EnumType EnumType}。取值：{@code E}（Enabled）、{@code D}（Disabled）。
+用户状态枚举（{@code soda-user.domain.enums.UserStatus}），实现 {@link EnumType}（同时也是 DP）。取值：{@code E}（Enabled）、{@code D}（Disabled）。序列化短名 {@code "E"} / {@code "D"}。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
 
 ### SocialType
-社交平台类型枚举（{@code soda-user.domain.enums.SocialType}），实现 {@link com.soda.component.domain.EnumType EnumType}。取值：{@code GE}（Gitee）、{@code DT}（DingTalk）、{@code WENT}（WechatWork）、{@code WMP}（WechatMp）、{@code WOPN}（WechatOpen）、{@code WMIN}（WechatMini）、{@code ALIP}（AlipayMini）。短名持久化到数据库。
+社交平台类型枚举（{@code soda-user.domain.enums.SocialType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code GE}（Gitee）、{@code DT}（DingTalk）、{@code WENT}（WechatWork）、{@code WMP}（WechatMp）、{@code WOPN}（WechatOpen）、{@code WMIN}（WechatMini）、{@code ALIP}（AlipayMini）。序列化短名。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
 
 ### AuthAccount
-用户认证账号实体（{@code soda-user.domain.AuthAccount}），为 {@link Entity} 的子类。子类多态，每个子类对应一种认证方式。作为 {@link User} 聚合的子实体，由聚合根管理生命周期。{@code accountId} 使用 {@link AuthAccountId} 密封基类，序列化为包含 {@link AuthAccountType} 短名前缀的字符串（例：{@code "S:13800138000"}）。
+用户认证账号实体（{@code soda-user.domain.AuthAccount}），{@link Entity} 密封子类，每个子类对应一种认证方式。作为 {@link User} 聚合的子实体，由聚合根管理生命周期。{@code accountId} 使用 {@link AuthAccountId} 密封基类，序列化为包含 {@link AuthAccountType} 短名前缀的字符串（例：{@code "S:13800138000"}）。
+构造器手动传入 ID（与 User 的服务端生成不同），通过 {@code active} 参数指定激活状态。
+验证码通过 {@code replaceCode(VerificationCode)} 注入，由 ApplicationService 在外部生成验证码并调用发送器 Gateway 发送。验证码策略（长度、过期时间）由 {@link VerificationCodePolicy} DP 表达，构造时可选传入，各子类持有静态默认值。
+提供静态 Predicate 常量 {@code ACTIVE} 和工厂方法 {@code ofType(AuthAccountType)}，可与 {@code findAccount(Predicate)} 组合使用。
+
+### PasswordAuthAccount
+密码认证账号（{@code soda-user.domain.PasswordAuthAccount}），{@link AuthAccount} 子类。{@code accountId = PasswordAuthAccountId.from(UserId)}。持有一个不可变的 {@code passwordHash}（BCrypt）。提供 {@code verify()} 和 {@code changePassword()} 业务方法。
+
+### SmsAuthAccount
+短信认证账号（{@code soda-user.domain.SmsAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SmsAuthAccountId.from(Mobile)}。持有一个可选的 {@link VerificationCode} DP，通过 {@code replaceCode(VerificationCode)} 注入。提供 {@code verifyCode()}、{@code useCode()}、{@code getPolicy()} 方法。
+
+### EmailAuthAccount
+邮箱认证账号（{@code soda-user.domain.EmailAuthAccount}），{@link AuthAccount} 子类。{@code accountId = EmailAuthAccountId.from(Email)}。持有一个可选的 {@link VerificationCode} DP，通过 {@code replaceCode(VerificationCode)} 注入。提供 {@code verifyCode()}、{@code useCode()}、{@code getPolicy()} 方法。
+
+### SocialAuthAccount
+社交认证账号（{@code soda-user.domain.SocialAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SocialAuthAccountId.from(SocialType, openId)}。纯标识映射，无密码验证。
 
 ### AuthAccountId
 账户标识符密封基类（{@code soda-user.domain.AuthAccountId}），实现 {@link Identifier}{@code <String>}。所有 AuthAccount 子类的标识符统一为此类型。序列化格式：{@code "{AuthAccountType短名}:{业务键}"}。四个子类：
@@ -209,19 +224,7 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 | {@link SocialAuthAccountId} | {@code "O:GE:open123"} | {@link SocialType} + {@code openId} |
 
 反序列化通过各子类的 {@code valueOf(Object)} 完成，Jackson 需声明具体子类类型。
-认证方式枚举（{@code soda-user.domain.enums.AuthAccountType}），实现 {@link com.soda.component.domain.EnumType EnumType}。取值：{@code P}（Password）、{@code S}（Sms）、{@code E}（Email）、{@code O}（OAuth）。
-
-### PasswordAuthAccount
-密码认证账号（{@code soda-user.domain.PasswordAuthAccount}），{@link AuthAccount} 子类。{@code accountId = PasswordAuthAccountId.from(UserId)}。持有一个不可变的 {@code passwordHash}（BCrypt）。
-
-### SmsAuthAccount
-短信认证账号（{@code soda-user.domain.SmsAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SmsAuthAccountId.from(Mobile)}。持有一个可选的 {@link VerificationCode} DP，用于持久化短信验证码。
-
-### EmailAuthAccount
-邮箱认证账号（{@code soda-user.domain.EmailAuthAccount}），{@link AuthAccount} 子类。{@code accountId = EmailAuthAccountId.from(Email)}。持有一个可选的 {@link VerificationCode} DP。
-
-### SocialAuthAccount
-社交认证账号（{@code soda-user.domain.SocialAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SocialAuthAccountId.from(SocialType, openId)}。标识第三方平台（Gitee、钉钉、微信等）到本地用户的映射。
+认证方式枚举（{@code soda-user.domain.enums.AuthAccountType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code P}（Password）、{@code S}（Sms）、{@code E}（Email）、{@code O}（OAuth）。序列化短名。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
 
 
 ### VerificationCode

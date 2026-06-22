@@ -18,7 +18,8 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 4. **DB 存储**：使用 `name()` 值持久化到数据库 `CHAR(4)` 列。
 5. **Lombok**：`@Getter` + `@Accessors(fluent = true)` 生成 `desc()` 访问器；`@RequiredArgsConstructor` 生成构造器。
 6. **JSpecify**：包级 `@NullMarked`。
-7. **公共接口**：`EnumType`（`com.soda.component.domain.EnumType`）作为所有业务枚举的根标记接口，强制提供 `desc()` 方法。实现 `Serializable`。
+7. **Domain Primitive**：`EnumType extends Type`，所有业务枚举同时也是 Domain Primitive。
+8. **反序列化入口**：每个 enum 提供 `@JsonCreator of(String)`，委托 `ParseUtils.parseEnum()`。组件自带的 `valueOf(String)` 作为外部不可靠输入入口。
 
 ### 枚举清单
 
@@ -39,10 +40,9 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 
 - **短名优于 int code**：`CHAR(4)` 存储可读性强，`"E"` 比 `1` 在日志/DB 中直观。无需 `fromCode()` 映射逻辑。
 - **短名优于长名**：`"O"` vs `"SOCIAL"`，传输和存储更紧凑。
-- **枚举归 domain**：DTO/VO 用 `String`，无跨模块引用，枚举属于领域层概念。
-- **`EnumType` 接口**：统一所有业务枚举的 `desc()` 契约，同时避免 `Type` 接口的 `Comparable` 泛型冲突。
+- **`EnumType` 接口**：统一所有业务枚举的 `desc()` 契约，同时通过 `extends Type` 纳入 DP 体系。
 - **record 风格访问器**：`desc()` 而非 `getDesc()`，与项目中 `record` DP 的访问器风格一致（`value()`、`username()` 等）。
-- **无 Jackson 注解**：枚举不直接序列化给外部，Jackson 默认 `name()` 行为已满足内部日志/事件需求。
+- **`@JsonCreator of(String)`**：Jackson 默认用 `valueOf(String)` 反序列化，但 `valueOf` 无法自定义异常。通过 `of(String)` + `@JsonCreator` 拦截，委托 `ParseUtils.parseEnum()` 提供一致的异常语义（`forUnknownEnum`）。
 
 **Consequences**:
 
@@ -51,4 +51,4 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 | 枚举不可变，desc 是枚举常量的固有属性 | 短标识符在 IDE 中可读性略低于长名（`Sex.M` vs `Sex.MALE`） |
 | DB 直接看出含义（`"E"` 是 Enabled） | 枚举常量改名破坏 DB 数据（需 migration） |
 | `soda-user-common` 模块移除，模块数从 8 → 7 | |
-| `EnumType` 接口可被其他业务模块复用 | |
+| `EnumType extends Type`，枚举统一为 Domain Primitive，复用 DP 校验/异常体系 | |

@@ -52,6 +52,7 @@ public final class Version implements Type, Comparable<Version> {
     @JsonValue
     @EqualsAndHashCode.Include
     private final int value;
+
     private Version(int value) {
         ValidateUtils.minValue(0, true, value);
         this.value = value;

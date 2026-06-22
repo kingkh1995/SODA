@@ -1,9 +1,10 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.LongId;
 import com.soda.component.support.util.ParseUtils;
-import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.component.support.util.ValidateUtils;
+import com.soda.user.domain.enums.AuthAccountType;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
@@ -24,7 +25,6 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
     private static final long serialVersionUID = 1L;
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.P;
-
     private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
 
     private final UserId userId;
@@ -34,6 +34,7 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         this.userId = userId;
     }
 
+    @JsonCreator
     public PasswordAuthAccountId(String value) {
         super(value);
         ValidateUtils.hasPrefix(PREFIX, value);
@@ -49,6 +50,7 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
 
     /** 从 {@link UserId} 构造密码认证账户标识符。 */
     public static PasswordAuthAccountId from(UserId userId) {
+        ValidateUtils.notNull(userId);
         return new PasswordAuthAccountId(PREFIX + userId.value(), userId);
     }
 
