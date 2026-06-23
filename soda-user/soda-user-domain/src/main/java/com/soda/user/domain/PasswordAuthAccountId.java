@@ -34,18 +34,11 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         this.userId = userId;
     }
 
+    /** 反序列化入口 — 格式 {@code "P:{userId}"}。 */
     @JsonCreator
-    public PasswordAuthAccountId(String value) {
-        super(value);
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
-        this.userId = new UserId(ParseUtils.parseLong(suffix));
-    }
-
-
-    @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
+    public static PasswordAuthAccountId of(String value) {
+        var suffix = requirePrefixed(value, PREFIX);
+        return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
     }
 
     /** 从 {@link UserId} 构造密码认证账户标识符。 */
@@ -54,14 +47,14 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         return new PasswordAuthAccountId(PREFIX + userId.value(), userId);
     }
 
-    /** 从不可靠输入构造，格式 {@code "P:{userId}"}。 */
-    public static PasswordAuthAccountId valueOf(Object value) {
-        return new PasswordAuthAccountId(ParseUtils.parseString(value));
+    @Override
+    public AuthAccountType authAccountType() {
+        return ACCOUNT_TYPE;
     }
 
     /** 返回底层 {@link UserId} 的 {@link LongId} 表示。 */
     public LongId toLongId() {
-        return LongId.valueOf(userId.value());
+        return new LongId(userId.value());
     }
 
     @Override

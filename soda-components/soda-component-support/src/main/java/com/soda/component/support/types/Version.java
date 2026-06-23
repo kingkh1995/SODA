@@ -6,10 +6,8 @@ import com.soda.component.domain.Type;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
-import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
@@ -67,9 +65,10 @@ public final class Version implements Type, Comparable<Version> {
         return new Version(value);
     }
 
-    /** 从不可靠输入构造，null 或非法值时抛出 {@link IllegalArgumentException}。 */
-    public static Version valueOf(Object value) {
-        return of(ParseUtils.parseInt(value));
+
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。 */
+    public static Version parse(String s) {
+        return of(ParseUtils.parseInt(s));
     }
 
     /** 返回递增后的新版本号（不修改自身）。 */

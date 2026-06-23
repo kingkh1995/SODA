@@ -1,24 +1,27 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soda.component.support.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import com.soda.component.support.testutil.JacksonTestUtil;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link WanYuan} behavior tests.
  * <p>
- * Tests verify through public API only — constructor, {@code valueOf(Object)},
- * {@code fromYuan()}, {@code toYuan()}, {@code compareTo()}, and Jackson round-trip.
+ * Tests verify through public API only — constructor, {@code fromYuan()},
+ * {@code toYuan()}, {@code compareTo()}, and Jackson round-trip.
  */
 class WanYuanTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— constructor ———
+    // ——— constructor (primary entry) ———
 
     @Test
     void constructor_validValue_createsWanYuan() {
@@ -47,40 +50,22 @@ class WanYuanTest {
         assertEquals(0, BigDecimal.ZERO.compareTo(amount.value()));
     }
 
-    // ——— valueOf(Object) ———
+    // ——— parse(String) ———
 
     @Test
-    void valueOf_string_parsesWanYuan() {
-        assertEquals(
-                new WanYuan(new BigDecimal("1.5")),
-                WanYuan.valueOf("1.5")
-        );
+    void parse_validString_createsWanYuan() {
+        var amount = WanYuan.parse("1.5");
+        assertEquals(0, new BigDecimal("1.5").compareTo(amount.value()));
     }
 
     @Test
-    void valueOf_bigDecimal_passesThrough() {
-        assertEquals(
-                new WanYuan(new BigDecimal("2")),
-                WanYuan.valueOf(new BigDecimal("2"))
-        );
+    void parse_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> WanYuan.parse(null));
     }
 
     @Test
-    void valueOf_integer_converts() {
-        assertEquals(
-                new WanYuan(new BigDecimal("3")),
-                WanYuan.valueOf(3)
-        );
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> WanYuan.valueOf(null));
-    }
-
-    @Test
-    void valueOf_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> WanYuan.valueOf("not-a-number"));
+    void parse_invalidString_throws() {
+        assertThrows(IllegalArgumentException.class, () -> WanYuan.parse("not-a-number"));
     }
 
     // ——— fromYuan / toYuan ———

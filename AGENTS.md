@@ -35,7 +35,15 @@ soda-xxx/
 
 ## Agent skills
 
-- **Issue tracker**：`.scratch/` 下 markdown 文件。详见 `docs/agents/issue-tracker.md`
-- **Triage**：五个角色使用默认标签。详见 `docs/agents/triage-labels.md`
-- **Domain docs**：单上下文 — `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`
+### Issue tracker
+
+问题跟踪使用本地 Markdown 文件（`.scratch/`）。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个 triage 角色使用默认标签名。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+多上下文模式 — 通过 `CONTEXT-MAP.md` 指向各限界上下文的 `CONTEXT.md`。详见 `docs/agents/domain.md`。
 

@@ -1,8 +1,0 @@
-// Aggregator — submodules declare their own builds. No sources here.
-// Disable Spring Boot plugin tasks since this is not an application module.
-tasks.named('bootJar') {
-    enabled = false
-}
-tasks.named('jar') {
-    enabled = true
-}

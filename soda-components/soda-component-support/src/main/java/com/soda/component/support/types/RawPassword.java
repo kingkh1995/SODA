@@ -2,7 +2,6 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -23,10 +22,6 @@ public record RawPassword(@JsonValue String value) implements Type, Comparable<R
         ValidateUtils.nonBlank(value);
     }
 
-    /** 从不可靠输入构造，null 或 blank 时抛出 {@link IllegalArgumentException}。 */
-    public static RawPassword valueOf(Object value) {
-        return new RawPassword(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(RawPassword other) {

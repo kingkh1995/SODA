@@ -1,16 +1,18 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.types.LongId;
-import org.junit.jupiter.api.Test;
 import com.soda.user.domain.enums.AuthAccountType;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PasswordAuthAccountIdTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test void from_createsWithPrefix() {
         var id = PasswordAuthAccountId.from(new UserId(42L));
@@ -18,21 +20,21 @@ class PasswordAuthAccountIdTest {
         assertEquals(new UserId(42L), id.userId());
     }
     @Test void from_equivalentToValueOf() {
-        assertEquals(PasswordAuthAccountId.from(new UserId(42L)), PasswordAuthAccountId.valueOf("P:42"));
+        assertEquals(PasswordAuthAccountId.from(new UserId(42L)), PasswordAuthAccountId.of("P:42"));
     }
     @Test void from_null_throws() {
         assertThrows(IllegalArgumentException.class, () -> PasswordAuthAccountId.from(null));
     }
     @Test void valueOf_string_creates() {
-        assertEquals("P:42", PasswordAuthAccountId.valueOf("P:42").value());
+        assertEquals("P:42", PasswordAuthAccountId.of("P:42").value());
     }
     @ParameterizedTest
     @ValueSource(strings = {"", "P:", "Q:42", "42"})
     void valueOf_invalid_throws(String invalid) {
-        assertThrows(IllegalArgumentException.class, () -> PasswordAuthAccountId.valueOf(invalid));
+        assertThrows(IllegalArgumentException.class, () -> PasswordAuthAccountId.of(invalid));
     }
     @Test void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> PasswordAuthAccountId.valueOf(null));
+        assertThrows(IllegalArgumentException.class, () -> PasswordAuthAccountId.of(null));
     }
     @Test void identifier_returnsString() {
         assertEquals("P:42", PasswordAuthAccountId.from(new UserId(42L)).identifier());

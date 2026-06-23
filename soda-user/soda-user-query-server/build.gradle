@@ -1,9 +1,5 @@
-// Read server — traditional 3-layer (DAO → Service → Controller), reuses infra Mapper.
-// Not a Spring Boot application — bootJar disabled; runs as a deployable jar.
-bootJar {
-    enabled = false
-}
-jar {
+// Deployable read-server — overrides root default to enable bootJar
+tasks.named('bootJar') {
     enabled = true
 }
 dependencies {

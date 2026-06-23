@@ -25,10 +25,11 @@ public record UserId(@JsonValue long value) implements Identifier<Long>, Compara
         ValidateUtils.minValue(0, false, value);
     }
 
-    /** 从不可靠输入构造，null 或非法值时抛出 {@link IllegalArgumentException}。 */
-    public static UserId valueOf(Object value) {
-        return new UserId(ParseUtils.parseLong(value));
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。 */
+    public static UserId parse(String s) {
+        return new UserId(ParseUtils.parseLong(s));
     }
+
 
     @Override
     public Long identifier() {

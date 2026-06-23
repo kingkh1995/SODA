@@ -2,7 +2,6 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -29,10 +28,6 @@ public record Mobile(@JsonValue String value) implements Type, Comparable<Mobile
         ValidateUtils.matches(MOBILE_PATTERN, value);
     }
 
-    /** 从不可靠输入构造，null、blank 或格式不匹配时抛出 {@link IllegalArgumentException}。 */
-    public static Mobile valueOf(Object value) {
-        return new Mobile(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(Mobile other) {

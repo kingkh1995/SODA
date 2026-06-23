@@ -2,7 +2,6 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.Email;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
 import lombok.Getter;
@@ -34,17 +33,11 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
         this.email = email;
     }
 
+    /** 反序列化入口 — 格式 {@code "E:{email}"}。 */
     @JsonCreator
-    public EmailAuthAccountId(String value) {
-        super(value);
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
-        this.email = new Email(suffix);
-    }
-
-    @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
+    public static EmailAuthAccountId of(String value) {
+        var suffix = requirePrefixed(value, PREFIX);
+        return new EmailAuthAccountId(value, new Email(suffix));
     }
 
     /** 从 {@link Email} 构造邮箱认证账户标识符。 */
@@ -53,9 +46,9 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
         return new EmailAuthAccountId(PREFIX + email.value(), email);
     }
 
-    /** 从不可靠输入构造，格式 {@code "E:{email}"}。 */
-    public static EmailAuthAccountId valueOf(Object value) {
-        return new EmailAuthAccountId(ParseUtils.parseString(value));
+    @Override
+    public AuthAccountType authAccountType() {
+        return ACCOUNT_TYPE;
     }
 
     @Override

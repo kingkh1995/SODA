@@ -1,10 +1,15 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link Version} behavior tests.
@@ -34,27 +39,23 @@ class VersionTest {
         assertThrows(IllegalArgumentException.class, () -> Version.of(-1));
     }
 
-    // ——— valueOf(Object) ———
+    // ——— parse(String) ———
 
     @Test
-    void valueOf_int_createsVersion() {
-        var v = Version.valueOf(3);
-        assertEquals(3, v.value());
+    void parse_string_createsVersion() {
+        assertEquals(Version.of(7), Version.parse("7"));
+    }
+
+
+
+    @Test
+    void parse_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> Version.parse(null));
     }
 
     @Test
-    void valueOf_string_parsesInt() {
-        assertEquals(Version.of(7), Version.valueOf("7"));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Version.valueOf(null));
-    }
-
-    @Test
-    void valueOf_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Version.valueOf("not-a-number"));
+    void parse_invalidString_throws() {
+        assertThrows(IllegalArgumentException.class, () -> Version.parse("not-a-number"));
     }
 
     // ——— cache ———

@@ -1,11 +1,3 @@
-// Infrastructure — Repository implementations, Mapper, PO.
-// Not a Spring Boot application — disable bootJar, use plain jar.
-bootJar {
-    enabled = false
-}
-jar {
-    enabled = true
-}
 dependencies {
     implementation project(':soda-user:soda-user-domain')
     // MyBatis Spring Boot Starter — version managed by future BOM or explicit declaration

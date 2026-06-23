@@ -1,12 +1,13 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RawPasswordTest {
 
@@ -22,15 +23,6 @@ class RawPasswordTest {
         assertThrows(IllegalArgumentException.class, () -> new RawPassword(invalid));
     }
 
-    @Test
-    void valueOf_string_creates() {
-        assertEquals(new RawPassword("pwd"), RawPassword.valueOf("pwd"));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> RawPassword.valueOf(null));
-    }
 
     @Test
     void equal_whenSameValue() {

@@ -1,10 +1,13 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link Email} behavior tests.
@@ -65,23 +68,6 @@ class EmailTest {
     void constructor_specialChars_acceptsValid() {
         var email = new Email("user.name+tag@example.co.uk");
         assertEquals("user.name+tag@example.co.uk", email.value());
-    }
-
-    // ——— valueOf(Object) ———
-
-    @Test
-    void valueOf_string_createsEmail() {
-        assertEquals(new Email("a@b.co"), Email.valueOf("a@b.co"));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Email.valueOf(null));
-    }
-
-    @Test
-    void valueOf_unsupportedType_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Email.valueOf(42));
     }
 
     // ——— localPart() ———

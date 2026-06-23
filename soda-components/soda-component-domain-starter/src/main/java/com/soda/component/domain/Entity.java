@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.jspecify.annotations.Nullable;
 
-import java.util.Objects;
-import java.util.function.Supplier;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * 领域实体的抽象基类。
@@ -58,8 +58,8 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     }
 
     @Override
-    public boolean isIdentified() {
-        return id != null;
+    public final boolean isIdentified() {
+        return this.getId() != null;
     }
 
     /**

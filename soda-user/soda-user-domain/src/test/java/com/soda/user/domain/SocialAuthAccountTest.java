@@ -1,13 +1,16 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.SocialType;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link SocialAuthAccount} 单元测试。
@@ -103,8 +106,6 @@ class SocialAuthAccountTest {
 
     // ——— JSON ———
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
 
     @Test
     void jackson_serializeDeserialize() throws Exception {

@@ -2,7 +2,6 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -28,10 +27,6 @@ public record Username(@JsonValue String value) implements Type, Comparable<User
         ValidateUtils.matches(USERNAME_PATTERN, value);
     }
 
-    /** 从不可靠输入构造，null、blank 或格式不匹配时抛出 {@link IllegalArgumentException}。 */
-    public static Username valueOf(Object value) {
-        return new Username(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(Username other) {

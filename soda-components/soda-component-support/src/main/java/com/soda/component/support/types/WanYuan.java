@@ -11,8 +11,7 @@ import java.math.BigDecimal;
 /**
  * 人民币万元 DP — 不可变、自校验、可比较。
  * <p>
- * 内部以万元单位存储，精确到百元（最多两位小数）。
- * 通过 {@link #valueOf(Object)} 以万元值构造，
+ * 紧凑构造器为主入口（以万元 {@link BigDecimal} 值），
  * 通过 {@link #fromYuan(BigDecimal)} 从元转换。
  * <p>
  * 参考 kk-ddd 的 {@code MillionYuan} 设计。
@@ -34,10 +33,11 @@ public record WanYuan(@JsonValue BigDecimal value) implements Type, Comparable<W
         }
     }
 
-    /** 从不可靠输入构造，以万元为单位。null 或非法值时抛出 {@link IllegalArgumentException}。 */
-    public static WanYuan valueOf(Object value) {
-        return new WanYuan(ParseUtils.parseBigDecimal(value));
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseBigDecimal}。 */
+    public static WanYuan parse(String s) {
+        return new WanYuan(ParseUtils.parseBigDecimal(s));
     }
+
 
     /** 从元（元/分）构造。舍入到百元精度。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。 */
     public static WanYuan fromYuan(BigDecimal yuan) {

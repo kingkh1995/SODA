@@ -1,13 +1,14 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PasswordHashTest {
 
@@ -25,16 +26,6 @@ class PasswordHashTest {
     @ValueSource(strings = {"not-a-bcrypt-hash", "$2a$10$tooShort", "", "  "})
     void constructor_invalid_throws(String invalid) {
         assertThrows(IllegalArgumentException.class, () -> new PasswordHash(invalid));
-    }
-
-    @Test
-    void valueOf_string_creates() {
-        assertEquals(new PasswordHash(VALID_BCRYPT), PasswordHash.valueOf(VALID_BCRYPT));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> PasswordHash.valueOf(null));
     }
 
     @Test

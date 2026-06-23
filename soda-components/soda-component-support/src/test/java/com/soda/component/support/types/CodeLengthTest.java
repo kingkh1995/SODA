@@ -1,12 +1,13 @@
 package com.soda.component.support.types;
 
+import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import com.soda.component.support.testutil.JacksonTestUtil;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CodeLengthTest {
 
@@ -27,13 +28,13 @@ class CodeLengthTest {
     }
 
     @Test
-    void valueOf_int_creates() {
-        assertEquals(new CodeLength(6), CodeLength.valueOf(6));
+    void parse_string_creates() {
+        assertEquals(new CodeLength(6), CodeLength.parse("6"));
     }
 
     @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> CodeLength.valueOf(null));
+    void parse_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> CodeLength.parse(null));
     }
 
     @Test

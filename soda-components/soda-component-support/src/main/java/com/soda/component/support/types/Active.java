@@ -1,9 +1,9 @@
 package com.soda.component.support.types;
 
-import com.soda.component.support.util.ParseUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
+import com.soda.component.support.util.ParseUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -42,9 +42,10 @@ public final class Active implements Type, Comparable<Active> {
         return value ? TRUE : FALSE;
     }
 
-    /** 从不可靠输入构造，null 或非法值时抛出 {@link IllegalArgumentException}。 */
-    public static Active valueOf(Object value) {
-        return of(ParseUtils.parseBoolean(value));
+
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseBoolean}。 */
+    public static Active parse(String s) {
+        return of(ParseUtils.parseBoolean(s));
     }
 
     /** 取反。 */

@@ -1,22 +1,25 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
+import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.Mobile;
 import com.soda.component.support.types.PasswordHash;
 import com.soda.component.support.types.RawPassword;
-import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
+import com.soda.user.domain.enums.SocialType;
 import com.soda.user.domain.enums.UserStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link User} 聚合根单元测试。
@@ -196,7 +199,6 @@ class UserTest {
 
     // ——— JSON ———
 
-    private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
@@ -215,6 +217,53 @@ class UserTest {
         );
     }
 
+    // ——— additional auth account types ———
+
+    @Test
+    void jackson_serializeDeserialize_withSmsAccount() throws Exception {
+        var original = fullUserWithSmsAccount();
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, User.class);
+        assertEquals(original.getId(), restored.getId());
+        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
+        assertEquals(AuthAccountType.S, restored.getAccounts().get(0).getAuthAccountType());
+    }
+
+    @Test
+    void jackson_serializeDeserialize_withEmailAccount() throws Exception {
+        var original = fullUserWithEmailAccount();
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, User.class);
+        assertEquals(original.getId(), restored.getId());
+        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
+        assertEquals(AuthAccountType.E, restored.getAccounts().get(0).getAuthAccountType());
+    }
+
+    @Test
+    void jackson_serializeDeserialize_withSocialAccount() throws Exception {
+        var original = fullUserWithSocialAccount();
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, User.class);
+        assertEquals(original.getId(), restored.getId());
+        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
+        assertEquals(AuthAccountType.O, restored.getAccounts().get(0).getAuthAccountType());
+    }
+
+    @Test
+    void jackson_serializeDeserialize_withMixedAccounts() throws Exception {
+        var original = fullUserWithMixedAccounts();
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, User.class);
+        assertEquals(original.getId(), restored.getId());
+        assertEquals(4, restored.getAccounts().size());
+        var restoredTypes = restored.getAccounts().stream()
+                .map(a -> a.getAuthAccountType())
+                .toList();
+        assertTrue(restoredTypes.containsAll(List.of(
+                AuthAccountType.P, AuthAccountType.S, AuthAccountType.E, AuthAccountType.O
+        )));
+    }
+
     // ——— helper ———
 
     /** 创建含 PasswordAccount 的完整 User（已有 ID 和账户，常用于认证测试）。 */
@@ -227,6 +276,64 @@ class UserTest {
                 .nickname(NICKNAME)
                 .status(UserStatus.E)
                 .accounts(List.of(passwordAccount))
+                .build();
+    }
+
+    private static User fullUserWithSmsAccount() {
+        var mobile = new Mobile("13800138000");
+        var smsAccount = new SmsAuthAccount(SmsAuthAccountId.from(mobile), Active.TRUE, null, null);
+        return User.restoreBuilder()
+                .id(USER_ID)
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .status(UserStatus.E)
+                .accounts(List.of(smsAccount))
+                .build();
+    }
+
+    private static User fullUserWithEmailAccount() {
+        var email = new Email("test@example.com");
+        var emailAccount = new EmailAuthAccount(EmailAuthAccountId.from(email), Active.TRUE, null, null);
+        return User.restoreBuilder()
+                .id(USER_ID)
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .status(UserStatus.E)
+                .accounts(List.of(emailAccount))
+                .build();
+    }
+
+    private static User fullUserWithSocialAccount() {
+        var socialAccount = SocialAuthAccount.createBuilder()
+                .socialType(SocialType.GE)
+                .openId("openid123")
+                .build();
+        return User.restoreBuilder()
+                .id(USER_ID)
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .status(UserStatus.E)
+                .accounts(List.of(socialAccount))
+                .build();
+    }
+
+    private static User fullUserWithMixedAccounts() {
+        var hash = PASSWORD_ENCODER.encode(new RawPassword("password123"));
+        var passwordAccount = new PasswordAuthAccount(PasswordAuthAccountId.from(USER_ID), Active.TRUE, hash);
+        var mobile = new Mobile("13800138000");
+        var smsAccount = new SmsAuthAccount(SmsAuthAccountId.from(mobile), Active.TRUE, null, null);
+        var email = new Email("test@example.com");
+        var emailAccount = new EmailAuthAccount(EmailAuthAccountId.from(email), Active.TRUE, null, null);
+        var socialAccount = SocialAuthAccount.createBuilder()
+                .socialType(SocialType.GE)
+                .openId("openid123")
+                .build();
+        return User.restoreBuilder()
+                .id(USER_ID)
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .status(UserStatus.E)
+                .accounts(List.of(passwordAccount, smsAccount, emailAccount, socialAccount))
                 .build();
     }
 }

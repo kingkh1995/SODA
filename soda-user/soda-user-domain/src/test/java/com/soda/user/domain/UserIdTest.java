@@ -1,17 +1,17 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.types.LongId;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UserIdTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
 
     private static final long VALID_ID = 1L;
 
@@ -27,23 +27,23 @@ class UserIdTest {
         assertThrows(IllegalArgumentException.class, () -> new UserId(invalid));
     }
 
-    @Test
-    void valueOf_long_createsId() {
-        assertEquals(new UserId(VALID_ID), UserId.valueOf(VALID_ID));
-    }
+    // ——— parse(String) ———
 
     @Test
-    void valueOf_string_parses() {
-        assertEquals(new UserId(VALID_ID), UserId.valueOf("1"));
+    void parse_string_parses() {
+        assertEquals(new UserId(VALID_ID), UserId.parse("1"));
     }
 
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = {"not-a-number", ""})
-    void valueOf_invalid_throws(String invalid) {
-        assertThrows(IllegalArgumentException.class, () -> UserId.valueOf(invalid));
+    void parse_invalid_throws(String invalid) {
+        assertThrows(IllegalArgumentException.class, () -> UserId.parse(invalid));
     }
 
+    @Test
+    void parse_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> UserId.parse(null));
+    }
 
     @Test
     void identifier_returnsLong() {
@@ -69,30 +69,22 @@ class UserIdTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = new UserId(42L);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, UserId.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = new UserId(42L);
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, UserId.class);
+        assertEquals(original, restored);
     }
 
     @Test
-    void jackson_serializesAsNumber() {
-        try {
-            assertEquals("42", MAPPER.writeValueAsString(new UserId(42L)));
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializesAsNumber() throws Exception {
+        assertEquals("42", MAPPER.writeValueAsString(new UserId(42L)));
     }
 
     @Test
     void toLongId_convertsUserIdToLongId() {
         var id = new UserId(42L);
-        assertEquals(LongId.valueOf(42L), id.toLongId());
+        assertEquals(new LongId(42L), id.toLongId());
     }
 
     @Test

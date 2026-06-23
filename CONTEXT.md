@@ -100,19 +100,19 @@ archRule.failOnEmptyShould=false
 不可变的领域原语，扩展 `Type`，在限界上下文内唯一标识一个实体。底层值类型是泛型的（`Identifier<T extends Comparable<T>>`）。子类自行实现 `Comparable<Self>` 提供类型安全的比较。实现类需提供 `identifier()` 返回类型化值，以及基于值的 `equals()`/`hashCode()`。
 
 ### LongId
-通用的长整型标识符 DP（{@code support.types.LongId}），实现 {@code Identifier<Long>}，位于可选模块 {@code soda-component-support}。通过 {@code valueOf(Object)} 多格式解析构造，支持 Jackson 序列化。默认使用服务端生成策略（{@code super()} + {@code assignId()}）。
+通用的长整型标识符 DP（{@code support.types.LongId}），实现 {@code Identifier<Long>}，位于可选模块 {@code soda-component-support}。紧凑构造器为主入口，提供 {@code parse(String)} 字符串解析。支持 Jackson 序列化。默认使用服务端生成策略（{@code super()} + {@code assignId()}）。
 
 ### UUId
-UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifier<String>}，位于可选模块 {@code soda-component-support}。校验规则：格式匹配 {@code 8-4-4-4-12} 十六进制，归一化为小写。提供 {@code valueOf(Object)} 多格式解析构造和 {@code random()} 随机生成，支持 Jackson 序列化。默认使用客户端生成策略（{@code super(UUId.AUTO)}）。
+UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifier<String>}，位于可选模块 {@code soda-component-support}。校验规则：格式匹配 {@code 8-4-4-4-12} 十六进制，归一化为小写。紧凑构造器为主入口，提供 {@code random()} 随机生成，支持 Jackson 序列化。默认使用客户端生成策略（{@code super(UUId.AUTO)}）。
 
 ### Email
 电子邮箱地址 DP（`com.soda.component.support.types.Email`），实现 {@link Type} 而非标识符。校验格式并归一化为小写。提供 `localPart()` 和 `domain()` 访问邮箱组成部分。
 
 ### WanYuan
-人民币万元 DP（`com.soda.component.support.types.WanYuan`），实现 `Type` 而非标识符。内部以万元单位存储，精度到百元（最多两位小数）。提供 `valueOf(Object)` 以万元值构造、`fromYuan(BigDecimal)` 从元转换、`toYuan()` 转回元。
+人民币万元 DP（{@code support.types.WanYuan}），实现 `Type` 而非标识符。内部以万元单位存储，精度到百元（最多两位小数）。紧凑构造器为主入口（以万元 {@link BigDecimal} 值），提供 {@code fromYuan(BigDecimal)} 从元转换、{@code toYuan()} 转回元。
 
 ### Version
-乐观锁版本号 DP（`com.soda.component.support.types.Version`），实现 `Type` 而非标识符。基于 `int`，带内部缓存（[0, 99] 返回缓存实例，参考 `Integer` 缓存设计）。提供 `of(int)` 可靠构造、`valueOf(Object)` 不可靠输入构造、`next()` 递增。初始版本 `PRIMARY = 0`。
+乐观锁版本号 DP（{@code support.types.Version}），实现 `Type` 而非标识符。基于 {@code int}，带内部缓存（[0, 99] 返回缓存实例，参考 {@code Integer} 缓存设计）。提供 {@code of(int)} 可靠构造、{@code parse(String)} 字符串解析、{@code next()} 递增。初始版本 {@code PRIMARY = 0}。
 ### SmsContent
 短信内容 DP（{@code support.types.SmsContent}），实现 {@link Type}。最长 70 字符（参照主流短信平台单条上限）。
 ### EmailContent
@@ -184,16 +184,15 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 手机号 DP（{@code support.types.Mobile}），实现 {@link Type}。格式校验，归一化。同时是 {@link SmsAuthAccountId} 的派生源。
 
 ### Sex
-性别枚举（{@code soda-user.domain.enums.Sex}），实现 {@link EnumType}（同时也是 DP）。取值：{@code M}（Male）、{@code F}（Female）。序列化短名 {@code "M"} / {@code "F"}。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
+性别枚举（{@code soda-user.domain.enums.Sex}），实现 {@link EnumType}（同时也是 DP）。取值：{@code M}（Male）、{@code F}（Female）。序列化短名 {@code "M"} / {@code "F"}。提供 {@code of(String)} 入口。
 
 ### Avatar
 头像 URL DP（{@code soda-user.domain.Avatar}），实现 {@link Type}。URL 格式校验。
 
 ### UserStatus
-用户状态枚举（{@code soda-user.domain.enums.UserStatus}），实现 {@link EnumType}（同时也是 DP）。取值：{@code E}（Enabled）、{@code D}（Disabled）。序列化短名 {@code "E"} / {@code "D"}。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
-
+用户状态枚举（{@code soda-user.domain.enums.UserStatus}），实现 {@link EnumType}（同时也是 DP）。取值：{@code E}（Enabled）、{@code D}（Disabled）。序列化短名 {@code "E"} / {@code "D"}。提供 {@code of(String)} 入口。
 ### SocialType
-社交平台类型枚举（{@code soda-user.domain.enums.SocialType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code GE}（Gitee）、{@code DT}（DingTalk）、{@code WENT}（WechatWork）、{@code WMP}（WechatMp）、{@code WOPN}（WechatOpen）、{@code WMIN}（WechatMini）、{@code ALIP}（AlipayMini）。序列化短名。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
+社交平台类型枚举（{@code soda-user.domain.enums.SocialType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code GE}（Gitee）、{@code DT}（DingTalk）、{@code WENT}（WechatWork）、{@code WMP}（WechatMp）、{@code WOPN}（WechatOpen）、{@code WMIN}（WechatMini）、{@code ALIP}（AlipayMini）。序列化短名。提供 {@code of(String)} 入口。
 
 ### AuthAccount
 用户认证账号实体（{@code soda-user.domain.AuthAccount}），{@link Entity} 密封子类，每个子类对应一种认证方式。作为 {@link User} 聚合的子实体，由聚合根管理生命周期。{@code accountId} 使用 {@link AuthAccountId} 密封基类，序列化为包含 {@link AuthAccountType} 短名前缀的字符串（例：{@code "S:13800138000"}）。
@@ -222,10 +221,8 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 | {@link SmsAuthAccountId} | {@code "S:13800138000"} | {@link Mobile} |
 | {@link EmailAuthAccountId} | {@code "E:user@example.com"} | {@link Email} |
 | {@link SocialAuthAccountId} | {@code "O:GE:open123"} | {@link SocialType} + {@code openId} |
-
-反序列化通过各子类的 {@code valueOf(Object)} 完成，Jackson 需声明具体子类类型。
-认证方式枚举（{@code soda-user.domain.enums.AuthAccountType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code P}（Password）、{@code S}（Sms）、{@code E}（Email）、{@code O}（OAuth）。序列化短名。提供 {@code of(String)} 和 {@code valueOf(Object)} 工厂方法。
-
+反序列化通过各子类的 {@code of(String)} 完成，Jackson 需声明具体子类类型。
+认证方式枚举（{@code soda-user.domain.enums.AuthAccountType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code P}（Password）、{@code S}（Sms）、{@code E}（Email）、{@code O}（OAuth）。序列化短名。提供 {@code of(String)} 入口。
 
 ### VerificationCode
 验证码 DP（{@code soda-user.domain.VerificationCode}），实现 {@link Type}。封装验证码值、过期时间、是否已使用。提供 {@code expired()}、{@code used()}、{@code verify(code)}、{@code use()} 等业务方法。

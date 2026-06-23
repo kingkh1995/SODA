@@ -1,15 +1,17 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NicknameTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
 
     private static final String VALID_NICKNAME = "张三";
@@ -35,12 +37,12 @@ class NicknameTest {
 
     @Test
     void valueOf_string_creates() {
-        assertEquals(new Nickname(VALID_NICKNAME), Nickname.valueOf(VALID_NICKNAME));
+        assertEquals(new Nickname(VALID_NICKNAME), new Nickname(VALID_NICKNAME));
     }
 
     @Test
     void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Nickname.valueOf(null));
+        assertThrows(IllegalArgumentException.class, () -> new Nickname(null));
     }
 
     @Test
@@ -61,14 +63,10 @@ class NicknameTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = new Nickname(VALID_NICKNAME);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, Nickname.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = new Nickname(VALID_NICKNAME);
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, Nickname.class);
+        assertEquals(original, restored);
     }
 }

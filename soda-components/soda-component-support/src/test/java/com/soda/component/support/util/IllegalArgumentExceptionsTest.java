@@ -2,7 +2,7 @@ package com.soda.component.support.util;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * {@link IllegalArgumentExceptions} behavior tests.

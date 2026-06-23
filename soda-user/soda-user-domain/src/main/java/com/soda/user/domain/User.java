@@ -2,18 +2,17 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Getter;
-import org.jspecify.annotations.Nullable;
-
 import com.soda.component.domain.Aggregate;
+import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.Mobile;
 import com.soda.component.support.types.RawPassword;
-import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.UserStatus;
+import lombok.Builder;
+import lombok.Getter;
+import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedList;
 import java.util.List;

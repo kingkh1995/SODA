@@ -1,14 +1,11 @@
 package com.soda.user.domain;
 
-import java.util.Objects;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Getter;
-
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.SocialType;
+import lombok.Builder;
+import lombok.Getter;
 
 /**
  * 社交认证账户实体 — 第三方社交账号（Gitee/DingTalk/WeChat）方式的认证。

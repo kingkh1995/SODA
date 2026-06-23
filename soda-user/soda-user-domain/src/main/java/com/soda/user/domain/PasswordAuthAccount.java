@@ -1,17 +1,15 @@
 package com.soda.user.domain;
 
-import java.util.Objects;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.support.gateway.PasswordEncoder;
-import lombok.Builder;
-import lombok.Getter;
-
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.PasswordHash;
 import com.soda.component.support.types.RawPassword;
-import com.soda.user.domain.enums.AuthAccountType;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.util.Objects;
 
 /**
  * 密码认证账户实体 — 用户名 + 密码方式的认证。

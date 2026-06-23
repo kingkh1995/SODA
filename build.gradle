@@ -59,4 +59,12 @@ subprojects {
     tasks.named('test') {
         useJUnitPlatform()
     }
+
+    // 默认所有子模块为库 JAR，仅启动模块覆盖此配置
+    tasks.named('bootJar') {
+        enabled = false
+    }
+    tasks.named('jar') {
+        enabled = true
+    }
 }

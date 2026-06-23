@@ -37,23 +37,17 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         this.openId = openId;
     }
 
+    /** 反序列化入口 — 格式 {@code "O:{socialType}:{openId}"}。 */
     @JsonCreator
-    public SocialAuthAccountId(String value) {
-        super(value);
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
+    public static SocialAuthAccountId of(String value) {
+        var suffix = requirePrefixed(value, PREFIX);
         var colonIndex = suffix.indexOf(':');
         if (colonIndex < 0) {
             throw new IllegalArgumentException("invalid social auth account id format: " + value);
         }
-        this.socialType = ParseUtils.parseEnum(SocialType.class, suffix.substring(0, colonIndex));
-        this.openId = suffix.substring(colonIndex + 1);
-        ValidateUtils.nonBlank(this.openId);
-    }
-
-    @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
+        var socialType = ParseUtils.parseEnum(SocialType.class, suffix.substring(0, colonIndex));
+        var openId = suffix.substring(colonIndex + 1);
+        return new SocialAuthAccountId(value, socialType, openId);
     }
 
     /** 从 {@link SocialType} + openId 构造社交认证账户标识符。 */
@@ -63,9 +57,9 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         return new SocialAuthAccountId(PREFIX + socialType.name() + ":" + openId, socialType, openId);
     }
 
-    /** 从不可靠输入构造，格式 {@code "O:{socialType}:{openId}"}。 */
-    public static SocialAuthAccountId valueOf(Object value) {
-        return new SocialAuthAccountId(ParseUtils.parseString(value));
+    @Override
+    public AuthAccountType authAccountType() {
+        return ACCOUNT_TYPE;
     }
 
     @Override

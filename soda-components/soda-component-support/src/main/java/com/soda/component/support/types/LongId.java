@@ -11,13 +11,7 @@ import java.io.Serial;
  * {@code Long} 类型标识符 — 通用 DP，项目中最基础的长整型 ID 类型。
  * <p>
  * 遵循 DP 规范：不可变、自校验、可比较。
- * 作为标识符 DP 的样板代码，所有 ID 类型按此模式实现：
- * <pre>{@code
- * public record XxxId(@JsonValue T value) implements Identifier<T> {
- *     public XxxId { … }                                       // 紧凑校验
- *     public static XxxId valueOf(Object value) { … }          // 工厂方法
- * }
- * }</pre>
+ * 紧凑构造器为主入口（{@code new LongId(long)}），提供 {@code parse(String)} 字符串解析。
  * <p>
  * 参考 kk-ddd 的 {@code LongId} 设计。
  *
@@ -32,10 +26,11 @@ public record LongId(@JsonValue long value) implements Identifier<Long>, Compara
         ValidateUtils.minValue(0, false, value);
     }
 
-    /** 从不可靠输入构造，null 或非法值时抛出 {@link IllegalArgumentException}。 */
-    public static LongId valueOf(Object value) {
-        return new LongId(ParseUtils.parseLong(value));
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。 */
+    public static LongId parse(String s) {
+        return new LongId(ParseUtils.parseLong(s));
     }
+
 
     @Override
     public Long identifier() {

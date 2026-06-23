@@ -1,9 +1,8 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.support.util.TypeConfig;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
+import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -27,10 +26,6 @@ public record SmsContent(@JsonValue String value) implements Type, Comparable<Sm
         ValidateUtils.maxLength(MAX_LENGTH, value);
     }
 
-    /** 从不可靠输入构造，null、blank 或超长时抛出 {@link IllegalArgumentException}。 */
-    public static SmsContent valueOf(Object value) {
-        return new SmsContent(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(SmsContent other) {

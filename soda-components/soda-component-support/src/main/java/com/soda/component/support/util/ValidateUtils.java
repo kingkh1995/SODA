@@ -3,9 +3,9 @@ package com.soda.component.support.util;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
-import java.util.regex.Pattern;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.regex.Pattern;
 
 /**
  * 校验工具类 — 基础参数校验，校验失败抛出 {@link IllegalArgumentException}。

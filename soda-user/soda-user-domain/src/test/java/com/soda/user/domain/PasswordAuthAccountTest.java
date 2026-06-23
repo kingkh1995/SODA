@@ -1,15 +1,16 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.PasswordHash;
 import com.soda.component.support.types.RawPassword;
-import com.soda.component.support.gateway.PasswordEncoder;
 import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link PasswordAuthAccount} 单元测试。
@@ -68,7 +69,7 @@ class PasswordAuthAccountTest {
 
     @Test void createBuilder_setsDefaults() {
         var a = PasswordAuthAccount.createBuilder().userId(new UserId(1L)).passwordHash(HASH).build();
-        assertEquals(new PasswordAuthAccountId("P:1"), a.getId());
+        assertEquals(PasswordAuthAccountId.of("P:1"), a.getId());
         assertTrue(a.isActive());
         assertEquals(HASH, a.getPasswordHash());
     }
@@ -79,7 +80,6 @@ class PasswordAuthAccountTest {
 
     // ——— JSON ———
 
-    private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Test void jackson_serializeDeserialize() throws Exception {
         var o = PasswordAuthAccount.createBuilder().userId(new UserId(1L)).passwordHash(HASH).build();

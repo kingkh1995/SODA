@@ -1,12 +1,12 @@
 package com.soda.component.support.util;
 
-import static com.soda.component.support.util.IllegalArgumentExceptions.forInvalidFormat;
-import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
-import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
-
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
+
+import static com.soda.component.support.util.IllegalArgumentExceptions.forInvalidFormat;
+import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
+import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
 
 /**
  * 解析工具类 — 将不可靠 {@link Object} 输入解析为指定基础类型。

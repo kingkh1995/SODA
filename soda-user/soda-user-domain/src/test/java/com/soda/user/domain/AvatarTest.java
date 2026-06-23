@@ -1,15 +1,17 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AvatarTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
 
     private static final String VALID_URL = "https://example.com/avatar.png";
@@ -52,16 +54,6 @@ class AvatarTest {
     }
 
     @Test
-    void valueOf_string_creates() {
-        assertEquals(new Avatar(VALID_URL), Avatar.valueOf(VALID_URL));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Avatar.valueOf(null));
-    }
-
-    @Test
     void equal_whenSameValue() {
         assertEquals(new Avatar(VALID_URL), new Avatar(VALID_URL));
     }
@@ -79,14 +71,10 @@ class AvatarTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = new Avatar(VALID_URL);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, Avatar.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = new Avatar(VALID_URL);
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, Avatar.class);
+        assertEquals(original, restored);
     }
 }

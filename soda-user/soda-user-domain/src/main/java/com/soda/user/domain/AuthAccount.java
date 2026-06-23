@@ -1,9 +1,8 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.soda.component.domain.Entity;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.AuthAccountType;
@@ -17,6 +16,14 @@ import java.util.function.Predicate;
  * <p>
  * 密封类，仅允许 {@link PasswordAuthAccount}、{@link SmsAuthAccount}、{@link EmailAuthAccount}、{@link SocialAuthAccount} 四种子类。
  * 子类通过多态实现不同认证方式的行为差异。
+ * <p>
+ * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，必须在 {@code @JsonSubTypes} 中添加对应
+ * {@code @JsonSubTypes.Type}，否则 Jackson 反序列化时无法识别该子类（编译期不会报错）。
+ * <p>
+ * Jackson 序列化说明：{@link Entity 基类} 声明了 {@code @JsonAutoDetect(getterVisibility = NONE)}，
+ * 因此子类上的 {@code @Getter}（Lombok 生成 getter）不影响 JSON 序列化／反序列化。
+ * 反序列化走 {@code @JsonCreator(mode = Mode.PROPERTIES)} 构造器 + {@code @JsonProperty} 参数，
+ * 序列化走字段可见性（field visibility ANY）。{@code @Getter} 仅用于 Java 代码层面的快捷访问，非 Jackson 用途。
  *
  * @param <ID> 账户标识符类型，必须是 {@link AuthAccountId} 的子类
  * @see PasswordAuthAccount

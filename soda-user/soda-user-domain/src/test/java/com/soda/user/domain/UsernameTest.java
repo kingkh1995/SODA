@@ -1,16 +1,17 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UsernameTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
 
     private static final String VALID_USERNAME = "testuser";
     private static final String LONG_USERNAME = "a".repeat(31);
@@ -40,16 +41,6 @@ class UsernameTest {
     }
 
     @Test
-    void valueOf_string_creates() {
-        assertEquals(new Username(VALID_USERNAME), Username.valueOf(VALID_USERNAME));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Username.valueOf(null));
-    }
-
-    @Test
     void equal_whenSameValue() {
         assertEquals(new Username(VALID_USERNAME), new Username(VALID_USERNAME));
     }
@@ -67,14 +58,10 @@ class UsernameTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = new Username(VALID_USERNAME);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, Username.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = new Username(VALID_USERNAME);
+        var json = MAPPER.writeValueAsString(original);
+        var restored = MAPPER.readValue(json, Username.class);
+        assertEquals(original, restored);
     }
 }

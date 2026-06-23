@@ -1,16 +1,18 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.SocialType;
 import org.junit.jupiter.api.Test;
-import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SocialAuthAccountIdTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
 
     @Test
@@ -25,12 +27,12 @@ class SocialAuthAccountIdTest {
     void from_equivalentToValueOf() {
         assertEquals(
                 SocialAuthAccountId.from(SocialType.GE, "open123"),
-                SocialAuthAccountId.valueOf("O:GE:open123"));
+                SocialAuthAccountId.of("O:GE:open123"));
     }
 
     @Test
     void valueOf_string_creates() {
-        var id = SocialAuthAccountId.valueOf("O:GE:1");
+        var id = SocialAuthAccountId.of("O:GE:1");
         assertEquals("O:GE:1", id.value());
         assertEquals(SocialType.GE, id.socialType());
         assertEquals("1", id.openId());
@@ -39,12 +41,12 @@ class SocialAuthAccountIdTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "O:", "O:GE", "O:GE:", "social:GE:1", "O:UNKNOWN:1"})
     void valueOf_invalid_throws(String invalid) {
-        assertThrows(IllegalArgumentException.class, () -> SocialAuthAccountId.valueOf(invalid));
+        assertThrows(IllegalArgumentException.class, () -> SocialAuthAccountId.of(invalid));
     }
 
     @Test
     void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> SocialAuthAccountId.valueOf(null));
+        assertThrows(IllegalArgumentException.class, () -> SocialAuthAccountId.of(null));
     }
 
     @Test
@@ -89,16 +91,12 @@ class SocialAuthAccountIdTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = SocialAuthAccountId.from(SocialType.GE, "open123");
-            var json = MAPPER.writeValueAsString(original);
-            assertEquals("\"O:GE:open123\"", json);
-            var restored = MAPPER.readValue(json, SocialAuthAccountId.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = SocialAuthAccountId.from(SocialType.GE, "open123");
+        var json = MAPPER.writeValueAsString(original);
+        assertEquals("\"O:GE:open123\"", json);
+        var restored = MAPPER.readValue(json, SocialAuthAccountId.class);
+        assertEquals(original, restored);
     }
 
     @Test

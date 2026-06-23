@@ -2,7 +2,6 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -27,10 +26,6 @@ public record CodeValue(@JsonValue String value) implements Type, Comparable<Cod
         ValidateUtils.matches(ALPHANUMERIC, value);
     }
 
-    /** 从不可靠输入构造，null、blank 或包含非法字符时抛出 {@link IllegalArgumentException}。 */
-    public static CodeValue valueOf(Object value) {
-        return new CodeValue(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(CodeValue other) {

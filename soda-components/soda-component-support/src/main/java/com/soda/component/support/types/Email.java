@@ -3,7 +3,6 @@ package com.soda.component.support.types;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -54,10 +53,6 @@ public final class Email implements Type, Comparable<Email> {
         this.domain = value.substring(at + 1);
     }
 
-    /** 从不可靠输入构造，null、blank 或格式不匹配时抛出 {@link IllegalArgumentException}。 */
-    public static Email valueOf(Object value) {
-        return new Email(ParseUtils.parseString(value));
-    }
 
     @Override
     public int compareTo(Email other) {

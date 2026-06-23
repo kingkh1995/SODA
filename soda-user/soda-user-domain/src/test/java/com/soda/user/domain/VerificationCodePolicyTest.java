@@ -1,18 +1,18 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VerificationCodePolicyTest {
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
 
 
     @Test
@@ -80,15 +80,11 @@ class VerificationCodePolicyTest {
     }
 
     @Test
-    void jackson_serializeDeserialize() {
-        try {
-            var original = new VerificationCodePolicy(6, Duration.ofMinutes(5));
-            var json = MAPPER.writeValueAsString(original);
-            assertTrue(json.contains("6"));
-            var restored = MAPPER.readValue(json, VerificationCodePolicy.class);
-            assertEquals(original, restored);
-        } catch (Exception e) {
-            fail(e);
-        }
+    void jackson_serializeDeserialize() throws Exception {
+        var original = new VerificationCodePolicy(6, Duration.ofMinutes(5));
+        var json = MAPPER.writeValueAsString(original);
+        assertTrue(json.contains("6"));
+        var restored = MAPPER.readValue(json, VerificationCodePolicy.class);
+        assertEquals(original, restored);
     }
 }

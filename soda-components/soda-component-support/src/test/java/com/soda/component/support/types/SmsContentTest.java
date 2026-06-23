@@ -1,12 +1,13 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soda.component.support.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import com.soda.component.support.testutil.JacksonTestUtil;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SmsContentTest {
 
@@ -31,16 +32,6 @@ class SmsContentTest {
     @Test
     void constructor_tooLong_throws() {
         assertThrows(IllegalArgumentException.class, () -> new SmsContent("a".repeat(71)));
-    }
-
-    @Test
-    void valueOf_string_creates() {
-        assertEquals(new SmsContent("hello"), SmsContent.valueOf("hello"));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> SmsContent.valueOf(null));
     }
 
     @Test

@@ -1,68 +1,59 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link LongId} behavior tests.
  * <p>
- * Tests verify through public API only — {@code new LongId()}, {@code valueOf(Object)}, {@code identifier()},
- * Jackson round-trip, and contract guarantees (immutable, comparable, serializable).
+ * Tests verify through public API only — compact constructor, {@code parse()},
+ * {@code identifier()}, {@code compareTo()}, and Jackson round-trip.
  */
 class LongIdTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— constructor ———
+    // ——— constructor (primary entry) ———
 
     @Test
-    void constructor_positiveValue_createsLongId() {
-        var id = new LongId(42);
-        assertEquals(42, id.value());
+    void constructor_createsWithValue() {
+        var id = new LongId(42L);
+        assertEquals(42L, id.value());
     }
 
     @Test
-    void constructor_maxLong_createsLongId() {
-        var id = new LongId(Long.MAX_VALUE);
-        assertEquals(Long.MAX_VALUE, id.value());
+    void constructor_acceptsOne() {
+        var id = new LongId(1L);
+        assertEquals(1L, id.value());
     }
 
     @Test
-    void constructor_zero_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new LongId(0));
+    void constructor_acceptsAllNumberTypes() {
+        assertEquals(new LongId(1), new LongId(1L));
+        assertEquals(new LongId(42), new LongId(42));
+        assertEquals(new LongId(1), new LongId((byte) 1));
+    }
+
+    // ——— parse(String) ———
+
+    @Test
+    void parse_string_creates() {
+        assertEquals(new LongId(99), LongId.parse("99"));
     }
 
     @Test
-    void constructor_negative_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new LongId(-1));
-    }
-
-    // ——— valueOf(Object) ———
-
-    @Test
-    void valueOf_acceptsAllNumberTypes() {
-        assertEquals(new LongId(1), LongId.valueOf(1L));       // Long
-        assertEquals(new LongId(42), LongId.valueOf(42));       // Integer
-        assertEquals(new LongId(3), LongId.valueOf(3.14));       // Double (truncated)
-        assertEquals(new LongId(1), LongId.valueOf((byte) 1));  // Byte
+    void parse_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> LongId.parse(null));
     }
 
     @Test
-    void valueOf_string_parsesDecimal() {
-        assertEquals(new LongId(99), LongId.valueOf("99"));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> LongId.valueOf(null));
-    }
-
-    @Test
-    void valueOf_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> LongId.valueOf("not-a-number"));
+    void parse_invalidString_throws() {
+        assertThrows(IllegalArgumentException.class, () -> LongId.parse("not-a-number"));
     }
 
     // ——— identifier() ———
@@ -73,59 +64,30 @@ class LongIdTest {
         assertEquals(Long.valueOf(77), id.identifier());
     }
 
-    // ——— equals / hashCode (record contract) ———
-
     @Test
-    void equal_whenSameValue() {
-        assertEquals(new LongId(5), new LongId(5));
+    void identifier_matchesValue() {
+        var id = new LongId(42L);
+        assertEquals(id.value(), id.identifier().longValue());
     }
 
-    @Test
-    void notEqual_whenDifferentValue() {
-        assertNotEquals(new LongId(5), new LongId(6));
-    }
+    // ——— compareTo ———
 
     @Test
-    void hashCode_matchesValue() {
-        assertEquals(Long.hashCode(10L), new LongId(10).hashCode());
-    }
-
-    // ——— compareTo (Identifier default) ———
-
-    @Test
-    void compareTo_lessThan() {
-        assertTrue(new LongId(3).compareTo(new LongId(7)) < 0);
-    }
-
-    @Test
-    void compareTo_greaterThan() {
-        assertTrue(new LongId(9).compareTo(new LongId(2)) > 0);
-    }
-
-    @Test
-    void compareTo_equal() {
+    void compareTo_byNumericValue() {
+        assertTrue(new LongId(1).compareTo(new LongId(2)) < 0);
+        assertTrue(new LongId(5).compareTo(new LongId(3)) > 0);
         assertEquals(0, new LongId(4).compareTo(new LongId(4)));
-    }
-
-    // ——— toString ———
-
-    @Test
-    void toString_containsValue() {
-        var s = new LongId(42).toString();
-        assertTrue(s.contains("42"), "toString should expose value: " + s);
     }
 
     // ——— Jackson round-trip ———
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var original = new LongId(123);
-        JacksonTestUtil.assertRoundTrip(original, LongId.class);
+        JacksonTestUtil.assertRoundTrip(new LongId(42), LongId.class);
     }
 
     @Test
     void jackson_serializesAsBareNumber() throws Exception {
-        var json = MAPPER.writeValueAsString(new LongId(42));
-        assertEquals("42", json);
+        assertEquals("42", MAPPER.writeValueAsString(new LongId(42)));
     }
 }

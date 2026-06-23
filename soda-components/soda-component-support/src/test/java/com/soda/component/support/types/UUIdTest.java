@@ -1,15 +1,20 @@
 package com.soda.component.support.types;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link UUId} behavior tests.
  * <p>
- * Tests verify through public API only — {@code new UUId()}, {@code valueOf(Object)}, {@code random()},
+ * Tests verify through public API only — compact constructor, {@code random()},
  * Jackson round-trip, and contract guarantees (immutable, comparable, serializable).
  */
 class UUIdTest {
@@ -18,7 +23,7 @@ class UUIdTest {
 
     private static final String VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
-    // ——— constructor ———
+    // ——— constructor (primary entry) ———
 
     @Test
     void constructor_validUuid_createsId() {
@@ -63,36 +68,19 @@ class UUIdTest {
     @Test
     void constructor_wrongSectionLength_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new UUId("550e8400-e29b-41d4-a716-44665544000"));  // last section 11 chars
+                () -> new UUId("550e8400-e29b-41d4-a716-44665544000"));
     }
 
     @Test
     void constructor_invalidHex_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new UUId("550e8400-e29b-41d4-a716-44665544000g"));  // 'g' not hex
-    }
-
-    // ——— valueOf(Object) ———
-
-    @Test
-    void valueOf_string_createsId() {
-        assertEquals(new UUId(VALID_UUID), UUId.valueOf(VALID_UUID));
+                () -> new UUId("550e8400-e29b-41d4-a716-44665544000g"));
     }
 
     @Test
-    void valueOf_javaUtilUuid_parsesByToString() {
+    void constructor_javaUtilUuid_parsesByToString() {
         var juid = java.util.UUID.randomUUID();
-        assertEquals(juid.toString(), UUId.valueOf(juid).value());
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> UUId.valueOf(null));
-    }
-
-    @Test
-    void valueOf_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> UUId.valueOf("not-a-uuid"));
+        assertEquals(juid.toString(), new UUId(juid.toString()).value());
     }
 
     // ——— random() ———
@@ -101,7 +89,6 @@ class UUIdTest {
     void random_generatesValidInstance() {
         var id = UUId.random();
         assertNotNull(id);
-        // re-constructing from its value should succeed (format is valid)
         assertDoesNotThrow(() -> new UUId(id.value()));
     }
 

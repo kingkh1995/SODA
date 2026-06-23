@@ -1,8 +1,0 @@
-// Pure library JAR — provides Entity/Aggregate/Identifier base classes.
-// Not a Spring Boot application — disable bootJar, use plain jar.
-bootJar {
-    enabled = false
-}
-jar {
-    enabled = true
-}

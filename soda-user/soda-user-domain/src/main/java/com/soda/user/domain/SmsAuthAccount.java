@@ -1,16 +1,14 @@
 package com.soda.user.domain;
 
-import java.util.Objects;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.soda.component.support.types.Active;
+import com.soda.component.support.types.Mobile;
+import com.soda.component.support.util.ValidateUtils;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
-
-import com.soda.component.support.types.Active;
-import com.soda.component.support.types.Mobile;
 
 /**
  * 短信认证账户实体 — 手机号 + 短信验证码方式的认证。
@@ -85,6 +83,28 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
      */
     public boolean verifyCode(String inputCode) {
         return verificationCode != null && verificationCode.verify(inputCode);
+    }
+
+    // ─── code lifecycle ───
+
+    /**
+     * 注入验证码（替换已有）。
+     *
+     * @param code 验证码，非 null
+     */
+    public void replaceCode(VerificationCode code) {
+        ValidateUtils.notNull(code);
+        this.verificationCode = code;
+    }
+
+    /**
+     * 使用验证码（标记为已使用）。
+     * 无验证码时无操作。
+     */
+    public void useCode() {
+        if (verificationCode != null) {
+            verificationCode = verificationCode.use();
+        }
     }
 
     // ─── mobile ───

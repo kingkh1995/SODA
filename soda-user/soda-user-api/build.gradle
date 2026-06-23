@@ -1,8 +1,0 @@
-// Shared DTO / Command / Query / Feign interfaces.
-// Not a Spring Boot application — disable bootJar, use plain jar.
-bootJar {
-    enabled = false
-}
-jar {
-    enabled = true
-}

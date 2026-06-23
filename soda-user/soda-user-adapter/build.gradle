@@ -1,11 +1,3 @@
-// Adapter — REST controllers, VO + Assembler (DTO ↔ VO).
-// Not a Spring Boot application — disable bootJar, use plain jar.
-bootJar {
-    enabled = false
-}
-jar {
-    enabled = true
-}
 dependencies {
     implementation project(':soda-user:soda-user-app')
     implementation 'org.springframework:spring-webmvc'

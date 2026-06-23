@@ -1,6 +1,5 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Email;
 import com.soda.user.domain.enums.AuthAccountType;
@@ -9,7 +8,12 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link EmailAuthAccount} 单元测试。
@@ -68,6 +72,35 @@ class EmailAuthAccountTest {
         assertFalse(account.verifyCode("wrong"));
     }
 
+    @Test
+    void replaceCode_injectsCode() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertNull(account.getVerificationCode());
+        account.replaceCode(CODE);
+        assertEquals(CODE, account.getVerificationCode());
+    }
+
+    @Test
+    void replaceCode_null_throws() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertThrows(IllegalArgumentException.class, () -> account.replaceCode(null));
+    }
+
+    @Test
+    void useCode_marksCodeUsed() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, CODE, null);
+        assertFalse(account.getVerificationCode().used());
+        account.useCode();
+        assertTrue(account.getVerificationCode().used());
+    }
+
+    @Test
+    void useCode_noCode_doesNothing() {
+        var account = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        account.useCode(); // should not throw
+        assertNull(account.getVerificationCode());
+    }
+
 
 
     @Test
@@ -120,8 +153,6 @@ class EmailAuthAccountTest {
 
     // ——— JSON ———
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @Test
     void jackson_serializeDeserialize() throws Exception {

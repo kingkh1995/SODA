@@ -1,13 +1,15 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MobileTest {
 
@@ -32,15 +34,6 @@ class MobileTest {
         assertThrows(IllegalArgumentException.class, () -> new Mobile(invalid));
     }
 
-    @Test
-    void valueOf_string_creates() {
-        assertEquals(new Mobile(VALID_MOBILE), Mobile.valueOf(VALID_MOBILE));
-    }
-
-    @Test
-    void valueOf_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Mobile.valueOf(null));
-    }
 
     @Test
     void equal_whenSameValue() {

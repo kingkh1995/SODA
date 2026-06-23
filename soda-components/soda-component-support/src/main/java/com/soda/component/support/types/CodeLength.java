@@ -2,8 +2,8 @@ package com.soda.component.support.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ParseUtils;
+import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.io.Serial;
@@ -27,10 +27,11 @@ public record CodeLength(@JsonValue int value) implements Type, Comparable<CodeL
         ValidateUtils.range(MIN, MAX, value);
     }
 
-    /** 从不可靠输入构造，null 或越界时抛出 {@link IllegalArgumentException}。 */
-    public static CodeLength valueOf(Object value) {
-        return new CodeLength(ParseUtils.parseInt(value));
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。 */
+    public static CodeLength parse(String s) {
+        return new CodeLength(ParseUtils.parseInt(s));
     }
+
 
     @Override
     public int compareTo(CodeLength other) {
