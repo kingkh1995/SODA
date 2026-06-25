@@ -5,10 +5,9 @@ import com.soda.component.support.types.LongId;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-
-import java.io.Serial;
 
 /**
  * 密码认证账户标识符 DP — 派生自 {@link UserId}。
@@ -17,15 +16,13 @@ import java.io.Serial;
  *
  * @see AuthAccountId
  */
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
 @Getter
 @Accessors(fluent = true)
 public final class PasswordAuthAccountId extends AuthAccountId implements Comparable<PasswordAuthAccountId> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.P;
-    private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
+    private static final String PREFIX = ACCOUNT_TYPE.name() + AuthAccountId.DELIMITER;
 
     private final UserId userId;
 
@@ -34,10 +31,11 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         this.userId = userId;
     }
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     /** 反序列化入口 — 格式 {@code "P:{userId}"}。 */
-    @JsonCreator
     public static PasswordAuthAccountId of(String value) {
-        var suffix = requirePrefixed(value, PREFIX);
+        ValidateUtils.hasPrefix(PREFIX, value);
+        var suffix = value.substring(PREFIX.length());
         return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
     }
 

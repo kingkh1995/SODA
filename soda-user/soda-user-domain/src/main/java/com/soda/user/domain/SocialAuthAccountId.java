@@ -1,14 +1,15 @@
 package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.soda.component.support.util.IllegalArgumentExceptions;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.SocialType;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
-import java.io.Serial;
 
 /**
  * 社交认证账户标识符 DP — 派生自 {@link SocialType} + openId。
@@ -17,36 +18,36 @@ import java.io.Serial;
  *
  * @see AuthAccountId
  */
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
 @Getter
 @Accessors(fluent = true)
 public final class SocialAuthAccountId extends AuthAccountId implements Comparable<SocialAuthAccountId> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.O;
-    private static final String PREFIX = ACCOUNT_TYPE.name() + ":";
+    private static final String PREFIX = ACCOUNT_TYPE.name() + AuthAccountId.DELIMITER;
 
     private final SocialType socialType;
     private final String openId;
 
     private SocialAuthAccountId(String value, SocialType socialType, String openId) {
         super(value);
-        ValidateUtils.nonBlank(openId);
         this.socialType = socialType;
         this.openId = openId;
     }
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     /** 反序列化入口 — 格式 {@code "O:{socialType}:{openId}"}。 */
-    @JsonCreator
     public static SocialAuthAccountId of(String value) {
-        var suffix = requirePrefixed(value, PREFIX);
-        var colonIndex = suffix.indexOf(':');
+        ValidateUtils.hasPrefix(PREFIX, value);
+        var suffix = value.substring(PREFIX.length());
+        var colonIndex = suffix.indexOf(AuthAccountId.DELIMITER);
         if (colonIndex < 0) {
-            throw new IllegalArgumentException("invalid social auth account id format: " + value);
+            throw IllegalArgumentExceptions.forInvalidFormat(value);
         }
         var socialType = ParseUtils.parseEnum(SocialType.class, suffix.substring(0, colonIndex));
         var openId = suffix.substring(colonIndex + 1);
+        ValidateUtils.nonBlank(openId);
         return new SocialAuthAccountId(value, socialType, openId);
     }
 
@@ -54,7 +55,7 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
         ValidateUtils.nonBlank(openId);
-        return new SocialAuthAccountId(PREFIX + socialType.name() + ":" + openId, socialType, openId);
+        return new SocialAuthAccountId(PREFIX + socialType.name() + AuthAccountId.DELIMITER + openId, socialType, openId);
     }
 
     @Override

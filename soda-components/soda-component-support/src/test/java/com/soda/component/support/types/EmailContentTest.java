@@ -57,16 +57,6 @@ class EmailContentTest {
                 new EmailContent("c", "b"));
     }
 
-    @Test
-    void compareTo_bySubjectThenBody() {
-        var a = new EmailContent("a", "b");
-        var b = new EmailContent("a", "c");
-        var c = new EmailContent("b", "a");
-        assertTrue(a.compareTo(b) < 0);
-        assertTrue(b.compareTo(a) > 0);
-        assertTrue(a.compareTo(c) < 0);
-        assertEquals(0, a.compareTo(new EmailContent("a", "b")));
-    }
 
     @Test
     void jackson_serializeDeserialize() throws Exception {

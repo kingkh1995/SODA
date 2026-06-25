@@ -1,59 +1,96 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 
-import java.io.Serial;
 import java.math.BigDecimal;
 
 /**
- * 人民币万元 DP — 不可变、自校验、可比较。
+ * 人民币万元 DP — 不可变、自校验。
  * <p>
- * 紧凑构造器为主入口（以万元 {@link BigDecimal} 值），
- * 通过 {@link #fromYuan(BigDecimal)} 从元转换。
+ * 规范值是对 {@link BigDecimal#toPlainString()} 的字符串，作为 {@link JsonValue JSON 序列化} 和
+ * {@link Object#equals(Object) equals}/{@link Object#hashCode() hashCode} 的依据。
+ * {@link BigDecimal} 作为派生缓存值，不参与序列化和相等性判断。
  * <p>
- * 参考 kk-ddd 的 {@code MillionYuan} 设计。
+ * 通过 {@link #fromYuan(BigDecimal)} 从元转换，精度到百元（最多 2 位小数），可为负。
  *
  * @see Type
  */
-public record WanYuan(@JsonValue BigDecimal value) implements Type, Comparable<WanYuan> {
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Accessors(fluent = true)
+public final class WanYuan implements Type {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    private static final BigDecimal WAN = BigDecimal.valueOf(10000);
 
-    public WanYuan {
-        ValidateUtils.notNull(value);
-        ValidateUtils.minValue(BigDecimal.ZERO, true, value);
-        ValidateUtils.maxScale(2, value);
-        value = value.stripTrailingZeros();
-        if (value.scale() < 0) {
-            value = value.setScale(0, java.math.RoundingMode.UNNECESSARY);
-        }
+    @EqualsAndHashCode.Include
+    private final String value;
+    @JsonValue
+    public String value() {
+        return this.value;
+    }
+
+    @Getter
+    private final BigDecimal bigDecimalValue;
+
+    private WanYuan(String value, BigDecimal bigDecimalValue) {
+        this.value = value;
+        this.bigDecimalValue = bigDecimalValue;
+    }
+
+    /**
+     * JSON 反序列化入口 — 通过 {@link ParseUtils#parseBigDecimal} 解析，确保始终输出
+     * {@link BigDecimal#toPlainString()} 格式的字符串规范值。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static WanYuan of(String jsonValue) {
+        var bd = ParseUtils.parseBigDecimal(jsonValue);
+        ValidateUtils.maxScale(2, bd);
+        bd = bd.setScale(2, java.math.RoundingMode.UNNECESSARY);
+        return new WanYuan(bd.toPlainString(), bd);
     }
 
     /** 从字符串解析构造。格式同 {@link ParseUtils#parseBigDecimal}。 */
     public static WanYuan parse(String s) {
-        return new WanYuan(ParseUtils.parseBigDecimal(s));
+        return of(s);
     }
 
-
-    /** 从元（元/分）构造。舍入到百元精度。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。 */
+    /** 从元（元/分）构造，默认 {@link java.math.RoundingMode#HALF_UP HALF_UP} 舍入。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。 */
     public static WanYuan fromYuan(BigDecimal yuan) {
-        ValidateUtils.notNull(yuan);
-        ValidateUtils.minValue(BigDecimal.ZERO, true, yuan);
-        var result = yuan.divide(BigDecimal.valueOf(10000), 2, java.math.RoundingMode.HALF_UP);
-        return new WanYuan(result);
+        return fromYuan(yuan, java.math.RoundingMode.HALF_UP);
     }
 
-    /** 转换为元（乘以 10000）。 */
+    /**
+     * 从元（元/分）构造，指定舍入模式。
+     *
+     * @param yuan         元值
+     * @param roundingMode 舍入模式（除以 10000 时使用）
+     * @return WanYuan 实例
+     */
+    public static WanYuan fromYuan(BigDecimal yuan, java.math.RoundingMode roundingMode) {
+        ValidateUtils.notNull(yuan);
+        ValidateUtils.notNull(roundingMode);
+        var result = yuan.divide(WAN, 2, roundingMode);
+        return of(result.toPlainString());
+    }
+
+    /** 转换为元（乘以 10000），结果不保留小数。 */
     public BigDecimal toYuan() {
-        return value.multiply(BigDecimal.valueOf(10000));
+        return bigDecimalValue.multiply(WAN).setScale(0, java.math.RoundingMode.UNNECESSARY);
+    }
+
+    /** 中文展示文本。格式：{@code 111.11万元}。 */
+    public String toPlainText() {
+        return bigDecimalValue.toPlainString() + "万元";
     }
 
     @Override
-    public int compareTo(WanYuan other) {
-        return this.value.compareTo(other.value);
+    public String toString() {
+        return "WanYuan[value=" + value + "]";
     }
 }

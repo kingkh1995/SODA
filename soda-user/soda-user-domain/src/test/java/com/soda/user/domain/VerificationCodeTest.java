@@ -3,10 +3,10 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.soda.component.support.types.RandomString;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -19,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+/**
+ * {@link VerificationCode} 单元测试。
+ */
 class VerificationCodeTest {
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -41,8 +44,7 @@ class VerificationCodeTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"  "})
-    void constructor_invalidCode_throws(String invalidCode) {
+    void constructor_nullCode_throws(String invalidCode) {
         assertThrows(IllegalArgumentException.class, () -> new VerificationCode(invalidCode, FUTURE, false));
     }
 
@@ -84,25 +86,25 @@ class VerificationCodeTest {
     @Test
     void verify_matchingCodeNotExpiredNotUsed_returnsTrue() {
         var vc = new VerificationCode(CODE, FUTURE, false);
-        assertTrue(vc.verify(CODE));
+        assertTrue(vc.verify(new RandomString(CODE)));
     }
 
     @Test
     void verify_wrongCode_returnsFalse() {
         var vc = new VerificationCode(CODE, FUTURE, false);
-        assertFalse(vc.verify("wrong"));
+        assertFalse(vc.verify(new RandomString("wrong")));
     }
 
     @Test
     void verify_expired_returnsFalse() {
         var vc = new VerificationCode(CODE, PAST, false);
-        assertFalse(vc.verify(CODE));
+        assertFalse(vc.verify(new RandomString(CODE)));
     }
 
     @Test
     void verify_alreadyUsed_returnsFalse() {
         var vc = new VerificationCode(CODE, FUTURE, true);
-        assertFalse(vc.verify(CODE));
+        assertFalse(vc.verify(new RandomString(CODE)));
     }
 
     @Test
@@ -145,25 +147,6 @@ class VerificationCodeTest {
         assertNotEquals(
                 new VerificationCode(CODE, FUTURE, false),
                 new VerificationCode(CODE, FUTURE, true));
-    }
-
-    // ——— compareTo ———
-
-    @Test
-    void compareTo_comparesCodeFirstThenExpireAtThenUsed() {
-        // different code → ordered by code
-        var a = new VerificationCode("A", FUTURE, false);
-        var b = new VerificationCode("B", FUTURE, false);
-        assertTrue(a.compareTo(b) < 0);
-        assertEquals(0, a.compareTo(a));
-        // same code, different expireAt → ordered by expireAt
-        var early = new VerificationCode("A", Instant.now().plus(1, ChronoUnit.HOURS), false);
-        var late = new VerificationCode("A", Instant.now().plus(2, ChronoUnit.HOURS), false);
-        assertTrue(early.compareTo(late) < 0);
-        // same code + expireAt, different used → ordered by used
-        var fresh = new VerificationCode("A", FUTURE, false);
-        var used = new VerificationCode("A", FUTURE, true);
-        assertTrue(fresh.compareTo(used) < 0);
     }
 
     // ——— Jackson ———

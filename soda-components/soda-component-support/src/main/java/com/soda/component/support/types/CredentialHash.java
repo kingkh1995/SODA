@@ -1,0 +1,25 @@
+package com.soda.component.support.types;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.soda.component.domain.Type;
+import com.soda.component.support.util.ValidateUtils;
+
+/**
+ * 凭证哈希 DP —— 原始凭证经 {@link com.soda.component.support.gateway.CredentialHasher} 哈希后的值。
+ * <p>
+ * 算法无关，不绑定任何具体哈希算法（BCrypt、Argon2、SCrypt 等），算法选择由基础设施层决定。
+ * <p>
+ * 不可变、自校验（非 blank）、可比较。与 {@link RawCredential} 不同，哈希值不敏感，可安全序列化。
+ *
+ * @see Type
+ * @see com.soda.component.support.gateway.CredentialHasher
+ * @see RawCredential
+ */
+public record CredentialHash(@JsonValue String value) implements Type {
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+
+    public CredentialHash {
+        ValidateUtils.nonBlank(value);
+    }
+}

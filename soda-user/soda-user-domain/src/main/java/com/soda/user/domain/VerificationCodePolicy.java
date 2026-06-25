@@ -1,8 +1,9 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
-import java.io.Serial;
 import java.time.Duration;
 
 /**
@@ -14,10 +15,11 @@ import java.time.Duration;
  *
  * @see Type
  */
-public record VerificationCodePolicy(int codeLength, Duration expiry) implements Type, Comparable<VerificationCodePolicy> {
+public record VerificationCodePolicy(
+        @JsonProperty("codeLength") int codeLength,
+        @JsonProperty("expiry") Duration expiry
+) implements Type {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     /** 默认短信验证码策略：6 位，5 分钟过期。 */
     public static final VerificationCodePolicy DEFAULT_SMS = new VerificationCodePolicy(6, Duration.ofMinutes(5));
@@ -25,17 +27,10 @@ public record VerificationCodePolicy(int codeLength, Duration expiry) implements
     /** 默认邮箱验证码策略：8 位，30 分钟过期。 */
     public static final VerificationCodePolicy DEFAULT_EMAIL = new VerificationCodePolicy(8, Duration.ofMinutes(30));
 
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public VerificationCodePolicy {
         ValidateUtils.range(1, 20, codeLength);
         ValidateUtils.minValue(Duration.ZERO, false, expiry);
     }
 
-    @Override
-    public int compareTo(VerificationCodePolicy other) {
-        var cmp = Integer.compare(this.codeLength, other.codeLength);
-        if (cmp != 0) {
-            return cmp;
-        }
-        return this.expiry.compareTo(other.expiry);
-    }
 }

@@ -1,11 +1,10 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
-
-import java.io.Serial;
 
 /**
  * 短信内容 DP — 限定长度的纯文本，不可变、自校验、可比较。
@@ -14,21 +13,14 @@ import java.io.Serial;
  *
  * @see Type
  */
-public record SmsContent(@JsonValue String value) implements Type, Comparable<SmsContent> {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public record SmsContent(@JsonValue String value) implements Type {
 
     private static final int MAX_LENGTH = Math.max(70, TypeConfig.PROVIDER.smsContentMaxLength());
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public SmsContent {
         ValidateUtils.nonBlank(value);
         ValidateUtils.maxLength(MAX_LENGTH, value);
     }
 
-
-    @Override
-    public int compareTo(SmsContent other) {
-        return this.value.compareTo(other.value);
-    }
 }

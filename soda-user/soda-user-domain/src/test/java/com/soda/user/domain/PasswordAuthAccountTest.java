@@ -1,9 +1,9 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.gateway.PasswordEncoder;
+import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Active;
-import com.soda.component.support.types.PasswordHash;
-import com.soda.component.support.types.RawPassword;
+import com.soda.component.support.types.CredentialHash;
+import com.soda.component.support.types.RawCredential;
 import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.api.Test;
 
@@ -18,15 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PasswordAuthAccountTest {
 
     private static final PasswordAuthAccountId ID = PasswordAuthAccountId.from(new UserId(1L));
-    private static final PasswordHash HASH = new PasswordHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
-    private static final RawPassword CORRECT = new RawPassword("secret123");
-    private static final RawPassword WRONG = new RawPassword("wrong");
+    private static final CredentialHash HASH = new CredentialHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    private static final PasswordEncoder STUB = new PasswordEncoder() {
+    private static final CredentialHasher STUB = new CredentialHasher() {
         @Override
-        public PasswordHash encode(RawPassword raw) { return HASH; }
+        public CredentialHash hash(RawCredential credential) { return HASH; }
         @Override
-        public boolean matches(RawPassword raw, PasswordHash hash) { return CORRECT.equals(raw); }
+        public boolean matches(RawCredential credential, CredentialHash hash) {
+            return "secret123".equals(credential.internalValue());
+        }
     };
 
     @Test void constructor_setsIdAndHash() {
@@ -39,15 +39,15 @@ class PasswordAuthAccountTest {
     }
     @Test void verify_correctPassword_returnsTrue() {
         var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
-        assertTrue(a.verify(CORRECT, STUB));
+        assertTrue(a.verify(new RawCredential("secret123"), STUB));
     }
     @Test void verify_wrongPassword_returnsFalse() {
         var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
-        assertFalse(a.verify(WRONG, STUB));
+        assertFalse(a.verify(new RawCredential("wrong"), STUB));
     }
     @Test void changePassword_updatesHash() {
         var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
-        a.changePassword(new RawPassword("x"), STUB);
+        a.changePassword(new RawCredential("x"), STUB);
         assertEquals(HASH, a.getPasswordHash());
     }
     @Test void activeTrue_isActive() {
@@ -79,7 +79,6 @@ class PasswordAuthAccountTest {
     }
 
     // ——— JSON ———
-
 
     @Test void jackson_serializeDeserialize() throws Exception {
         var o = PasswordAuthAccount.createBuilder().userId(new UserId(1L)).passwordHash(HASH).build();

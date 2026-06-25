@@ -1,10 +1,10 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
 
-import java.io.Serial;
 import java.util.regex.Pattern;
 
 /**
@@ -16,17 +16,12 @@ import java.util.regex.Pattern;
  */
 public record Username(@JsonValue String value) implements Type, Comparable<Username> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9]{4,30}$");
-
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Username {
         ValidateUtils.nonBlank(value);
-        value = value.trim();
         ValidateUtils.matches(USERNAME_PATTERN, value);
     }
-
 
     @Override
     public int compareTo(Username other) {

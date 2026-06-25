@@ -2,15 +2,16 @@ package com.soda.user.domain;
 
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Mobile;
+import com.soda.component.support.types.RandomString;
 import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
+import java.util.Optional;
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,22 +62,22 @@ class SmsAuthAccountTest {
     @Test
     void verifyCode_correctNotExpired_returnsTrue() {
         var account = new SmsAuthAccount(ID, Active.TRUE, CODE, null);
-        assertTrue(account.verifyCode("654321"));
+        assertTrue(account.verifyCode(new RandomString("654321")));
     }
 
 
     @Test
     void verifyCode_wrongCode_returnsFalse() {
         var account = new SmsAuthAccount(ID, Active.TRUE, CODE, null);
-        assertFalse(account.verifyCode("000000"));
+        assertFalse(account.verifyCode(new RandomString("000000")));
     }
 
     @Test
     void replaceCode_injectsCode() {
         var account = new SmsAuthAccount(ID, Active.TRUE, null, null);
-        assertNull(account.getVerificationCode());
-        account.replaceCode(CODE);
-        assertEquals(CODE, account.getVerificationCode());
+        assertTrue(account.getVerificationCode().isEmpty());
+        assertTrue(account.replaceCode(CODE));
+        assertEquals(Optional.of(CODE), account.getVerificationCode());
     }
 
     @Test
@@ -86,18 +87,35 @@ class SmsAuthAccountTest {
     }
 
     @Test
-    void useCode_marksCodeUsed() {
+    void replaceCode_whenCurrentStillValid_returnsEmpty() {
         var account = new SmsAuthAccount(ID, Active.TRUE, CODE, null);
-        assertFalse(account.getVerificationCode().used());
-        account.useCode();
-        assertTrue(account.getVerificationCode().used());
+        var newCode = new VerificationCode("111111", Instant.MAX, false);
+        assertFalse(account.replaceCode(newCode));
+        assertEquals(Optional.of(CODE), account.getVerificationCode()); // unchanged
     }
 
     @Test
-    void useCode_noCode_doesNothing() {
+    void replaceCode_whenNewCodeExpired_returnsEmpty() {
+        var expiredCode = new VerificationCode("expired", Instant.now().minusSeconds(1), false);
         var account = new SmsAuthAccount(ID, Active.TRUE, null, null);
-        account.useCode(); // should not throw
-        assertNull(account.getVerificationCode());
+        assertFalse(account.replaceCode(expiredCode));
+        assertTrue(account.getVerificationCode().isEmpty()); // unchanged
+    }
+
+    @Test
+    void replaceCode_whenOldCodeExpired_replaces() {
+        var oldExpired = new VerificationCode("old", Instant.now().minusSeconds(1), false);
+        var account = new SmsAuthAccount(ID, Active.TRUE, oldExpired, null);
+        assertTrue(account.replaceCode(CODE));
+        assertEquals(Optional.of(CODE), account.getVerificationCode());
+    }
+
+    @Test
+    void replaceCode_whenOldCodeUsed_replaces() {
+        var usedCode = new VerificationCode("used", Instant.now().minusSeconds(1), true);
+        var account = new SmsAuthAccount(ID, Active.TRUE, usedCode, null);
+        assertTrue(account.replaceCode(CODE));
+        assertEquals(Optional.of(CODE), account.getVerificationCode());
     }
 
 
@@ -130,7 +148,7 @@ class SmsAuthAccountTest {
                 .build();
         assertEquals(ID, account.getId());
         assertTrue(account.isActive());
-        assertNull(account.getVerificationCode());
+        assertTrue(account.getVerificationCode().isEmpty());
     }
 
     @Test
@@ -141,7 +159,7 @@ class SmsAuthAccountTest {
                 .build();
         assertEquals(ID, account.getId());
         assertFalse(account.isActive());
-        assertNull(account.getVerificationCode());
+        assertTrue(account.getVerificationCode().isEmpty());
     }
 
     // ——— JSON ———

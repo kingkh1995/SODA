@@ -8,7 +8,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
-import java.io.Serial;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -19,44 +18,40 @@ import java.util.regex.Pattern;
  * 值归一化为小写。{@link #localPart()} 和 {@link #domain()} 在构造时预计算并缓存。
  * <p>
  * 使用 class+Lombok 实现（非 record）：{@link JsonValue} 在字段上，{@link JsonCreator} 在构造器上，
- * 与项目内基于 {@code Type} 的 DP（如 {@link CodeValue}、{@link Mobile}）保持一致的 Jackson 集成方式。
+ * 与项目内基于 {@code Type} 的 DP（如 {@link Mobile}）保持一致的 Jackson 集成方式。
  *
  * @see Type
  */
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Getter
 @Accessors(fluent = true)
-public final class Email implements Type, Comparable<Email> {
+public final class Email implements Type {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     // 基础邮箱格式校验：local@domain.tld
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
-    @JsonValue
     @EqualsAndHashCode.Include
     private final String value;
 
     private final String localPart;
     private final String domain;
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Email(String value) {
         ValidateUtils.nonBlank(value);
-        value = value.trim();
         ValidateUtils.matches(EMAIL_PATTERN, value);
-        value = value.toLowerCase(Locale.ENGLISH);
+        value = value.toLowerCase(Locale.ROOT);
         int at = value.indexOf('@');
         this.value = value;
         this.localPart = value.substring(0, at);
         this.domain = value.substring(at + 1);
     }
 
-
-    @Override
-    public int compareTo(Email other) {
-        return this.value.compareTo(other.value);
+    @JsonValue
+    public String value() {
+        return this.value;
     }
 
     @Override

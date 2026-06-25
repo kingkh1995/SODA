@@ -1,11 +1,11 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.gateway.PasswordEncoder;
+import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Active;
+import com.soda.component.support.types.CredentialHash;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.Mobile;
-import com.soda.component.support.types.PasswordHash;
-import com.soda.component.support.types.RawPassword;
+import com.soda.component.support.types.RawCredential;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.SocialType;
@@ -13,6 +13,7 @@ import com.soda.user.domain.enums.UserStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <ul>
  *   <li>创建时生成默认状态，无 ID，无 Account</li>
  *   <li>恢复后状态与持久化一致</li>
- *   <li>{@link User#authenticate(AuthAccountType, String, PasswordEncoder)} 分发到正确子类</li>
+ *   <li>{@link User#authenticate(AuthAccountType, String, CredentialHasher)} 分发到正确子类</li>
  *   <li>创建时注册 {@link UserCreatedEvent}，entityId 延迟求值</li>
  * </ul>
  */
@@ -36,17 +37,20 @@ class UserTest {
 
     private static final UserId USER_ID = new UserId(1L);
     private static final Username USERNAME = new Username("testuser");
-    private static final Nickname NICKNAME = new Nickname("Test User");
+    private static final Nickname NICKNAME = new Nickname("Test_User");
 
-    private static final PasswordEncoder PASSWORD_ENCODER = new PasswordEncoder() {
+    private static final CredentialHash STUB_HASH = new CredentialHash(
+            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+
+    private static final CredentialHasher PASSWORD_HASHER = new CredentialHasher() {
         @Override
-        public PasswordHash encode(RawPassword rawPassword) {
-            return new PasswordHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+        public CredentialHash hash(RawCredential credential) {
+            return STUB_HASH;
         }
 
         @Override
-        public boolean matches(RawPassword rawPassword, PasswordHash hash) {
-            return "password123".equals(rawPassword.value());
+        public boolean matches(RawCredential credential, CredentialHash hash) {
+            return "password123".equals(credential.internalValue());
         }
     };
 
@@ -63,7 +67,7 @@ class UserTest {
         assertEquals(USERNAME, user.getUsername());
         assertEquals(NICKNAME, user.getNickname());
         assertEquals(UserStatus.E, user.getStatus());
-        assertNull(user.getSex());
+        assertTrue(user.getSex().isEmpty());
 
         assertTrue(user.getAccounts().isEmpty());
     }
@@ -95,10 +99,10 @@ class UserTest {
                 .avatar(avatar)
                 .build();
 
-        assertEquals(mobile, user.getMobile());
-        assertEquals(email, user.getEmail());
-        assertEquals(Sex.F, user.getSex());
-        assertEquals(avatar, user.getAvatar());
+        assertEquals(Optional.of(mobile), user.getMobile());
+        assertEquals(Optional.of(email), user.getEmail());
+        assertEquals(Optional.of(Sex.F), user.getSex());
+        assertEquals(Optional.of(avatar), user.getAvatar());
     }
 
     @Test
@@ -106,7 +110,9 @@ class UserTest {
         var mobile = new Mobile("13800138000");
         var email = new Email("test@example.com");
         var avatar = new Avatar("https://example.com/avatar.png");
-        var passwordAccount = new PasswordAuthAccount(PasswordAuthAccountId.from(USER_ID), Active.TRUE, PASSWORD_ENCODER.encode(new RawPassword("pwd")));
+        var passwordAccount = new PasswordAuthAccount(
+                PasswordAuthAccountId.from(USER_ID), Active.TRUE,
+                PASSWORD_HASHER.hash(new RawCredential("pwd")));
         var accounts = List.<AuthAccount<?>>of(passwordAccount);
 
         var user = User.restoreBuilder()
@@ -124,10 +130,10 @@ class UserTest {
         assertEquals(USER_ID, user.getId());
         assertEquals(USERNAME, user.getUsername());
         assertEquals(NICKNAME, user.getNickname());
-        assertEquals(mobile, user.getMobile());
-        assertEquals(email, user.getEmail());
-        assertEquals(Sex.F, user.getSex());
-        assertEquals(avatar, user.getAvatar());
+        assertEquals(Optional.of(mobile), user.getMobile());
+        assertEquals(Optional.of(email), user.getEmail());
+        assertEquals(Optional.of(Sex.F), user.getSex());
+        assertEquals(Optional.of(avatar), user.getAvatar());
         assertEquals(UserStatus.D, user.getStatus());
         assertEquals(1, user.getAccounts().size());
         assertTrue(user.flushEvents().isEmpty()); // no new events from restore
@@ -144,10 +150,10 @@ class UserTest {
                 .build();
 
         assertEquals(USER_ID, user.getId());
-        assertNull(user.getMobile());
-        assertNull(user.getEmail());
-        assertNull(user.getSex());
-        assertNull(user.getAvatar());
+        assertTrue(user.getMobile().isEmpty());
+        assertTrue(user.getEmail().isEmpty());
+        assertTrue(user.getSex().isEmpty());
+        assertTrue(user.getAvatar().isEmpty());
     }
 
     // ——— authenticate ———
@@ -155,19 +161,19 @@ class UserTest {
     @Test
     void authenticate_passwordAccount_correctPassword_returnsTrue() {
         var user = fullUserWithPasswordAccount();
-        assertTrue(user.authenticate(AuthAccountType.P, "password123", PASSWORD_ENCODER));
+        assertTrue(user.authenticate(AuthAccountType.P, "password123", PASSWORD_HASHER));
     }
 
     @Test
     void authenticate_passwordAccount_wrongPassword_returnsFalse() {
         var user = fullUserWithPasswordAccount();
-        assertFalse(user.authenticate(AuthAccountType.P, "wrong", PASSWORD_ENCODER));
+        assertFalse(user.authenticate(AuthAccountType.P, "wrong", PASSWORD_HASHER));
     }
 
     @Test
     void authenticate_noSuchAccount_returnsFalse() {
         var user = fullUserWithPasswordAccount();
-        assertFalse(user.authenticate(AuthAccountType.S, "any", PASSWORD_ENCODER));
+        assertFalse(user.authenticate(AuthAccountType.S, "any", PASSWORD_HASHER));
     }
 
     // ——— events ———
@@ -198,7 +204,6 @@ class UserTest {
     }
 
     // ——— JSON ———
-
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
@@ -268,7 +273,7 @@ class UserTest {
 
     /** 创建含 PasswordAccount 的完整 User（已有 ID 和账户，常用于认证测试）。 */
     private static User fullUserWithPasswordAccount() {
-        var hash = PASSWORD_ENCODER.encode(new RawPassword("password123"));
+        var hash = PASSWORD_HASHER.hash(new RawCredential("password123"));
         var passwordAccount = new PasswordAuthAccount(PasswordAuthAccountId.from(USER_ID), Active.TRUE, hash);
         return User.restoreBuilder()
                 .id(USER_ID)
@@ -318,7 +323,7 @@ class UserTest {
     }
 
     private static User fullUserWithMixedAccounts() {
-        var hash = PASSWORD_ENCODER.encode(new RawPassword("password123"));
+        var hash = PASSWORD_HASHER.hash(new RawCredential("password123"));
         var passwordAccount = new PasswordAuthAccount(PasswordAuthAccountId.from(USER_ID), Active.TRUE, hash);
         var mobile = new Mobile("13800138000");
         var smsAccount = new SmsAuthAccount(SmsAuthAccountId.from(mobile), Active.TRUE, null, null);

@@ -44,9 +44,8 @@ class UUIdTest {
     }
 
     @Test
-    void constructor_trimmed() {
-        var id = new UUId("  " + VALID_UUID + "  ");
-        assertEquals(VALID_UUID, id.value());
+    void constructor_whitespaceAround_throws() {
+        assertThrows(IllegalArgumentException.class, () -> new UUId("  " + VALID_UUID + "  "));
     }
 
     @Test

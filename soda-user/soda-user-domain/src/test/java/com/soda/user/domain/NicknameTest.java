@@ -23,10 +23,29 @@ class NicknameTest {
     }
 
     @Test
-    void constructor_trimmed() {
-        var n = new Nickname("  " + VALID_NICKNAME + "  ");
-        assertEquals(VALID_NICKNAME, n.value());
+    void constructor_acceptsUnicode() {
+        var n = new Nickname("张三_test-123");
+        assertEquals("张三_test-123", n.value());
     }
+
+    @Test
+    void constructor_acceptsUnderscoreAndHyphen() {
+        var n = new Nickname("hello_world-test");
+        assertEquals("hello_world-test", n.value());
+    }
+
+    @Test
+    void constructor_acceptsSpecialChars() {
+        var n = new Nickname("test!@#user$%^&*()");
+        assertEquals("test!@#user$%^&*()", n.value());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"hello world", "sp ace", "tab\t", "new\nline", "line\rbreak", "lead ", " trail"})
+    void constructor_whitespace_throws(String invalid) {
+        assertThrows(IllegalArgumentException.class, () -> new Nickname(invalid));
+    }
+
 
     @ParameterizedTest
     @NullAndEmptySource

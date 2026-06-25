@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.SocialType;
 import lombok.Builder;
-import lombok.Getter;
 
 /**
  * 社交认证账户实体 — 第三方社交账号（Gitee/DingTalk/WeChat）方式的认证。
@@ -14,7 +13,6 @@ import lombok.Getter;
  *
  * @see AuthAccount
  */
-@Getter
 public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
 
     // ─── construction ───

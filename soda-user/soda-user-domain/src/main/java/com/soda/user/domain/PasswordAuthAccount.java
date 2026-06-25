@@ -2,10 +2,10 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.soda.component.support.gateway.PasswordEncoder;
+import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Active;
-import com.soda.component.support.types.PasswordHash;
-import com.soda.component.support.types.RawPassword;
+import com.soda.component.support.types.CredentialHash;
+import com.soda.component.support.types.RawCredential;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,7 +21,7 @@ import java.util.Objects;
 @Getter
 public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId> {
 
-    private PasswordHash passwordHash;
+    private CredentialHash passwordHash;
 
     // ─── construction ───
 
@@ -30,7 +30,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     protected PasswordAuthAccount(
             @JsonProperty("id") PasswordAuthAccountId id,
             @JsonProperty("active") Active active,
-            @JsonProperty("passwordHash") PasswordHash passwordHash) {
+            @JsonProperty("passwordHash") CredentialHash passwordHash) {
         super(id, active);
         this.passwordHash = Objects.requireNonNull(passwordHash);
     }
@@ -40,7 +40,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     /** 创建新密码账户 — active 默认 TRUE，ID 从 userId 派生。 */
     @Builder(builderClassName = "PasswordAuthAccountCreateBuilder",
              builderMethodName = "createBuilder")
-    public static PasswordAuthAccount create(UserId userId, PasswordHash passwordHash) {
+    public static PasswordAuthAccount create(UserId userId, CredentialHash passwordHash) {
         return new PasswordAuthAccount(
                 PasswordAuthAccountId.from(userId),
                 Active.TRUE,
@@ -51,23 +51,23 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     /** 从持久化恢复密码账户 — 全部字段显式传入。 */
     @Builder(builderClassName = "PasswordAuthAccountRestoreBuilder",
              builderMethodName = "restoreBuilder")
-    public static PasswordAuthAccount restore(PasswordAuthAccountId id, Active active, PasswordHash passwordHash) {
+    public static PasswordAuthAccount restore(PasswordAuthAccountId id, Active active, CredentialHash passwordHash) {
         return new PasswordAuthAccount(id, active, passwordHash);
     }
 
     // ─── queries ───
 
     /**
-     * 校验原始密码是否匹配当前哈希。
+     * 校验原始凭证是否匹配当前哈希。
      *
-     * @param rawPassword 原始密码
-     * @param encoder     密码编码器
+     * @param credential 原始凭证
+     * @param hasher     凭证哈希器
      * @return true 若匹配
      */
-    public boolean verify(RawPassword rawPassword, PasswordEncoder encoder) {
-        Objects.requireNonNull(rawPassword);
-        Objects.requireNonNull(encoder);
-        return encoder.matches(rawPassword, passwordHash);
+    public boolean verify(RawCredential credential, CredentialHasher hasher) {
+        Objects.requireNonNull(credential);
+        Objects.requireNonNull(hasher);
+        return hasher.matches(credential, passwordHash);
     }
 
     // ─── commands ───
@@ -75,12 +75,12 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     /**
      * 修改密码。
      *
-     * @param rawPassword 新原始密码
-     * @param encoder     密码编码器
+     * @param credential 新原始凭证
+     * @param hasher     凭证哈希器
      */
-    public void changePassword(RawPassword rawPassword, PasswordEncoder encoder) {
-        Objects.requireNonNull(rawPassword);
-        Objects.requireNonNull(encoder);
-        this.passwordHash = encoder.encode(rawPassword);
+    public void changePassword(RawCredential credential, CredentialHasher hasher) {
+        Objects.requireNonNull(credential);
+        Objects.requireNonNull(hasher);
+        this.passwordHash = hasher.hash(credential);
     }
 }

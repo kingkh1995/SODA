@@ -1,9 +1,11 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Type;
-
+import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
-import java.io.Serial;
+
 import java.time.Instant;
 
 /**
@@ -17,13 +19,12 @@ import java.time.Instant;
  * @see Type
  */
 public record VerificationCode(
-        String code,
-        Instant expireAt,
-        boolean used
-) implements Type, Comparable<VerificationCode> {
+        @JsonProperty("code") String code,
+        @JsonProperty("expireAt") Instant expireAt,
+        @JsonProperty("used") boolean used
+) implements Type {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public VerificationCode {
         ValidateUtils.nonBlank(code);
         ValidateUtils.notNull(expireAt);
@@ -39,10 +40,10 @@ public record VerificationCode(
      * 校验输入 code 是否匹配且未过期且未使用。
      *
      * @param inputCode 用户输入的验证码
-     * @return true 校验通过；false 不匹配 / 已过期 / 已使用
+     * @return true 校验通过；false 不匹配 / 已过期 / 已使用 / 输入为 null
      */
-    public boolean verify(String inputCode) {
-        return !used && !expired() && code.equals(inputCode);
+    public boolean verify(RandomString inputCode) {
+        return !used && !expired() && inputCode != null && inputCode.matches(code);
     }
 
     /**
@@ -51,19 +52,7 @@ public record VerificationCode(
      * @return 新实例，used = true
      */
     public VerificationCode use() {
-        return new VerificationCode(code, expireAt, true);
+        return used() ? this : new VerificationCode(code, expireAt, true);
     }
 
-    @Override
-    public int compareTo(VerificationCode other) {
-        var cmp = this.code.compareTo(other.code);
-        if (cmp != 0) {
-            return cmp;
-        }
-        cmp = this.expireAt.compareTo(other.expireAt);
-        if (cmp != 0) {
-            return cmp;
-        }
-        return Boolean.compare(this.used, other.used);
-    }
 }

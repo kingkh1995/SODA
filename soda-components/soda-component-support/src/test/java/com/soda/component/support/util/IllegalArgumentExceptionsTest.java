@@ -28,9 +28,9 @@ class IllegalArgumentExceptionsTest {
     }
 
     @Test
-    void forWrongFormat_message() {
-        var ex = IllegalArgumentExceptions.forWrongFormat("abc");
-        assertEquals("invalid number format: 'abc'", ex.getMessage());
+    void forInvalidFormat_message() {
+        var ex = IllegalArgumentExceptions.forInvalidFormat("abc");
+        assertEquals("invalid format: 'abc'", ex.getMessage());
     }
 
     @Test

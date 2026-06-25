@@ -69,17 +69,6 @@ class VerificationCodePolicyTest {
     }
 
     @Test
-    void compareTo_comparesCodeLengthFirstThenExpiry() {
-        var a = new VerificationCodePolicy(6, Duration.ofMinutes(5));
-        var b = new VerificationCodePolicy(8, Duration.ofMinutes(5));
-        var c = new VerificationCodePolicy(6, Duration.ofMinutes(10));
-        assertTrue(a.compareTo(b) < 0);
-        assertTrue(b.compareTo(a) > 0);
-        assertTrue(a.compareTo(c) < 0);
-        assertEquals(0, a.compareTo(a));
-    }
-
-    @Test
     void jackson_serializeDeserialize() throws Exception {
         var original = new VerificationCodePolicy(6, Duration.ofMinutes(5));
         var json = MAPPER.writeValueAsString(original);

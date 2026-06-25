@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.soda.component.domain.Entity;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.AuthAccountType;
-import lombok.Getter;
 
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -51,7 +50,6 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
         return a -> a.getAuthAccountType() == type;
     }
 
-    @Getter
     private Active active;
 
     // ─── construction ───

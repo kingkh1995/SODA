@@ -23,9 +23,8 @@ class AvatarTest {
     }
 
     @Test
-    void constructor_trimmed() {
-        var a = new Avatar("  " + VALID_URL + "  ");
-        assertEquals(VALID_URL, a.value());
+    void constructor_whitespaceAround_throws() {
+        assertThrows(IllegalArgumentException.class, () -> new Avatar("  " + VALID_URL + "  "));
     }
 
     @ParameterizedTest
@@ -61,13 +60,6 @@ class AvatarTest {
     @Test
     void notEqual_whenDifferentValue() {
         assertNotEquals(new Avatar("https://a.com/1.png"), new Avatar("https://a.com/2.png"));
-    }
-
-    @Test
-    void compareTo_delegatesToStringCompare() {
-        assertTrue(new Avatar("http://a.com/1").compareTo(new Avatar("http://a.com/2")) < 0);
-        assertTrue(new Avatar("http://a.com/2").compareTo(new Avatar("http://a.com/1")) > 0);
-        assertEquals(0, new Avatar("http://a.com/1").compareTo(new Avatar("http://a.com/1")));
     }
 
     @Test

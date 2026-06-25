@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ParseUtils;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.experimental.Accessors;
-
-import java.io.Serial;
 
 /**
  * 激活状态 DP — 通用 boolean 值封装。
@@ -20,24 +17,24 @@ import java.io.Serial;
  */
 @EqualsAndHashCode
 @Accessors(fluent = true)
-public final class Active implements Type, Comparable<Active> {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public final class Active implements Type {
 
     public static final Active TRUE = new Active(true);
     public static final Active FALSE = new Active(false);
 
-    @Getter
-    @JsonValue
     private final boolean value;
 
     private Active(boolean value) {
         this.value = value;
     }
 
+    @JsonValue
+    public boolean value() {
+        return this.value;
+    }
+
     /** 从 boolean 构造（含 {@link JsonCreator} 入口）。 */
-    @JsonCreator
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Active of(boolean value) {
         return value ? TRUE : FALSE;
     }
@@ -53,13 +50,9 @@ public final class Active implements Type, Comparable<Active> {
         return value ? FALSE : TRUE;
     }
 
-    @Override
-    public int compareTo(Active other) {
-        return Boolean.compare(this.value, other.value);
-    }
 
     @Override
     public String toString() {
-        return "Active[" + value + "]";
+        return "Active[value=" + value + "]";
     }
 }

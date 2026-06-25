@@ -1,11 +1,11 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 
-import java.io.Serial;
 
 /**
  * {@code Long} 类型标识符 — 通用 DP，项目中最基础的长整型 ID 类型。
@@ -18,10 +18,7 @@ import java.io.Serial;
  * @see Identifier
  */
 public record LongId(@JsonValue long value) implements Identifier<Long>, Comparable<LongId> {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
-
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public LongId {
         ValidateUtils.minValue(0, false, value);
     }

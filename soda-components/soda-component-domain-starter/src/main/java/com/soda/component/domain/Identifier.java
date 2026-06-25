@@ -1,13 +1,11 @@
 package com.soda.component.domain;
-
 /**
- * 领域标识符的标记接口。
- * <p>
+ *
  * 标识符是 <strong>不可变</strong> 的领域原语，在限界上下文内唯一标识一个实体。
  * 每个具体的标识符类型必须：
  * <ul>
- *   <li>不可变 — 优先使用 {@code record}（自动提供 {@code equals}/{@code hashCode}/{@code toString}）</li>
- *   <li>可序列化（继承自 {@link Type}）</li>
+ *   <li>不可变 — 优先使用 {@code record}</li>
+ *   <li>value-based identity — 继承自 {@link Type}</li>
  *   <li>可比较 — 子类自行实现 {@link Comparable} 以提供类型安全</li>
  * </ul>
  * <p>

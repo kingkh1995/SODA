@@ -4,11 +4,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Email;
+import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
-import lombok.AccessLevel;
 import lombok.Builder;
-import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+
+import java.util.Optional;
 
 /**
  * 邮箱认证账户实体 — 邮箱 + 验证码方式的认证。
@@ -18,7 +19,6 @@ import org.jspecify.annotations.Nullable;
  *
  * @see AuthAccount
  */
-@Getter
 public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     /** 默认邮箱验证码策略：8 位，30 分钟过期。 */
@@ -26,7 +26,6 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     private @Nullable VerificationCode verificationCode;
 
-    @Getter(AccessLevel.NONE)
     private @Nullable VerificationCodePolicy verificationCodePolicy;
 
     // ─── construction ───
@@ -67,18 +66,26 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
         return new EmailAuthAccount(id, active, verificationCode, verificationCodePolicy);
     }
 
+    // ─── queries ───
+
+    public Optional<VerificationCode> getVerificationCode() {
+        return Optional.ofNullable(verificationCode);
+    }
+
     /** 当前生效的策略。 */
     public VerificationCodePolicy getVerificationCodePolicy() {
         return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
     }
 
+    // ─── verification ───
+
     /**
      * 校验验证码。
      *
-     * @param inputCode 待校验的验证码字符串
-     * @return true 若匹配且有效
+     * @param inputCode 待校验的验证码
+     * @return true 若校验通过
      */
-    public boolean verifyCode(String inputCode) {
+    public boolean verifyCode(RandomString inputCode) {
         return verificationCode != null && verificationCode.verify(inputCode);
     }
 
@@ -87,11 +94,16 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
     /**
      * 注入验证码（替换已有）。
      *
-     * @param code 验证码，非 null
+     * @param code 新验证码，非 null
+     * @return true 替换成功；false 新码已过期或当前码仍有效
      */
-    public void replaceCode(VerificationCode code) {
+    public boolean replaceCode(VerificationCode code) {
         ValidateUtils.notNull(code);
+        if (code.expired() || (verificationCode != null && !verificationCode.expired())) {
+            return false;
+        }
         this.verificationCode = code;
+        return true;
     }
 
     /**
@@ -103,6 +115,8 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
             verificationCode = verificationCode.use();
         }
     }
+
+    // ─── email ───
 
     /** 从 ID 中提取邮箱（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。 */
     public Email getEmail() {

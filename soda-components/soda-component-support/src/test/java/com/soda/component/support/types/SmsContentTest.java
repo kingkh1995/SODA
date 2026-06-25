@@ -39,11 +39,6 @@ class SmsContentTest {
         assertEquals(new SmsContent("hello"), new SmsContent("hello"));
     }
 
-    @Test
-    void compareTo_delegatesToStringCompare() {
-        assertTrue(new SmsContent("a").compareTo(new SmsContent("b")) < 0);
-        assertEquals(0, new SmsContent("a").compareTo(new SmsContent("a")));
-    }
 
     @Test
     void jackson_serializeDeserialize() throws Exception {

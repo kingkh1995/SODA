@@ -34,9 +34,8 @@ class EmailTest {
     }
 
     @Test
-    void constructor_trimmed_removesWhitespace() {
-        var email = new Email("  user@example.com  ");
-        assertEquals("user@example.com", email.value());
+    void constructor_whitespaceAround_throws() {
+        assertThrows(IllegalArgumentException.class, () -> new Email("  user@example.com  "));
     }
 
     @Test
@@ -111,15 +110,6 @@ class EmailTest {
     @Test
     void notEqual_whenDifferentAddress() {
         assertNotEquals(new Email("a@b.com"), new Email("a@c.com"));
-    }
-
-    // ——— compareTo ———
-
-    @Test
-    void compareTo_byValue() {
-        assertTrue(new Email("a@a.com").compareTo(new Email("b@b.com")) < 0);
-        assertTrue(new Email("z@z.com").compareTo(new Email("y@y.com")) > 0);
-        assertEquals(0, new Email("m@m.com").compareTo(new Email("m@m.com")));
     }
 
     // ——— toString ———

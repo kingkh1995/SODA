@@ -1,14 +1,15 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
+import com.soda.component.support.util.IllegalArgumentExceptions;
+import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-
-import java.io.Serial;
 
 /**
  * 认证账户标识符密封基类 — 所有 AuthAccountId 统一为 {@link Identifier}{@code <String>}。
@@ -23,29 +24,21 @@ import java.io.Serial;
  * @see EmailAuthAccountId
  * @see SocialAuthAccountId
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode
 @Getter
 @Accessors(fluent = true)
 public abstract sealed class AuthAccountId implements Identifier<String>
         permits PasswordAuthAccountId, SmsAuthAccountId, EmailAuthAccountId, SocialAuthAccountId {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    /** 认证账户标识符各部分之间的分隔符。 */
+    protected static final String DELIMITER = ":";
 
     @JsonValue
-    @EqualsAndHashCode.Include
     private final String value;
 
     protected AuthAccountId(String value) {
         ValidateUtils.nonBlank(value);
         this.value = value;
-    }
-
-    /** 校验并提取前缀后的值。子类 {@code of(String)} 工厂方法使用。 */
-    protected static String requirePrefixed(String value, String prefix) {
-        ValidateUtils.notNull(value);
-        ValidateUtils.hasPrefix(prefix, value);
-        return value.substring(prefix.length());
     }
 
     @Override
@@ -58,5 +51,28 @@ public abstract sealed class AuthAccountId implements Identifier<String>
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[value=" + value + "]";
+    }
+
+    /**
+     * 统一反序列化入口 — 根据前缀路由到对应子类。
+     *
+     * @param value 格式 {@code "{AuthAccountType短名}:{业务键}"}（如 {@code "P:42"}）
+     * @return 对应子类的 AuthAccountId 实例
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static AuthAccountId of(String value) {
+        ValidateUtils.nonBlank(value);
+        var colonIndex = value.indexOf(DELIMITER);
+        if (colonIndex < 0) {
+            throw IllegalArgumentExceptions.forInvalidFormat(value);
+        }
+        var prefix = value.substring(0, colonIndex);
+        var accountType = ParseUtils.parseEnum(AuthAccountType.class, prefix);
+        return switch (accountType) {
+            case P -> PasswordAuthAccountId.of(value);
+            case S -> SmsAuthAccountId.of(value);
+            case E -> EmailAuthAccountId.of(value);
+            case O -> SocialAuthAccountId.of(value);
+        };
     }
 }

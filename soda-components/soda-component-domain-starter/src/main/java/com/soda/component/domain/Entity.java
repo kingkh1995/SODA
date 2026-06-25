@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.jspecify.annotations.Nullable;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -37,7 +37,7 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     private @Nullable ID id;
 
     @JsonIgnore
-    private @Nullable transient List<DomainEvent<ID>> domainEvents;
+    private transient List<DomainEvent<ID>> domainEvents = new ArrayList<>();
 
     /** 手动设置 / 已有数据恢复（reconstitution）。 */
     protected Entity(ID id) {
@@ -55,11 +55,6 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     @Override
     public final @Nullable ID getId() {
         return id;
-    }
-
-    @Override
-    public final boolean isIdentified() {
-        return this.getId() != null;
     }
 
     /**
@@ -85,9 +80,6 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      */
     protected void registerEvent(DomainEvent<ID> event) {
         Objects.requireNonNull(event);
-        if (domainEvents == null) {
-            domainEvents = new LinkedList<>();
-        }
         domainEvents.add(event);
     }
 
@@ -100,11 +92,8 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      */
     @Override
     public List<DomainEvent<ID>> flushEvents() {
-        if (domainEvents == null) {
-            return List.of();
-        }
-        var events = domainEvents;
-        domainEvents = null;
+        var events = List.copyOf(domainEvents);
+        domainEvents = new ArrayList<>();
         return events;
     }
 }

@@ -23,9 +23,8 @@ class UsernameTest {
     }
 
     @Test
-    void constructor_trimmed() {
-        var u = new Username("  " + VALID_USERNAME + "  ");
-        assertEquals(VALID_USERNAME, u.value());
+    void constructor_whitespaceAround_throws() {
+        assertThrows(IllegalArgumentException.class, () -> new Username("  " + VALID_USERNAME + "  "));
     }
 
     @ParameterizedTest

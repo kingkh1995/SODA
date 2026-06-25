@@ -162,19 +162,4 @@ class VersionTest {
         assertSame(Version.of(5), restored);
     }
 
-    // ——— Serializable ———
-
-    @Test
-    void serializable() throws Exception {
-        var original = Version.of(42);
-        var baos = new java.io.ByteArrayOutputStream();
-        try (var oos = new java.io.ObjectOutputStream(baos)) {
-            oos.writeObject(original);
-        }
-        try (var ois = new java.io.ObjectInputStream(
-                new java.io.ByteArrayInputStream(baos.toByteArray()))) {
-            var restored = (Version) ois.readObject();
-            assertEquals(original, restored);
-        }
-    }
 }

@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Mobile;
+import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
-import lombok.AccessLevel;
 import lombok.Builder;
-import lombok.Getter;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -17,15 +17,12 @@ import org.jspecify.annotations.Nullable;
  *
  * @see AuthAccount
  */
-@Getter
 public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     /** 默认短信验证码策略：6 位，5 分钟过期。 */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_SMS;
-
     private @Nullable VerificationCode verificationCode;
 
-    @Getter(AccessLevel.NONE)
     private @Nullable VerificationCodePolicy verificationCodePolicy;
 
     // ─── construction ───
@@ -69,6 +66,11 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
     // ─── policy ───
 
     /** 当前生效的策略。 */
+    public Optional<VerificationCode> getVerificationCode() {
+        return Optional.ofNullable(verificationCode);
+    }
+
+    /** 当前生效的策略。 */
     public VerificationCodePolicy getVerificationCodePolicy() {
         return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
     }
@@ -78,10 +80,10 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
     /**
      * 校验验证码。
      *
-     * @param inputCode 待校验的验证码字符串
+     * @param inputCode 待校验的验证码
      * @return true 若校验通过
      */
-    public boolean verifyCode(String inputCode) {
+    public boolean verifyCode(RandomString inputCode) {
         return verificationCode != null && verificationCode.verify(inputCode);
     }
 
@@ -90,13 +92,17 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
     /**
      * 注入验证码（替换已有）。
      *
-     * @param code 验证码，非 null
+     * @param code 新验证码，非 null
+     * @return true 替换成功；false 新码已过期或当前码仍有效
      */
-    public void replaceCode(VerificationCode code) {
+    public boolean replaceCode(VerificationCode code) {
         ValidateUtils.notNull(code);
+        if (code.expired() || (verificationCode != null && !verificationCode.expired())) {
+            return false;
+        }
         this.verificationCode = code;
+        return true;
     }
-
     /**
      * 使用验证码（标记为已使用）。
      * 无验证码时无操作。

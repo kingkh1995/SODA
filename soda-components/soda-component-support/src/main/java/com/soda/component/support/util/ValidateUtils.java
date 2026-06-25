@@ -97,6 +97,7 @@ public final class ValidateUtils {
             throw IllegalArgumentExceptions.forInvalidUriScheme(value, scheme);
         }
     }
+
     /** 校验字符串以指定前缀开头，不匹配时抛出 {@link IllegalArgumentException}。 */
     public static void hasPrefix(String prefix, @Nullable String value) {
         nonBlank(value);

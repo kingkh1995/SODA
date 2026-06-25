@@ -96,6 +96,30 @@
       "sourceType": "local",
       "skillPath": ".agents/skills/mermaid-visualizer/SKILL.md",
       "computedHash": "93fff4e93adc82878c60557935dc75052f23331db9d3f5d6d3c137f2743bb72c"
+    },
+    "grill-me": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grill-me/SKILL.md",
+      "computedHash": "6189dfceb7304a6e5558f75d87e68fa3bc7fcf7ba120e44f21f8a61fe01eba54"
+    },
+    "grilling": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grilling/SKILL.md",
+      "computedHash": "fe00af3e1815f97c0a7644605479328a726b5cd95ba6ef56a4be2a92fae6c20f"
+    },
+    "teach": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/teach/SKILL.md",
+      "computedHash": "6d2dbe5e03084cf26fef66b535127b36cd1bcbe9478e26b0626029cd51dc2259"
+    },
+    "writing-great-skills": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/writing-great-skills/SKILL.md",
+      "computedHash": "7c6ba7ec25bb2c0e173c52cdc2da878aef0b083ec19a9c1799934e480c8833cc"
     }
   }
 }

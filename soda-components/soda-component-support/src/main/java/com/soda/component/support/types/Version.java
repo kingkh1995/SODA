@@ -7,10 +7,8 @@ import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.experimental.Accessors;
 
-import java.io.Serial;
 
 /**
  * 乐观锁版本号 DP — 不可变、自校验、可比较、带缓存。
@@ -24,12 +22,9 @@ import java.io.Serial;
  * @see Type
  * @see TypeConfig
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode
 @Accessors(fluent = true)
 public final class Version implements Type, Comparable<Version> {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     /** 缓存内部类 — 通过 SPI 确定上限。至少 99。 */
     private static class Cache {
@@ -46,9 +41,6 @@ public final class Version implements Type, Comparable<Version> {
     /** 初始版本号（0）。 */
     public static final Version PRIMARY = Cache.INSTANCES[0];
 
-    @Getter
-    @JsonValue
-    @EqualsAndHashCode.Include
     private final int value;
 
     private Version(int value) {
@@ -56,8 +48,13 @@ public final class Version implements Type, Comparable<Version> {
         this.value = value;
     }
 
+    @JsonValue
+    public int value() {
+        return this.value;
+    }
+
     /** 从可靠输入构造。缓存范围内的值返回缓存实例。 */
-    @JsonCreator
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Version of(int value) {
         if (0 <= value && value < Cache.INSTANCES.length) {
             return Cache.INSTANCES[value];

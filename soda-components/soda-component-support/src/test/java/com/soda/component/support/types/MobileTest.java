@@ -22,9 +22,8 @@ class MobileTest {
     }
 
     @Test
-    void constructor_trimmed() {
-        var m = new Mobile("  " + VALID_MOBILE + "  ");
-        assertEquals(VALID_MOBILE, m.value());
+    void constructor_whitespaceAround_throws() {
+        assertThrows(IllegalArgumentException.class, () -> new Mobile("  " + VALID_MOBILE + "  "));
     }
 
     @ParameterizedTest
@@ -45,12 +44,6 @@ class MobileTest {
         assertNotEquals(new Mobile("13800138000"), new Mobile("13900139000"));
     }
 
-    @Test
-    void compareTo_delegatesToStringCompare() {
-        assertTrue(new Mobile("13800000001").compareTo(new Mobile("13800000002")) < 0);
-        assertTrue(new Mobile("13800000002").compareTo(new Mobile("13800000001")) > 0);
-        assertEquals(0, new Mobile("13800000001").compareTo(new Mobile("13800000001")));
-    }
 
     @Test
     void jackson_serializeDeserialize() throws Exception {

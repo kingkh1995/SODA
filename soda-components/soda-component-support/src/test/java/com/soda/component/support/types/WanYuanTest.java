@@ -14,66 +14,65 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * {@link WanYuan} behavior tests.
  * <p>
- * Tests verify through public API only — constructor, {@code fromYuan()},
- * {@code toYuan()}, {@code compareTo()}, and Jackson round-trip.
+ * Tests verify through public API only — {@code of()}, {@code fromYuan()},
+ * {@code toYuan()}, and Jackson round-trip.
  */
 class WanYuanTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— constructor (primary entry) ———
+    // ——— of (primary entry) ———
 
     @Test
-    void constructor_validValue_createsWanYuan() {
-        var amount = new WanYuan(new BigDecimal("1.50"));
-        assertEquals(0, new BigDecimal("1.5").compareTo(amount.value()));
+    void of_validValue_createsWanYuan() {
+        var amount = WanYuan.of("1.50");
+        assertEquals("1.50", amount.value());
+        assertEquals(0, new BigDecimal("1.5").compareTo(amount.bigDecimalValue()));
     }
 
     @Test
-    void constructor_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new WanYuan(null));
+    void of_null_throws() {
+        assertThrows(IllegalArgumentException.class, () -> WanYuan.of(null));
     }
 
     @Test
-    void constructor_negative_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new WanYuan(new BigDecimal("-1")));
+    void of_negative_accepts() {
+        var amount = WanYuan.of("-1");
+        assertEquals("-1.00", amount.value());
     }
 
     @Test
-    void constructor_scaleExceedsMax_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new WanYuan(new BigDecimal("1.234")));
+    void of_scaleAboveMax_throws() {
+        assertThrows(IllegalArgumentException.class, () -> WanYuan.of("1.234"));
     }
 
     @Test
-    void constructor_zero_isValid() {
-        var amount = new WanYuan(BigDecimal.ZERO);
-        assertEquals(0, BigDecimal.ZERO.compareTo(amount.value()));
-    }
-
-    // ——— parse(String) ———
-
-    @Test
-    void parse_validString_createsWanYuan() {
-        var amount = WanYuan.parse("1.5");
-        assertEquals(0, new BigDecimal("1.5").compareTo(amount.value()));
+    void of_trailingZeros_preserved() {
+        // "1.50" → toPlainString "1.50"
+        var amount = WanYuan.of("1.50");
+        assertEquals("1.50", amount.value());
     }
 
     @Test
-    void parse_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> WanYuan.parse(null));
+    void of_negativeScale_normalized() {
+        // 1E+2 (scale -2) → normalized to 100.00 (scale 2)
+        var amount = WanYuan.of("1E+2");
+        assertEquals("100.00", amount.value());
     }
 
     @Test
-    void parse_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> WanYuan.parse("not-a-number"));
+    void of_deserializesFromString() {
+        // This tests that a JSON string input round-trips through of(String)
+        var amount = WanYuan.of("123.45");
+        assertEquals("123.45", amount.value());
     }
 
-    // ——— fromYuan / toYuan ———
+    // ——— fromYuan ———
 
     @Test
-    void fromYuan_15000yuan_is1dot5WanYuan() {
+    void fromYuan_convertsCorrectly() {
         var amount = WanYuan.fromYuan(new BigDecimal("15000"));
-        assertEquals(0, new BigDecimal("1.5").compareTo(amount.value()));
+        assertEquals("1.50", amount.value());
     }
 
     @Test
@@ -82,63 +81,54 @@ class WanYuanTest {
     }
 
     @Test
-    void fromYuan_negative_throws() {
-        assertThrows(IllegalArgumentException.class, () -> WanYuan.fromYuan(new BigDecimal("-1")));
+    void fromYuan_negative_accepts() {
+        var amount = WanYuan.fromYuan(new BigDecimal("-5000"));
+        assertEquals("-0.50", amount.value());
     }
 
     @Test
-    void toYuan_1dot5WanYuan_is15000yuan() {
-        var amount = new WanYuan(new BigDecimal("1.5"));
-        assertEquals(0, new BigDecimal("15000").compareTo(amount.toYuan()));
+    void fromYuan_withRoundingMode_roundsAsSpecified() {
+        // 1元 → 0.0001万元，HALF_UP 舍入到2位 = 0.00
+        assertEquals("0.00", WanYuan.fromYuan(new BigDecimal("1"), java.math.RoundingMode.HALF_UP).value());
+        // 50元 → 0.005万元，HALF_UP 舍入到2位 = 0.01
+        assertEquals("0.01", WanYuan.fromYuan(new BigDecimal("50"), java.math.RoundingMode.HALF_UP).value());
+        // 49元 → 0.0049万元，HALF_DOWN 舍入到2位 = 0.00
+        assertEquals("0.00", WanYuan.fromYuan(new BigDecimal("49"), java.math.RoundingMode.HALF_DOWN).value());
     }
 
-    @Test
-    void toYuan_zero() {
-        var amount = new WanYuan(BigDecimal.ZERO);
-        assertEquals(0, BigDecimal.ZERO.compareTo(amount.toYuan()));
-    }
+    // ——— toYuan ———
 
     @Test
-    void fromYuan_toYuan_roundtrip() {
-        var original = new BigDecimal("12300");
+    void toYuan_convertsCorrectly() {
         assertEquals(
                 0,
-                WanYuan.fromYuan(original).toYuan().compareTo(original)
+                new BigDecimal("10000").compareTo(WanYuan.of("1").toYuan())
         );
     }
 
-    // ——— equals / hashCode (record contract) ———
+    // ——— equals / hashCode ———
 
     @Test
     void equal_whenSameValue() {
         assertEquals(
-                new WanYuan(new BigDecimal("1.5")),
-                new WanYuan(new BigDecimal("1.50"))
+                WanYuan.of("1"),
+                WanYuan.of("1")
         );
     }
 
     @Test
     void notEqual_whenDifferentValue() {
         assertNotEquals(
-                new WanYuan(new BigDecimal("1")),
-                new WanYuan(new BigDecimal("2"))
+                WanYuan.of("1"),
+                WanYuan.of("2")
         );
-    }
-
-    // ——— compareTo ———
-
-    @Test
-    void compareTo_byValue() {
-        assertTrue(new WanYuan(new BigDecimal("1")).compareTo(new WanYuan(new BigDecimal("2"))) < 0);
-        assertTrue(new WanYuan(new BigDecimal("5")).compareTo(new WanYuan(new BigDecimal("3"))) > 0);
-        assertEquals(0, new WanYuan(new BigDecimal("4")).compareTo(new WanYuan(new BigDecimal("4"))));
     }
 
     // ——— toString ———
 
     @Test
     void toString_containsValue() {
-        var s = new WanYuan(new BigDecimal("1.5")).toString();
+        var s = WanYuan.of("1.5").toString();
         assertTrue(s.contains("1.5"), "toString should expose value: " + s);
     }
 
@@ -146,13 +136,27 @@ class WanYuanTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var original = new WanYuan(new BigDecimal("1.5"));
+        var original = WanYuan.of("1.5");
         JacksonTestUtil.assertRoundTrip(original, WanYuan.class);
     }
 
     @Test
-    void jackson_serializesAsBareNumber() throws Exception {
-        var json = MAPPER.writeValueAsString(new WanYuan(new BigDecimal("1.5")));
-        assertEquals("1.5", json);
+    void jackson_serializesAsBareString() throws Exception {
+        var json = MAPPER.writeValueAsString(WanYuan.of("1.5"));
+        assertEquals("\"1.50\"", json);
+    }
+
+    // ——— toPlainText ———
+
+    @Test
+    void toPlainText_positive() {
+        var w = WanYuan.of("111.11");
+        assertEquals("111.11万元", w.toPlainText());
+    }
+
+    @Test
+    void toPlainText_negative() {
+        var w = WanYuan.of("-50.00");
+        assertEquals("-50.00万元", w.toPlainText());
     }
 }

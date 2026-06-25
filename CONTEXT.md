@@ -117,14 +117,17 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 短信内容 DP（{@code support.types.SmsContent}），实现 {@link Type}。最长 70 字符（参照主流短信平台单条上限）。
 ### EmailContent
 邮件内容 DP（{@code support.types.EmailContent}），实现 {@link Type}。由 {@code subject}（最长 255 字符）和 {@code body} 组成。
-### CodeLength
-验证码长度 DP（{@code support.types.CodeLength}），实现 {@link Type}。取值范围 [1, 100]。
-### CodeValue
-验证码值 DP（{@code support.types.CodeValue}），实现 {@link Type}。仅限字母数字。
-### RawPassword
-原始密码 DP（{@code support.types.RawPassword}），实现 {@link Type}。非 blank，不校验格式（密码策略在上层决定）。
-### PasswordHash
-密码哈希 DP（{@code support.types.PasswordHash}），实现 {@link Type}。校验 BCrypt 哈希格式。
+### PositiveInt
+正整数 DP（{@code support.types.PositiveInt}），实现 {@link Type}，{@link Comparable}。值 >= 1。可用于长度、数量、序号等通用场景。
+### RandomString
+随机字符串 DP（{@code support.types.RandomString}），实现 {@link Type}。由 {@link RandomStringGenerator} 生成。字符集和随机源由基础设施层决定，领域层只关心长度。
+### Secret
+秘密值基类（{@code domain.Secret}），{@link Type} 的子类型，用于敏感数据。自动脱敏 toString（{@code Xxx[***]}），通过私有构造器 + 非标准访问器命名拒绝序列化。子类：{@link RawCredential}、{@code Password}（拟）、{@code ApiKey}（拟）。
+
+### RawCredential
+原始凭证（{@code support.types.RawCredential}），继承 {@link Secret}。通用载体，不绑定算法，不实现 value-based identity。用于传递密码、API Key、Token 等长期有效凭证的原始值给 {@link CredentialHasher}。不可 JSON 序列化/反序列化。
+### CredentialHash
+凭证哈希 DP（{@code support.types.CredentialHash}），实现 {@link Type}。算法无关，不校验格式。仅约束非 blank。
 
 ### Cacheable
 不是领域层概念，而是应用层（Application）的缓存关注点。通过 Spring `@Cacheable` 在 ApplicationService 上声明缓存区域和 key，领域层零缓存感知。不允许在 Entity / Aggregate 上添加与缓存相关的接口或基类方法。
@@ -146,10 +149,10 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 提供 `save(T)`, `remove(T)`, `findById(ID)`, `findAllById(Iterable<ID>)` 四个方法。
 `save` 返回 `ID`（可能新生成），`remove` 接收实体。ApplicationService 先通过 Gateway 持久化，再调用 {@link EventSource#flushEvents} 取出事件并通过 {@link DomainEventBus#fireAll} 发送。
 
-### PasswordEncoder (Gateway)
-密码编码器契约（{@code support.gateway.PasswordEncoder}），继承 {@link Gateway}。提供 {@code encode(RawPassword)} → {@link PasswordHash} 和 {@code matches(RawPassword, PasswordHash)}。实现层对接 Spring Security 的 BCryptPasswordEncoder。
-### CodeGenerator (Gateway)
-验证码/令牌生成器契约（{@code support.gateway.CodeGenerator}），继承 {@link Gateway}。提供 {@code generate(CodeLength)} → {@link CodeValue}。实现层提供具体的生成算法。
+### CredentialHasher (Gateway)
+凭证哈希器契约（{@code support.gateway.CredentialHasher}），继承 {@link Gateway}。提供 {@code hash(RawCredential)} → {@link CredentialHash} 和 {@code matches(RawCredential, CredentialHash)}。算法无关，实现层可对接 BCrypt、Argon2、SCrypt 等。
+### RandomStringGenerator (Gateway)
+随机字符串生成器契约（{@code support.gateway.RandomStringGenerator}），继承 {@link Gateway}。提供 {@code generate(PositiveInt)} → {@link RandomString}。实现层决定字符集和随机源。
 ### SmsSender (Gateway)
 短信发送器契约（{@code support.gateway.SmsSender}），继承 {@link Gateway}。提供 {@code send(Mobile, SmsContent)}。实现层对接短信渠道（阿里云、腾讯云等）。
 ### EmailSender (Gateway)
@@ -200,8 +203,7 @@ UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifi
 验证码通过 {@code replaceCode(VerificationCode)} 注入，由 ApplicationService 在外部生成验证码并调用发送器 Gateway 发送。验证码策略（长度、过期时间）由 {@link VerificationCodePolicy} DP 表达，构造时可选传入，各子类持有静态默认值。
 提供静态 Predicate 常量 {@code ACTIVE} 和工厂方法 {@code ofType(AuthAccountType)}，可与 {@code findAccount(Predicate)} 组合使用。
 
-### PasswordAuthAccount
-密码认证账号（{@code soda-user.domain.PasswordAuthAccount}），{@link AuthAccount} 子类。{@code accountId = PasswordAuthAccountId.from(UserId)}。持有一个不可变的 {@code passwordHash}（BCrypt）。提供 {@code verify()} 和 {@code changePassword()} 业务方法。
+密码认证账号（{@code soda-user.domain.PasswordAuthAccount}），{@link AuthAccount} 子类。{@code accountId = PasswordAuthAccountId.from(UserId)}。持有一个不可变的 {@code passwordHash}（{@link CredentialHash}）。提供 {@code verify(RawCredential, CredentialHasher)} 和 {@code changePassword(RawCredential, CredentialHasher)} 业务方法。
 
 ### SmsAuthAccount
 短信认证账号（{@code soda-user.domain.SmsAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SmsAuthAccountId.from(Mobile)}。持有一个可选的 {@link VerificationCode} DP，通过 {@code replaceCode(VerificationCode)} 注入。提供 {@code verifyCode()}、{@code useCode()}、{@code getPolicy()} 方法。

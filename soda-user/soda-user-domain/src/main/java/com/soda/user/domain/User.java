@@ -3,10 +3,11 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
-import com.soda.component.support.gateway.PasswordEncoder;
+import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.Mobile;
-import com.soda.component.support.types.RawPassword;
+import com.soda.component.support.types.RawCredential;
+import com.soda.component.support.types.RandomString;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.UserStatus;
@@ -17,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
@@ -31,9 +33,9 @@ import java.util.function.Predicate;
 @Getter
 public class User extends Aggregate<UserId> {
 
-    private Username username;
-    private Nickname nickname;
-    private UserStatus status;
+    @Getter private Username username;
+    @Getter private Nickname nickname;
+    @Getter private UserStatus status;
     private @Nullable Mobile mobile;
     private @Nullable Email email;
     private @Nullable Sex sex;
@@ -105,15 +107,19 @@ public class User extends Aggregate<UserId> {
         return accounts != null ? List.copyOf(accounts) : List.of();
     }
 
+    public Optional<Mobile> getMobile() { return Optional.ofNullable(mobile); }
+    public Optional<Email> getEmail() { return Optional.ofNullable(email); }
+    public Optional<Sex> getSex() { return Optional.ofNullable(sex); }
+    public Optional<Avatar> getAvatar() { return Optional.ofNullable(avatar); }
+
     /** 查找第一个匹配条件的账户。 */
-    public @Nullable AuthAccount<?> findAccount(Predicate<AuthAccount<?>> filter) {
+    public Optional<AuthAccount<?>> findAccount(Predicate<AuthAccount<?>> filter) {
         if (accounts == null) {
-            return null;
+            return Optional.empty();
         }
         return accounts.stream()
                 .filter(filter)
-                .findFirst()
-                .orElse(null);
+                .findFirst();
     }
 
     // ─── queries ───
@@ -123,22 +129,21 @@ public class User extends Aggregate<UserId> {
      *
      * @param type            认证类型
      * @param rawCredential   原始凭证串（密码 / 验证码）
-     * @param passwordEncoder 密码编码器（仅用于 PasswordAuthAccount 验证）
+     * @param credentialHasher 凭证哈希器（仅用于 PasswordAuthAccount 验证）
      * @return 验证成功返回 true
      */
-    public boolean authenticate(AuthAccountType type, String rawCredential, PasswordEncoder passwordEncoder) {
+    public boolean authenticate(AuthAccountType type, String rawCredential, CredentialHasher credentialHasher) {
         Objects.requireNonNull(type);
         Objects.requireNonNull(rawCredential);
-        Objects.requireNonNull(passwordEncoder);
-        var account = findAccount(AuthAccount.ofType(type).and(AuthAccount.ACTIVE));
-        if (account == null) {
-            return false;
-        }
-        return switch (account) {
-            case PasswordAuthAccount pa -> pa.verify(new RawPassword(rawCredential), passwordEncoder);
-            case SmsAuthAccount sa -> sa.verifyCode(rawCredential);
-            case EmailAuthAccount ea -> ea.verifyCode(rawCredential);
-            case SocialAuthAccount sa -> false;
-        };
-    }
+        Objects.requireNonNull(credentialHasher);
+        return findAccount(AuthAccount.ofType(type).and(AuthAccount.ACTIVE))
+                .map(account -> switch (account) {
+                    case PasswordAuthAccount pa -> pa.verify(new RawCredential(rawCredential), credentialHasher);
+                    case SmsAuthAccount sa -> sa.verifyCode(new RandomString(rawCredential));
+                    case EmailAuthAccount ea -> ea.verifyCode(new RandomString(rawCredential));
+                    case SocialAuthAccount sa -> false;
+                    default -> false;
+                })
+                .orElse(false);
+}
 }

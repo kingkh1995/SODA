@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 import java.math.BigDecimal;
 
 import static com.soda.component.support.util.IllegalArgumentExceptions.forInvalidFormat;
-import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongFormat;
 import static com.soda.component.support.util.IllegalArgumentExceptions.forWrongType;
 
 /**
@@ -30,7 +29,7 @@ public final class ParseUtils {
                 try {
                     yield Integer.parseInt(s.trim());
                 } catch (NumberFormatException e) {
-                    throw forWrongFormat(s);
+                    throw forInvalidFormat(s);
                 }
             }
             default -> throw forWrongType(EXPECTED_NUM, o.getClass());
@@ -62,7 +61,7 @@ public final class ParseUtils {
                 try {
                     yield Long.parseLong(s.trim());
                 } catch (NumberFormatException e) {
-                    throw forWrongFormat(s);
+                    throw forInvalidFormat(s);
                 }
             }
             default -> throw forWrongType(EXPECTED_NUM, o.getClass());
@@ -82,14 +81,14 @@ public final class ParseUtils {
                 try {
                     yield new BigDecimal(n.toString());
                 } catch (NumberFormatException e) {
-                    throw forWrongFormat(n.toString());
+                    throw forInvalidFormat(n.toString());
                 }
             }
             case String s -> {
                 try {
                     yield new BigDecimal(s.trim());
                 } catch (NumberFormatException e) {
-                    throw forWrongFormat(s);
+                    throw forInvalidFormat(s);
                 }
             }
             default -> throw forWrongType(EXPECTED_NUM, o.getClass());

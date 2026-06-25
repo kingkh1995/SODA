@@ -1,7 +1,5 @@
 package com.soda.component.domain;
 
-import java.io.Serializable;
-
 /**
  * 所有领域原语（Domain Primitive）的根标记接口。
  * <p>
@@ -10,13 +8,15 @@ import java.io.Serializable;
  * <ul>
  *   <li><b>不可变</b> — 所有字段均为 {@code final}</li>
  *   <li><b>自校验</b> — 构造函数中完成校验，非法状态不可表示</li>
- *   <li><b>可序列化</b> — 实现 {@link Serializable}，用于分布式 / CQRS 场景</li>
- *   <li><b>可比较</b> — 每个 DP 自行实现 {@link Comparable}{@code <Self>} 提供类型安全比较</li>
+ *   <li><b>value-based identity</b> — {@link Object#equals(Object)}/{@link Object#hashCode()} 基于规范值字段</li>
  * </ul>
+ * <p>
+ * DP 不默认实现 {@link java.io.Serializable}。需要 JDK 序列化的 DP 显式实现。
+ * 是否实现 {@link Comparable} 按业务语义决定（只在有自然顺序时实现）。
  * <p>
  * 参考 kk-ddd 的 {@code Type} 接口设计。
  *
  * @see Identifier
  */
-public interface Type extends Serializable {
+public interface Type {
 }

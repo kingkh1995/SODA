@@ -1,10 +1,10 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
 import com.soda.component.support.util.ValidateUtils;
 
-import java.io.Serial;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -22,15 +22,13 @@ import java.util.regex.Pattern;
  */
 public record UUId(@JsonValue String value) implements Identifier<String>, Comparable<UUId> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public UUId {
         ValidateUtils.nonBlank(value);
-        value = value.trim().toLowerCase(Locale.ENGLISH);
+        value = value.toLowerCase(Locale.ROOT);
         ValidateUtils.matches(UUID_PATTERN, value);
     }
 

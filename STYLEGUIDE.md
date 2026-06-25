@@ -7,24 +7,20 @@
 | 场景 | 优先使用 | 禁止 |
 | 不可变值对象（DP、DTO） | `record`（JDK 16+） | 手写 class + `@EqualsAndHashCode` + `toString()` |
 | 空值校验 + 值归一化 | record 紧凑构造 | 在工厂方法中校验 |
-| 工厂方法（DP） | 单一 `valueOf(Object)` 委托 `ParseUtils`（含 null 检查）| 多个重载或内联类型分发 |
+| 工厂方法（DP） | `of`（参数即值）、`from`（跨类型转换）、`parse(String)`（字符串解析） | `valueOf(Object)`（已移除） |
 | 局部变量类型 | `var`（JDK 10+） | 显式写冗长类型 |
-| 序列化相关成员 | `@Serial`（JDK 14+） | 不加注解 |
-| 异常消息拼接 | `var sb = new StringBuilder(...)` | 省略 `var` |
+| DP 序列化 | `Serializable` + `@Serial` + `serialVersionUID`（仅在明确需要时） | 无 `implements Serializable` 时留 `@Serial serialVersionUID` |
 ```java
-// ✅ 推荐
+// ✅ 推荐 — record DP，不显式实现 Serializable
 public record LongId(@JsonValue long value) implements Identifier<Long>, Comparable<LongId> {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     public LongId {                                          // 紧凑构造：校验
         ValidateUtils.minValue(0, false, value);
     }
 
-    /** 从不可靠输入构造，null 时抛出 IllegalArgumentException。 */
-    public static LongId valueOf(Object value) {
-        return new LongId(ParseUtils.parseLong(value));      // ParseUtils 处理 null + 类型转换
+    /** 从字符串解析构造，格式同 {@link ParseUtils#parseLong}。 */
+    public static LongId parse(String s) {
+        return new LongId(ParseUtils.parseLong(s));
     }
 
     @Override
@@ -36,6 +32,22 @@ public record LongId(@JsonValue long value) implements Identifier<Long>, Compara
     public int compareTo(LongId other) {
         return Long.compare(this.value, other.value);
     }
+}
+
+// ✅ 推荐 — class DP，显式实现 Serializable（仅在必要时）
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Accessors(fluent = true)
+public final class Version implements Type, Comparable<Version>, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    @Getter
+    @JsonValue
+    @EqualsAndHashCode.Include
+    private final int value;
+
+    public static Version of(int value) { ... }
 }
 ```
 ### 校验方法参数顺序

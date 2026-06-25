@@ -26,6 +26,11 @@ public interface TypeConfigProvider {
         return 255;
     }
 
+
+    /** 正整数缓存上限（含）。默认 100，至少 100。 */
+    default int positiveIntCacheHigh() {
+        return 100;
+    }
     /** 验证码最小长度。默认 1，至少 1。 */
     default int codeLengthMin() {
         return 1;

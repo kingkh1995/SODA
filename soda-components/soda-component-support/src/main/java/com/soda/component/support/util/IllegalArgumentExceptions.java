@@ -24,9 +24,6 @@ public final class IllegalArgumentExceptions {
         return new IllegalArgumentException("expected " + expected + " but got: " + actual.getName());
     }
 
-    public static IllegalArgumentException forWrongFormat(String value) {
-        return new IllegalArgumentException("invalid number format: '" + value + "'");
-    }
 
     public static IllegalArgumentException forInvalidFormat(String value) {
         return new IllegalArgumentException("invalid format: '" + value + "'");
