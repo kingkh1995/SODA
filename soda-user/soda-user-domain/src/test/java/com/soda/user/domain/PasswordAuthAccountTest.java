@@ -11,6 +11,7 @@ import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link PasswordAuthAccount} 单元测试。
@@ -88,5 +89,21 @@ class PasswordAuthAccountTest {
         assertEquals(o.getAuthAccountType(), r.getAuthAccountType());
         assertEquals(o.isActive(), r.isActive());
         assertEquals(o.getPasswordHash(), r.getPasswordHash());
+    }
+
+    // ——— identity ———
+
+    @Test
+    void notEqual_whenDifferentInstance() {
+        // Entities use reference identity — same fields ≠ equal
+        var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
+        var b = new PasswordAuthAccount(ID, Active.TRUE, HASH);
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void toString_containsClassName() {
+        var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
+        assertTrue(a.toString().contains("PasswordAuthAccount@"));
     }
 }

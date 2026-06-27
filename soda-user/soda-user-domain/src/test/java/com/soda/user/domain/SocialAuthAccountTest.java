@@ -119,4 +119,20 @@ class SocialAuthAccountTest {
         assertEquals(original.getAuthAccountType(), restored.getAuthAccountType());
         assertEquals(original.isActive(), restored.isActive());
     }
+
+    // ——— identity ———
+
+    @Test
+    void notEqual_whenDifferentInstance() {
+        // Entities use reference identity — same fields ≠ equal
+        var a = new SocialAuthAccount(ID, Active.TRUE);
+        var b = new SocialAuthAccount(ID, Active.TRUE);
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void toString_containsClassName() {
+        var a = new SocialAuthAccount(ID, Active.TRUE);
+        assertTrue(a.toString().contains("SocialAuthAccount@"));
+    }
 }

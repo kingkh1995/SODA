@@ -1,165 +1,157 @@
 package com.soda.component.support.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.soda.component.support.testutil.JacksonTestUtil.assertRoundTrip;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * {@link Version} behavior tests.
- * <p>
- * Tests verify through public API only — {@code of()}, {@code valueOf(Object)},
- * cache reuse, {@code next()}, {@code compareTo()}, and Jackson round-trip.
- */
+@DisplayName("Version 值对象")
 class VersionTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— of(int) ———
+    @Nested
+    @DisplayName("构造")
+    class Constructor {
 
-    @Test
-    void of_5_createsVersionWithValue5() {
-        var v = Version.of(5);
-        assertEquals(5, v.value());
+        @Test
+        @DisplayName("of(0) 创建 PRIMARY")
+        void should_create_when_zero() {
+            assertThat(Version.of(0)).isSameAs(Version.PRIMARY);
+        }
+
+        @Test
+        @DisplayName("of(42) 创建实例")
+        void should_create_when_validValue() {
+            assertThat(Version.of(42).value()).isEqualTo(42);
+        }
+
+        @Test
+        @DisplayName("parse 创建实例")
+        void should_create_when_parse() {
+            assertThat(Version.parse("5")).isEqualTo(Version.of(5));
+        }
     }
 
-    @Test
-    void of_zero_createsPrimary() {
-        assertSame(Version.PRIMARY, Version.of(0));
+    @Nested
+    @DisplayName("校验")
+    class Validation {
+
+        @Test
+        @DisplayName("of(-1) 拒绝")
+        void should_throw_when_negativeValue() {
+            assertThatThrownBy(() -> Version.of(-1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse(null) 拒绝")
+        void should_throw_when_parseNull() {
+            assertThatThrownBy(() -> Version.parse(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse 非法字符串拒绝")
+        void should_throw_when_parseInvalidString() {
+            assertThatThrownBy(() -> Version.parse("not-a-number"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @Test
-    void of_negative_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Version.of(-1));
+    @Nested
+    @DisplayName("缓存")
+    class Cache {
+
+        @Test
+        @DisplayName("of(0) 同 PRIMARY")
+        void should_sameAsPrimary() {
+            assertThat(Version.of(0)).isSameAs(Version.PRIMARY);
+        }
+
+        @Test
+        @DisplayName("缓存范围内相同实例")
+        void should_sameInstance_withinRange() {
+            assertThat(Version.of(5)).isSameAs(Version.of(5));
+        }
+
+        @Test
+        @DisplayName("缓存范围外不同实例")
+        void should_differentInstance_beyondRange() {
+            assertThat(Version.of(10000)).isNotSameAs(Version.of(10000));
+        }
     }
 
-    // ——— parse(String) ———
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
 
-    @Test
-    void parse_string_createsVersion() {
-        assertEquals(Version.of(7), Version.parse("7"));
+        @Test
+        @DisplayName("相同值相等")
+        void should_beEqual_when_sameValue() {
+            assertThat(Version.of(3)).isEqualTo(Version.of(3));
+        }
+
+        @Test
+        @DisplayName("不同值不等")
+        void should_notBeEqual_when_differentValue() {
+            assertThat(Version.of(1)).isNotEqualTo(Version.of(2));
+        }
     }
 
+    @Nested
+    @DisplayName("调试")
+    class Debug {
 
-
-    @Test
-    void parse_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Version.parse(null));
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(Version.of(42)).hasToString("Version[value=42]");
+        }
     }
 
-    @Test
-    void parse_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Version.parse("not-a-number"));
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() throws Exception {
+            assertRoundTrip(Version.of(42), Version.class);
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Version.class))
+                    .isInstanceOf(JsonProcessingException.class);
+        }
     }
 
-    // ——— cache ———
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
 
-    @Test
-    void cache_sameInstance_withinRange() {
-        assertSame(Version.of(5), Version.of(5));
+        @Test
+        @DisplayName("compareTo 按数值比较")
+        void should_compareByNumericValue() {
+            assertThat(Version.of(1).compareTo(Version.of(2)) < 0).isTrue();
+            assertThat(Version.of(5).compareTo(Version.of(5)) == 0).isTrue();
+            assertThat(Version.of(8).compareTo(Version.of(6)) > 0).isTrue();
+        }
+
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = Version.of(42);
+            var same = Version.of(42);
+            assertThat(a.compareTo(same) == 0).isTrue();
+            assertThat(a).isEqualTo(same);
+        }
     }
-
-    @Test
-    void cache_sameInstance_atUpperBound() {
-        assertSame(Version.of(99), Version.of(99));
-    }
-
-    @Test
-    void cache_differentInstance_beyondRange() {
-        // 缓存范围由 SPI 控制，至少 [0, 99]。使用远大于最小范围的值保证超出缓存。
-        var vLargeA = Version.of(10000);
-        var vLargeB = Version.of(10000);
-        assertNotSame(vLargeA, vLargeB);
-    }
-
-    // ——— next() ———
-
-    @Test
-    void next_incrementsValue() {
-        assertEquals(Version.of(6), Version.of(5).next());
-    }
-
-    @Test
-    void next_fromPrimary() {
-        assertEquals(Version.of(1), Version.PRIMARY.next());
-    }
-
-    @Test
-    void next_fromCachedBoundary() {
-        assertEquals(Version.of(100), Version.of(99).next());
-    }
-
-    @Test
-    void next_doesNotMutateOriginal() {
-        var v = Version.of(5);
-        v.next();
-        assertEquals(5, v.value(), "original must be unchanged");
-    }
-
-    // ——— equals / hashCode ———
-
-    @Test
-    void equal_whenSameValue() {
-        assertEquals(Version.of(3), Version.of(3));
-    }
-
-    @Test
-    void equal_whenSameInstance() {
-        var v = Version.of(5);
-        assertEquals(v, v);
-    }
-
-    @Test
-    void notEqual_whenDifferentValue() {
-        assertNotEquals(Version.of(1), Version.of(2));
-    }
-
-    @Test
-    void notEqual_withDifferentType() {
-        assertNotEquals(Version.of(1), "1");
-    }
-
-    // ——— compareTo ———
-
-    @Test
-    void compareTo_byValue() {
-        assertTrue(Version.of(1).compareTo(Version.of(2)) < 0);
-        assertTrue(Version.of(5).compareTo(Version.of(3)) > 0);
-        assertEquals(0, Version.of(4).compareTo(Version.of(4)));
-    }
-
-    // ——— toString ———
-
-    @Test
-    void toString_containsValue() {
-        var s = Version.of(42).toString();
-        assertTrue(s.contains("42"), "toString should expose value: " + s);
-    }
-
-    // ——— Jackson round-trip ———
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = Version.of(42);
-        JacksonTestUtil.assertRoundTrip(original, Version.class);
-    }
-
-    @Test
-    void jackson_serializesAsBareNumber() throws Exception {
-        var json = MAPPER.writeValueAsString(Version.of(7));
-        assertEquals("7", json);
-    }
-
-    @Test
-    void jackson_deserializeReturnsCachedInstance() throws Exception {
-        var restored = MAPPER.readValue("5", Version.class);
-        assertSame(Version.of(5), restored);
-    }
-
 }

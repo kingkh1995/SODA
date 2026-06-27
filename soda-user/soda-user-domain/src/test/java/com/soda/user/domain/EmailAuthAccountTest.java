@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link EmailAuthAccount} 单元测试。
@@ -183,5 +184,21 @@ class EmailAuthAccountTest {
         assertEquals(original.getAuthAccountType(), restored.getAuthAccountType());
         assertEquals(original.isActive(), restored.isActive());
         assertEquals(original.getEmail(), restored.getEmail());
+    }
+
+    // ——— identity ———
+
+    @Test
+    void notEqual_whenDifferentInstance() {
+        // Entities use reference identity — same fields ≠ equal
+        var a = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        var b = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void toString_containsClassName() {
+        var a = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        assertTrue(a.toString().contains("EmailAuthAccount@"));
     }
 }

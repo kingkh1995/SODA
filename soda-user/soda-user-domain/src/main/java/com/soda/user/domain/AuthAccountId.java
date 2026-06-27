@@ -17,7 +17,7 @@ import lombok.experimental.Accessors;
  * 序列化格式：{@code "{AuthAccountType短名}:{业务键}"}（如 {@code "P:42"}、{@code "S:13800138000"}）。
  * 反序列化由各子类的 {@code of(String)} 完成，Jackson 需声明具体子类类型。
  * <p>
- * 子类可通过 {@link #requirePrefixed(String, String)} 提取前缀校验逻辑。
+ * 子类可通过 {@link #of(String)} 传入带前缀的字符串完成构造。
  *
  * @see PasswordAuthAccountId
  * @see SmsAuthAccountId

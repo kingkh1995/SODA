@@ -641,9 +641,9 @@ public int compareTo(UUId other) {
     return this.value.compareTo(other.value);
 }
 
-// 基本类型单字段（如 CodeLength）
+// 基本类型单字段（如 Version）
 @Override
-public int compareTo(CodeLength other) {
+public int compareTo(Version other) {
     return Integer.compare(this.value, other.value);
 }
 
@@ -664,6 +664,5 @@ public int compareTo(Xxx other) {
 |---|---|---|---|---|
 | `LongId` | record | ✅ | 无 | 不显式 |
 | `UUId` | record | ✅ | 无 | 不显式 |
-| `CodeLength` | record | ✅ | 无 | 不显式 |
 | `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式 |
 | `Version` | class | ✅ | `[0, 99]` | ✅ 显式 |

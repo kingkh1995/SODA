@@ -1,136 +1,182 @@
 package com.soda.component.support.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * {@link Email} behavior tests.
- * <p>
- * Tests verify through public API only — {@code new Email()}, {@code valueOf(Object)},
- * {@code localPart()}, {@code domain()}, {@code compareTo()}, and Jackson round-trip.
- */
+@DisplayName("邮箱值对象")
 class EmailTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— constructor ———
+    @Nested
+    @DisplayName("构造")
+    class Constructor {
 
-    @Test
-    void constructor_validEmail_createsEmail() {
-        var email = new Email("user@example.com");
-        assertEquals("user@example.com", email.value());
+        @Test
+        @DisplayName("合法邮箱创建实例")
+        void should_create_when_validEmail() {
+            var email = new Email("user@example.com");
+            assertThat(email.value()).isEqualTo("user@example.com");
+        }
+
+        @Test
+        @DisplayName("大写归一化为小写")
+        void should_normalizeToLowercase() {
+            var email = new Email("USER@Example.COM");
+            assertThat(email.value()).isEqualTo("user@example.com");
+        }
+
+        @Test
+        @DisplayName("特殊字符邮箱接受")
+        void should_accept_when_validSpecialChars() {
+            var email = new Email("user.name+tag@example.co.uk");
+            assertThat(email.value()).isEqualTo("user.name+tag@example.co.uk");
+        }
     }
 
-    @Test
-    void constructor_normalizedToLowercase() {
-        var email = new Email("USER@Example.COM");
-        assertEquals("user@example.com", email.value());
+    @Nested
+    @DisplayName("校验与异常")
+    class Validation {
+
+        @Test
+        @DisplayName("null 拒绝")
+        void should_throw_when_valueIsNull() {
+            assertThatThrownBy(() -> new Email(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("空白字符串拒绝")
+        void should_throw_when_valueIsBlank() {
+            assertThatThrownBy(() -> new Email("  "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("首尾空白拒绝")
+        void should_throw_when_whitespaceAround() {
+            assertThatThrownBy(() -> new Email("  user@example.com  "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("缺少 @ 符号拒绝")
+        void should_throw_when_noAtSymbol() {
+            assertThatThrownBy(() -> new Email("userexample.com"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("缺少域名拒绝")
+        void should_throw_when_noDomain() {
+            assertThatThrownBy(() -> new Email("user@"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("缺少顶级域名拒绝")
+        void should_throw_when_noTld() {
+            assertThatThrownBy(() -> new Email("user@example"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @Test
-    void constructor_whitespaceAround_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email("  user@example.com  "));
+    @Nested
+    @DisplayName("相等性与 hashCode")
+    class Equality {
+
+        @Test
+        @DisplayName("相同地址相等（忽略大小写）")
+        void should_beEqual_when_sameAddress() {
+            assertThat(new Email("a@b.com")).isEqualTo(new Email("A@B.com"));
+        }
+
+        @Test
+        @DisplayName("不同地址不等")
+        void should_notBeEqual_when_differentAddress() {
+            assertThat(new Email("a@b.com")).isNotEqualTo(new Email("a@c.com"));
+        }
+
+        @Test
+        @DisplayName("hashCode 与 equals 一致")
+        void should_haveConsistentHashCode() {
+            var a = new Email("a@b.com");
+            var b = new Email("a@b.com");
+            assertThat(a).hasSameHashCodeAs(b);
+        }
     }
 
-    @Test
-    void constructor_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email(null));
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new Email("t@t.com")).hasToString("Email[value=t@t.com]");
+        }
     }
 
-    @Test
-    void constructor_blank_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email("  "));
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson 序列化反序列化一致")
+        void should_roundTrip() throws Exception {
+            var original = new Email("jackson@test.org");
+            JacksonTestUtil.assertRoundTrip(original, Email.class);
+        }
+
+        @Test
+        @DisplayName("序列化为裸字符串")
+        void should_serializeAsBareString() throws Exception {
+            var json = MAPPER.writeValueAsString(new Email("bare@test.com"));
+            assertThat(json).isEqualTo("\"bare@test.com\"");
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"invalid-email\"", Email.class))
+                    .isInstanceOf(JsonProcessingException.class);
+        }
     }
 
-    @Test
-    void constructor_noAtSymbol_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email("userexample.com"));
-    }
+    // ——— 业务方法 ———
 
     @Test
-    void constructor_noDomain_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email("user@"));
-    }
-
-    @Test
-    void constructor_noTld_throws() {
-        assertThrows(IllegalArgumentException.class, () -> new Email("user@example"));
-    }
-
-    @Test
-    void constructor_specialChars_acceptsValid() {
-        var email = new Email("user.name+tag@example.co.uk");
-        assertEquals("user.name+tag@example.co.uk", email.value());
-    }
-
-    // ——— localPart() ———
-
-    @Test
-    void localPart_returnsBeforeAt() {
+    @DisplayName("localPart() 返回 @ 前本地部分")
+    void should_returnLocalPart_when_validEmail() {
         var email = new Email("alice@example.com");
-        assertEquals("alice", email.localPart());
+        assertThat(email.localPart()).isEqualTo("alice");
     }
 
     @Test
-    void localPart_withDots() {
+    @DisplayName("localPart() 包含点号")
+    void should_returnLocalPart_when_withDots() {
         var email = new Email("alice.smith@example.com");
-        assertEquals("alice.smith", email.localPart());
+        assertThat(email.localPart()).isEqualTo("alice.smith");
     }
 
-    // ——— domain() ———
-
     @Test
-    void domain_returnsAfterAt() {
+    @DisplayName("domain() 返回 @ 后域名")
+    void should_returnDomain_when_validEmail() {
         var email = new Email("alice@example.com");
-        assertEquals("example.com", email.domain());
+        assertThat(email.domain()).isEqualTo("example.com");
     }
 
     @Test
-    void domain_subdomain() {
+    @DisplayName("domain() 包含子域名")
+    void should_returnDomain_when_subdomain() {
         var email = new Email("alice@mail.example.co.uk");
-        assertEquals("mail.example.co.uk", email.domain());
-    }
-
-    // ——— equals / hashCode (record contract) ———
-
-    @Test
-    void equal_whenSameAddress() {
-        assertEquals(
-                new Email("a@b.com"),
-                new Email("A@B.com")   // normalized to lowercase
-        );
-    }
-
-    @Test
-    void notEqual_whenDifferentAddress() {
-        assertNotEquals(new Email("a@b.com"), new Email("a@c.com"));
-    }
-
-    // ——— toString ———
-
-    @Test
-    void toString_containsValue() {
-        var s = new Email("t@t.com").toString();
-        assertTrue(s.contains("t@t.com"), "toString should expose value: " + s);
-    }
-
-    // ——— Jackson round-trip ———
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = new Email("jackson@test.org");
-        JacksonTestUtil.assertRoundTrip(original, Email.class);
-    }
-
-    @Test
-    void jackson_serializesAsBareString() throws Exception {
-        var json = MAPPER.writeValueAsString(new Email("bare@test.com"));
-        assertEquals("\"bare@test.com\"", json);
+        assertThat(email.domain()).isEqualTo("mail.example.co.uk");
     }
 }

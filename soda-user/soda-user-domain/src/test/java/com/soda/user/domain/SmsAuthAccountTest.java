@@ -14,13 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link SmsAuthAccount} 单元测试。
  * <p>
  * 验证：
  * <ul>
- *   <li>{@link SmsAuthAccount#verifyCode(String)} — 正确 / 错误</li>
+ *   <li>{@link SmsAuthAccount#verifyCode(RandomString)} — 正确 / 错误</li>
  *   <li>{@link SmsAuthAccount#useCode()} — 标记已使用</li>
  *   <li>{@link SmsAuthAccount#replaceCode(VerificationCode)} — 替换验证码</li>
  *   <li>默认策略和类型</li>
@@ -176,5 +177,21 @@ class SmsAuthAccountTest {
         assertEquals(original.getAuthAccountType(), restored.getAuthAccountType());
         assertEquals(original.isActive(), restored.isActive());
         assertEquals(original.getMobile(), restored.getMobile());
+    }
+
+    // ——— identity ———
+
+    @Test
+    void notEqual_whenDifferentInstance() {
+        // Entities use reference identity — same fields ≠ equal
+        var a = new SmsAuthAccount(ID, Active.TRUE, null, null);
+        var b = new SmsAuthAccount(ID, Active.TRUE, null, null);
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void toString_containsClassName() {
+        var a = new SmsAuthAccount(ID, Active.TRUE, null, null);
+        assertTrue(a.toString().contains("SmsAuthAccount@"));
     }
 }

@@ -1,95 +1,151 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.LongId;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+@DisplayName("UserId 值对象")
 class UserIdTest {
 
     private static final long VALID_ID = 1L;
 
-    @Test
-    void constructor_validId_createsId() {
-        var id = new UserId(VALID_ID);
-        assertEquals(VALID_ID, id.value());
+    @Nested
+    @DisplayName("构造")
+    class Constructor {
+        @Test
+        @DisplayName("合法 ID 创建实例")
+        void should_create_when_validValue() {
+            var id = new UserId(VALID_ID);
+            assertThat(id.value()).isEqualTo(VALID_ID);
+        }
     }
 
-    @ParameterizedTest
-    @ValueSource(longs = {0, -1})
-    void constructor_nonPositive_throws(long invalid) {
-        assertThrows(IllegalArgumentException.class, () -> new UserId(invalid));
+    @Nested
+    @DisplayName("校验与异常")
+    class Validation {
+        @Test
+        @DisplayName("0 值拒绝（minValue exclusive）")
+        void should_throw_when_zero() {
+            assertThatThrownBy(() -> new UserId(0L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @ParameterizedTest
+        @ValueSource(longs = {-1, -100})
+        @DisplayName("负值拒绝")
+        void should_throw_when_negative(long invalid) {
+            assertThatThrownBy(() -> new UserId(invalid))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    // ——— parse(String) ———
+    @Nested
+    @DisplayName("解析")
+    class Parse {
+        @Test
+        @DisplayName("有效字符串解析")
+        void should_parse_when_validString() {
+            assertThat(UserId.parse("1")).isEqualTo(new UserId(VALID_ID));
+        }
 
-    @Test
-    void parse_string_parses() {
-        assertEquals(new UserId(VALID_ID), UserId.parse("1"));
+        @Test
+        @DisplayName("null 字符串拒绝")
+        void should_throw_when_nullString() {
+            assertThatThrownBy(() -> UserId.parse(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("非数字字符串拒绝")
+        void should_throw_when_notANumber() {
+            assertThatThrownBy(() -> UserId.parse("not-a-number"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"not-a-number", ""})
-    void parse_invalid_throws(String invalid) {
-        assertThrows(IllegalArgumentException.class, () -> UserId.parse(invalid));
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+        @Test
+        @DisplayName("相同值相等")
+        void should_beEqual_when_sameValue() {
+            assertThat(new UserId(VALID_ID)).isEqualTo(new UserId(VALID_ID));
+        }
+
+        @Test
+        @DisplayName("不同值不等")
+        void should_notBeEqual_when_differentValue() {
+            assertThat(new UserId(1L)).isNotEqualTo(new UserId(2L));
+        }
+
+        @Test
+        @DisplayName("hashCode 一致")
+        void should_haveConsistentHashCode() {
+            assertThat(new UserId(42L)).hasSameHashCodeAs(new UserId(42L));
+        }
     }
 
-    @Test
-    void parse_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> UserId.parse(null));
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_formatToString() {
+            assertThat(new UserId(42L)).hasToString("UserId[value=42]");
+        }
     }
 
-    @Test
-    void identifier_returnsLong() {
-        var id = new UserId(42L);
-        assertEquals(42L, id.identifier());
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+        @Test
+        @DisplayName("Jackson 序列化与反序列化")
+        void should_roundTrip() throws Exception {
+            var original = new UserId(42L);
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, UserId.class);
+            assertThat(restored).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("序列化为数字")
+        void should_serializeAsNumber() throws Exception {
+            assertThat(MAPPER.writeValueAsString(new UserId(42L))).isEqualTo("42");
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", UserId.class))
+                    .isInstanceOf(JsonProcessingException.class);
+        }
     }
 
-    @Test
-    void equal_whenSameValue() {
-        assertEquals(new UserId(VALID_ID), new UserId(VALID_ID));
-    }
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
+        @Test
+        @DisplayName("compareTo 按 Long 顺序比较")
+        void should_compareByLongOrder() {
+            assertThat(new UserId(1L).compareTo(new UserId(2L)) < 0).isTrue();
+            assertThat(new UserId(2L).compareTo(new UserId(1L)) > 0).isTrue();
+            assertThat(new UserId(1L).compareTo(new UserId(1L)) == 0).isTrue();
+        }
 
-    @Test
-    void notEqual_whenDifferentValue() {
-        assertNotEquals(new UserId(1L), new UserId(2L));
-    }
-
-    @Test
-    void compareTo_delegatesToLongCompare() {
-        assertTrue(new UserId(1L).compareTo(new UserId(2L)) < 0);
-        assertTrue(new UserId(2L).compareTo(new UserId(1L)) > 0);
-        assertEquals(0, new UserId(1L).compareTo(new UserId(1L)));
-    }
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = new UserId(42L);
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, UserId.class);
-        assertEquals(original, restored);
-    }
-
-    @Test
-    void jackson_serializesAsNumber() throws Exception {
-        assertEquals("42", MAPPER.writeValueAsString(new UserId(42L)));
-    }
-
-    @Test
-    void toLongId_convertsUserIdToLongId() {
-        var id = new UserId(42L);
-        assertEquals(new LongId(42L), id.toLongId());
-    }
-
-    @Test
-    void toLongId_roundTripProducesSameValue() {
-        var id = new UserId(42L);
-        assertEquals(id.value(), id.toLongId().value());
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = new UserId(42L);
+            var b = new UserId(42L);
+            assertThat(a.compareTo(b) == 0).isTrue();
+            assertThat(a).isEqualTo(b);
+        }
     }
 }

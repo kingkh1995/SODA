@@ -1,18 +1,22 @@
 package com.soda.user.domain.enums;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+@DisplayName("AuthAccountType 枚举")
 class AuthAccountTypeTest {
 
     @Test
-    void values_containsFour() {
-        assertEquals(4, AuthAccountType.values().length);
+    @DisplayName("枚举常量数量")
+    void should_haveCorrectCount() {
+        assertThat(AuthAccountType.values()).hasSize(4);
     }
 
     @ParameterizedTest(name = "{0} → desc={1}")
@@ -22,27 +26,42 @@ class AuthAccountTypeTest {
         E,     Email
         O,     OAuth
     """)
-    void constant(String name, String desc) {
-        assertEquals(desc, AuthAccountType.valueOf(name).desc());
+    @DisplayName("各枚举常量 desc() 正确")
+    void should_haveCorrectDesc(String name, String desc) {
+        assertThat(AuthAccountType.valueOf(name).desc()).isEqualTo(desc);
     }
 
     @ParameterizedTest(name = "of({0}) → {0}")
     @CsvSource({"P", "S", "E", "O"})
-    void of(String name) {
-        assertEquals(AuthAccountType.valueOf(name), AuthAccountType.of(name));
+    @DisplayName("of(String) 查找正确")
+    void should_findByName(String name) {
+        assertThat(AuthAccountType.of(name)).isEqualTo(AuthAccountType.valueOf(name));
     }
 
     @Test
-    void of_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> AuthAccountType.of(null));
+    @DisplayName("of(null) 抛出异常")
+    void should_throw_when_null() {
+        assertThatThrownBy(() -> AuthAccountType.of(null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void jackson_serializeDeserialize() throws Exception {
-        assertEquals("\"P\"", MAPPER.writeValueAsString(AuthAccountType.P));
-        assertEquals(AuthAccountType.P, MAPPER.readValue("\"P\"", AuthAccountType.class));
-        assertEquals(AuthAccountType.S, MAPPER.readValue("\"S\"", AuthAccountType.class));
-        assertEquals(AuthAccountType.E, MAPPER.readValue("\"E\"", AuthAccountType.class));
-        assertEquals(AuthAccountType.O, MAPPER.readValue("\"O\"", AuthAccountType.class));
+    @DisplayName("Jackson round-trip")
+    void should_serializeDeserialize() throws Exception {
+        assertThat(MAPPER.writeValueAsString(AuthAccountType.P)).isEqualTo("\"P\"");
+        assertThat(MAPPER.readValue("\"P\"", AuthAccountType.class)).isEqualTo(AuthAccountType.P);
+    }
+
+    @Test
+    @DisplayName("非法枚举名称拒绝")
+    void should_throw_when_invalidJson() {
+        assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", AuthAccountType.class))
+                .isInstanceOf(JsonProcessingException.class);
+    }
+
+    @Test
+    @DisplayName("toString 返回枚举名")
+    void should_returnName() {
+        assertThat(AuthAccountType.P).hasToString("P");
     }
 }

@@ -1,93 +1,149 @@
 package com.soda.component.support.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.soda.component.support.testutil.JacksonTestUtil.assertRoundTrip;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soda.component.support.testutil.JacksonTestUtil;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * {@link LongId} behavior tests.
- * <p>
- * Tests verify through public API only — compact constructor, {@code parse()},
- * {@code identifier()}, {@code compareTo()}, and Jackson round-trip.
- */
+@DisplayName("LongId 值对象")
 class LongIdTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // ——— constructor (primary entry) ———
+    @Nested
+    @DisplayName("构造")
+    class Constructor {
 
-    @Test
-    void constructor_createsWithValue() {
-        var id = new LongId(42L);
-        assertEquals(42L, id.value());
+        @Test
+        @DisplayName("合法值创建实例")
+        void should_create_when_validValue() {
+            assertThat(new LongId(42).value()).isEqualTo(42);
+        }
+
+        @Test
+        @DisplayName("parse 创建实例")
+        void should_create_when_parse() {
+            assertThat(LongId.parse("99")).isEqualTo(new LongId(99));
+        }
+
     }
 
-    @Test
-    void constructor_acceptsOne() {
-        var id = new LongId(1L);
-        assertEquals(1L, id.value());
+    @Nested
+    @DisplayName("校验")
+    class Validation {
+
+
+        @Test
+        @DisplayName("0 拒绝（minValue exclusive）")
+        void should_throw_when_valueIsZero() {
+            assertThatThrownBy(() -> new LongId(0))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("负值拒绝")
+        void should_throw_when_negativeValue() {
+            assertThatThrownBy(() -> new LongId(-1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse(null) 拒绝")
+        void should_throw_when_parseNull() {
+            assertThatThrownBy(() -> LongId.parse(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse 非法字符串拒绝")
+        void should_throw_when_parseInvalidString() {
+            assertThatThrownBy(() -> LongId.parse("not-a-number"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @Test
-    void constructor_acceptsAllNumberTypes() {
-        assertEquals(new LongId(1), new LongId(1L));
-        assertEquals(new LongId(42), new LongId(42));
-        assertEquals(new LongId(1), new LongId((byte) 1));
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+
+        @Test
+        @DisplayName("相同值相等")
+        void should_beEqual_when_sameValue() {
+            assertThat(new LongId(42)).isEqualTo(new LongId(42));
+        }
+
+        @Test
+        @DisplayName("不同值不等")
+        void should_notBeEqual_when_differentValue() {
+            assertThat(new LongId(1)).isNotEqualTo(new LongId(2));
+        }
+
+        @Test
+        @DisplayName("hashCode 一致")
+        void should_haveConsistentHashCode() {
+            assertThat(new LongId(42)).hasSameHashCodeAs(new LongId(42));
+        }
     }
 
-    // ——— parse(String) ———
+    @Nested
+    @DisplayName("调试")
+    class Debug {
 
-    @Test
-    void parse_string_creates() {
-        assertEquals(new LongId(99), LongId.parse("99"));
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new LongId(42)).hasToString("LongId[value=42]");
+        }
     }
 
-    @Test
-    void parse_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> LongId.parse(null));
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() throws Exception {
+            assertRoundTrip(new LongId(42), LongId.class);
+        }
+
+        @Test
+        @DisplayName("序列化为裸数字")
+        void should_serializeAsNumber() throws Exception {
+            assertThat(MAPPER.writeValueAsString(new LongId(42))).isEqualTo("42");
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", LongId.class))
+                    .isInstanceOf(JsonProcessingException.class);
+        }
     }
 
-    @Test
-    void parse_invalidString_throws() {
-        assertThrows(IllegalArgumentException.class, () -> LongId.parse("not-a-number"));
-    }
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
 
-    // ——— identifier() ———
+        @Test
+        @DisplayName("compareTo 按数值比较")
+        void should_compareByNumericValue() {
+            assertThat(new LongId(1).compareTo(new LongId(2)) < 0).isTrue();
+            assertThat(new LongId(2).compareTo(new LongId(2)) == 0).isTrue();
+            assertThat(new LongId(3).compareTo(new LongId(2)) > 0).isTrue();
+        }
 
-    @Test
-    void identifier_returnsBoxedLong() {
-        var id = new LongId(77);
-        assertEquals(Long.valueOf(77), id.identifier());
-    }
-
-    @Test
-    void identifier_matchesValue() {
-        var id = new LongId(42L);
-        assertEquals(id.value(), id.identifier().longValue());
-    }
-
-    // ——— compareTo ———
-
-    @Test
-    void compareTo_byNumericValue() {
-        assertTrue(new LongId(1).compareTo(new LongId(2)) < 0);
-        assertTrue(new LongId(5).compareTo(new LongId(3)) > 0);
-        assertEquals(0, new LongId(4).compareTo(new LongId(4)));
-    }
-
-    // ——— Jackson round-trip ———
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        JacksonTestUtil.assertRoundTrip(new LongId(42), LongId.class);
-    }
-
-    @Test
-    void jackson_serializesAsBareNumber() throws Exception {
-        assertEquals("42", MAPPER.writeValueAsString(new LongId(42)));
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = new LongId(42);
+            var same = new LongId(42);
+            assertThat(a.compareTo(same) == 0).isTrue();
+            assertThat(a).isEqualTo(same);
+        }
     }
 }

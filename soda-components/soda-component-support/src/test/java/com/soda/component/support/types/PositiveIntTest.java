@@ -1,81 +1,164 @@
 package com.soda.component.support.types;
 
-import com.soda.component.support.testutil.JacksonTestUtil;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.soda.component.support.testutil.JacksonTestUtil.assertRoundTrip;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+@DisplayName("PositiveInt 值对象")
 class PositiveIntTest {
 
-    @Test
-    void of_min1_creates() {
-        assertEquals(1, PositiveInt.of(1).value());
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Nested
+    @DisplayName("构造")
+    class Constructor {
+
+        @Test
+        @DisplayName("of(1) 创建 ONE")
+        void should_create_when_one() {
+            assertThat(PositiveInt.of(1)).isSameAs(PositiveInt.ONE);
+        }
+
+        @Test
+        @DisplayName("of(1000) 创建大值")
+        void should_create_when_largeValue() {
+            assertThat(PositiveInt.of(1000).value()).isEqualTo(1000);
+        }
+
+        @Test
+        @DisplayName("parse 创建实例")
+        void should_create_when_parse() {
+            assertThat(PositiveInt.parse("6")).isEqualTo(PositiveInt.of(6));
+        }
     }
 
-    @Test
-    void of_large_creates() {
-        assertEquals(1000, PositiveInt.of(1000).value());
+    @Nested
+    @DisplayName("校验")
+    class Validation {
+
+        @Test
+        @DisplayName("of(0) 拒绝")
+        void should_throw_when_zero() {
+            assertThatThrownBy(() -> PositiveInt.of(0))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("of(-1) 拒绝")
+        void should_throw_when_negative() {
+            assertThatThrownBy(() -> PositiveInt.of(-1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse(null) 拒绝")
+        void should_throw_when_parseNull() {
+            assertThatThrownBy(() -> PositiveInt.parse(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse 非法字符串拒绝")
+        void should_throw_when_parseInvalidString() {
+            assertThatThrownBy(() -> PositiveInt.parse("not-a-number"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {0, -1, -100})
-    void of_nonPositive_throws(int invalid) {
-        assertThrows(IllegalArgumentException.class, () -> PositiveInt.of(invalid));
+    @Nested
+    @DisplayName("缓存")
+    class Cache {
+
+        @Test
+        @DisplayName("缓存范围内相同实例")
+        void should_sameInstance_withinRange() {
+            assertThat(PositiveInt.of(5)).isSameAs(PositiveInt.of(5));
+        }
+
+        @Test
+        @DisplayName("缓存上限相同实例")
+        void should_sameInstance_atUpperBound() {
+            assertThat(PositiveInt.of(100)).isSameAs(PositiveInt.of(100));
+        }
+
+        @Test
+        @DisplayName("缓存范围外不同实例")
+        void should_differentInstance_beyondRange() {
+            assertThat(PositiveInt.of(1000)).isNotSameAs(PositiveInt.of(1000));
+        }
     }
 
-    @Test
-    void parse_string_creates() {
-        assertEquals(PositiveInt.of(6), PositiveInt.parse("6"));
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+
+        @Test
+        @DisplayName("相同值相等")
+        void should_beEqual_when_sameValue() {
+            assertThat(PositiveInt.of(6)).isEqualTo(PositiveInt.of(6));
+        }
+
+        @Test
+        @DisplayName("hashCode 一致")
+        void should_haveConsistentHashCode() {
+            assertThat(PositiveInt.of(6)).hasSameHashCodeAs(PositiveInt.of(6));
+        }
     }
 
-    @Test
-    void equal_whenSameValue() {
-        assertEquals(PositiveInt.of(6), PositiveInt.of(6));
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(PositiveInt.of(42)).hasToString("PositiveInt[value=42]");
+        }
     }
 
-    @Test
-    void compareTo_delegatesToIntCompare() {
-        assertTrue(PositiveInt.of(4).compareTo(PositiveInt.of(6)) < 0);
-        assertEquals(0, PositiveInt.of(6).compareTo(PositiveInt.of(6)));
-        assertTrue(PositiveInt.of(8).compareTo(PositiveInt.of(6)) > 0);
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() throws Exception {
+            assertRoundTrip(PositiveInt.of(6), PositiveInt.class);
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", PositiveInt.class))
+                    .isInstanceOf(JsonProcessingException.class);
+        }
     }
 
-    // ——— cache ———
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
 
-    @Test
-    void cache_sameInstance_withinRange() {
-        assertSame(PositiveInt.of(5), PositiveInt.of(5));
-    }
+        @Test
+        @DisplayName("compareTo 按数值比较")
+        void should_compareByNumericValue() {
+            assertThat(PositiveInt.of(4).compareTo(PositiveInt.of(6)) < 0).isTrue();
+            assertThat(PositiveInt.of(6).compareTo(PositiveInt.of(6)) == 0).isTrue();
+            assertThat(PositiveInt.of(8).compareTo(PositiveInt.of(6)) > 0).isTrue();
+        }
 
-    @Test
-    void cache_sameInstance_atUpperBound() {
-        assertSame(PositiveInt.of(100), PositiveInt.of(100));
-    }
-
-    @Test
-    void cache_differentInstance_beyondRange() {
-        assertNotSame(PositiveInt.of(1000), PositiveInt.of(1000));
-    }
-
-    // ——— toString ———
-
-    @Test
-    void toString_containsValue() {
-        var s = PositiveInt.of(42).toString();
-        assertEquals("PositiveInt[value=42]", s);
-    }
-
-    // ——— Jackson ———
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = PositiveInt.of(6);
-        JacksonTestUtil.assertRoundTrip(original, PositiveInt.class);
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = PositiveInt.of(42);
+            var same = PositiveInt.of(42);
+            assertThat(a.compareTo(same) == 0).isTrue();
+            assertThat(a).isEqualTo(same);
+        }
     }
 }

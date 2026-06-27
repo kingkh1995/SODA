@@ -1,18 +1,22 @@
 package com.soda.user.domain.enums;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+@DisplayName("Sex 枚举")
 class SexTest {
 
     @Test
-    void values_containsTwo() {
-        assertEquals(2, Sex.values().length);
+    @DisplayName("枚举常量数量")
+    void should_haveCorrectCount() {
+        assertThat(Sex.values()).hasSize(2);
     }
 
     @ParameterizedTest(name = "{0} → desc={1}")
@@ -20,25 +24,42 @@ class SexTest {
         M,     Male
         F,     Female
     """)
-    void constant(String name, String desc) {
-        assertEquals(desc, Sex.valueOf(name).desc());
+    @DisplayName("各枚举常量 desc() 正确")
+    void should_haveCorrectDesc(String name, String desc) {
+        assertThat(Sex.valueOf(name).desc()).isEqualTo(desc);
     }
 
     @ParameterizedTest(name = "of({0}) → {0}")
     @CsvSource({"M", "F"})
-    void of(String name) {
-        assertEquals(Sex.valueOf(name), Sex.of(name));
+    @DisplayName("of(String) 查找正确")
+    void should_findByName(String name) {
+        assertThat(Sex.of(name)).isEqualTo(Sex.valueOf(name));
     }
 
     @Test
-    void of_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> Sex.of(null));
+    @DisplayName("of(null) 抛出异常")
+    void should_throw_when_null() {
+        assertThatThrownBy(() -> Sex.of(null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void jackson_serializeDeserialize() throws Exception {
-        assertEquals("\"M\"", MAPPER.writeValueAsString(Sex.M));
-        assertEquals(Sex.M, MAPPER.readValue("\"M\"", Sex.class));
-        assertEquals(Sex.F, MAPPER.readValue("\"F\"", Sex.class));
+    @DisplayName("Jackson round-trip")
+    void should_serializeDeserialize() throws Exception {
+        assertThat(MAPPER.writeValueAsString(Sex.M)).isEqualTo("\"M\"");
+        assertThat(MAPPER.readValue("\"M\"", Sex.class)).isEqualTo(Sex.M);
+    }
+
+    @Test
+    @DisplayName("非法枚举名称拒绝")
+    void should_throw_when_invalidJson() {
+        assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", Sex.class))
+                .isInstanceOf(JsonProcessingException.class);
+    }
+
+    @Test
+    @DisplayName("toString 返回枚举名")
+    void should_returnName() {
+        assertThat(Sex.M).hasToString("M");
     }
 }

@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link User} 聚合根单元测试。
@@ -269,6 +270,21 @@ class UserTest {
         )));
     }
 
+    // ——— identity ———
+
+    @Test
+    void notEqual_whenDifferentInstance() {
+        // Entities use reference identity — same fields ≠ equal
+        var a = fullUserWithPasswordAccount();
+        var b = fullUserWithPasswordAccount();
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void toString_containsClassName() {
+        var user = fullUserWithPasswordAccount();
+        assertTrue(user.toString().contains("User@"));
+    }
     // ——— helper ———
 
     /** 创建含 PasswordAccount 的完整 User（已有 ID 和账户，常用于认证测试）。 */
