@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
+
 import java.time.Duration;
 
 /**
@@ -21,10 +22,14 @@ public record VerificationCodePolicy(
 ) implements Type {
 
 
-    /** 默认短信验证码策略：6 位，5 分钟过期。 */
+    /**
+     * 默认短信验证码策略：6 位，5 分钟过期。
+     */
     public static final VerificationCodePolicy DEFAULT_SMS = new VerificationCodePolicy(6, Duration.ofMinutes(5));
 
-    /** 默认邮箱验证码策略：8 位，30 分钟过期。 */
+    /**
+     * 默认邮箱验证码策略：8 位，30 分钟过期。
+     */
     public static final VerificationCodePolicy DEFAULT_EMAIL = new VerificationCodePolicy(8, Duration.ofMinutes(30));
 
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)

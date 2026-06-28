@@ -20,13 +20,13 @@ public enum AuthAccountType implements EnumType {
 
     private final String desc;
 
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
-    }
-
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static AuthAccountType of(String name) {
         return ParseUtils.parseEnum(AuthAccountType.class, name);
+    }
+
+    @JsonValue
+    private String jsonValue() {
+        return this.name();
     }
 }

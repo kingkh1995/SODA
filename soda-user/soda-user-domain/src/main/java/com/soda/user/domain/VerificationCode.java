@@ -30,9 +30,18 @@ public record VerificationCode(
         ValidateUtils.notNull(expireAt);
     }
 
-    /** 是否已过期（基于当前时间）。record 风格命名，避免 Jackson 序列化。 */
+    /**
+     * 是否已过期（基于当前时间）。委托至 {@link #expiredAt(Instant)}。
+     */
     public boolean expired() {
-        return Instant.now().isAfter(expireAt);
+        return expiredAt(Instant.now());
+    }
+
+    /**
+     * 在指定时刻检查是否已过期（纯函数，无隐式时钟依赖）。
+     */
+    public boolean expiredAt(Instant now) {
+        return now.isAfter(expireAt);
     }
 
 

@@ -51,7 +51,9 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         return new SocialAuthAccountId(value, socialType, openId);
     }
 
-    /** 从 {@link SocialType} + openId 构造社交认证账户标识符。 */
+    /**
+     * 从 {@link SocialType} + openId 构造社交认证账户标识符。
+     */
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
         ValidateUtils.nonBlank(openId);

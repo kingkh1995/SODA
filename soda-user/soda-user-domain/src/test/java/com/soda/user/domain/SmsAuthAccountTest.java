@@ -7,14 +7,14 @@ import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-
 import java.util.Optional;
+
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link SmsAuthAccount} 单元测试。
@@ -34,7 +34,9 @@ class SmsAuthAccountTest {
     private static final Mobile MOBILE = new Mobile("13800138000");
     private static final SmsAuthAccountId ID = SmsAuthAccountId.from(MOBILE);
 
-    /** 永不过期的验证码，用于测试。 */
+    /**
+     * 永不过期的验证码，用于测试。
+     */
     private static final VerificationCode CODE = new VerificationCode("654321", Instant.MAX, false);
 
     @Test
@@ -88,11 +90,11 @@ class SmsAuthAccountTest {
     }
 
     @Test
-    void replaceCode_whenCurrentStillValid_returnsEmpty() {
+    void replaceCode_replacesWhenNewCodeValid() {
         var account = new SmsAuthAccount(ID, Active.TRUE, CODE, null);
         var newCode = new VerificationCode("111111", Instant.MAX, false);
-        assertFalse(account.replaceCode(newCode));
-        assertEquals(Optional.of(CODE), account.getVerificationCode()); // unchanged
+        assertTrue(account.replaceCode(newCode));
+        assertEquals(Optional.of(newCode), account.getVerificationCode());
     }
 
     @Test
@@ -118,7 +120,6 @@ class SmsAuthAccountTest {
         assertTrue(account.replaceCode(CODE));
         assertEquals(Optional.of(CODE), account.getVerificationCode());
     }
-
 
 
     @Test

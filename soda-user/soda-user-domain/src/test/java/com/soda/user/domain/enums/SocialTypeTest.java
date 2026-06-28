@@ -1,14 +1,14 @@
 package com.soda.user.domain.enums;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SocialType 枚举")
 class SocialTypeTest {
@@ -21,14 +21,14 @@ class SocialTypeTest {
 
     @ParameterizedTest(name = "{0} → desc={1}")
     @CsvSource(textBlock = """
-        GE,    Gitee
-        DT,    DingTalk
-        WENT,  WechatWork
-        WMP,   WechatMp
-        WOPN,  WechatOpen
-        WMIN,  WechatMini
-        ALIP,  AlipayMini
-    """)
+                GE,    Gitee
+                DT,    DingTalk
+                WENT,  WechatWork
+                WMP,   WechatMp
+                WOPN,  WechatOpen
+                WMIN,  WechatMini
+                ALIP,  AlipayMini
+            """)
     @DisplayName("各枚举常量 desc() 正确")
     void should_haveCorrectDesc(String name, String desc) {
         assertThat(SocialType.valueOf(name).desc()).isEqualTo(desc);

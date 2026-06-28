@@ -98,7 +98,9 @@ public final class ValidateUtils {
         }
     }
 
-    /** 校验字符串以指定前缀开头，不匹配时抛出 {@link IllegalArgumentException}。 */
+    /**
+     * 校验字符串以指定前缀开头，不匹配时抛出 {@link IllegalArgumentException}。
+     */
     public static void hasPrefix(String prefix, @Nullable String value) {
         nonBlank(value);
         if (!value.startsWith(prefix)) {

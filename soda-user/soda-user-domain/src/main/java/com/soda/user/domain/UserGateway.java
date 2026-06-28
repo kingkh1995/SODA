@@ -19,21 +19,33 @@ import java.util.Optional;
  */
 public interface UserGateway extends EntityGateway<User, UserId> {
 
-    /** 按用户名查找用户。 */
+    /**
+     * 按用户名查找用户。
+     */
     Optional<User> findByUsername(Username username);
 
-    /** 按手机号查找用户。 */
+    /**
+     * 按手机号查找用户。
+     */
     Optional<User> findByMobile(Mobile mobile);
 
-    /** 用户名是否存在（唯一性校验）。 */
+    /**
+     * 用户名是否存在（唯一性校验）。
+     */
     boolean existsByUsername(Username username);
 
-    /** 手机号是否存在。 */
+    /**
+     * 手机号是否存在。
+     */
     boolean existsByMobile(Mobile mobile);
 
-    /** 邮箱是否存在。 */
+    /**
+     * 邮箱是否存在。
+     */
     boolean existsByEmail(Email email);
 
-    /** 按邮箱查找用户。 */
+    /**
+     * 按邮箱查找用户。
+     */
     Optional<User> findByEmail(Email email);
 }

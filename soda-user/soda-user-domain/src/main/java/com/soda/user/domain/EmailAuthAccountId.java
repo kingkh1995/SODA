@@ -38,7 +38,9 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
         return new EmailAuthAccountId(value, new Email(suffix));
     }
 
-    /** 从 {@link Email} 构造邮箱认证账户标识符。 */
+    /**
+     * 从 {@link Email} 构造邮箱认证账户标识符。
+     */
     public static EmailAuthAccountId from(Email email) {
         ValidateUtils.notNull(email);
         return new EmailAuthAccountId(PREFIX + email.value(), email);

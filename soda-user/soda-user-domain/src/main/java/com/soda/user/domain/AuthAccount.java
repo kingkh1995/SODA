@@ -45,37 +45,46 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
         permits PasswordAuthAccount, SmsAuthAccount, EmailAuthAccount, SocialAuthAccount {
 
     public static final Predicate<AuthAccount<?>> ACTIVE = AuthAccount::isActive;
-
-    public static Predicate<AuthAccount<?>> ofType(AuthAccountType type) {
-        return a -> a.getAuthAccountType() == type;
-    }
-
     private Active active;
 
-    // ─── construction ───
-
-    /** 手动设置 / 已有数据恢复。 */
+    /**
+     * 手动设置 / 已有数据恢复。
+     */
     protected AuthAccount(ID id, Active active) {
         super(id);
         this.active = Objects.requireNonNull(active);
     }
 
-    /** 返回该账户的认证类型 — 委托至 {@link #getId()}.{@link AuthAccountId#authAccountType() authAccountType()}。 */
+    // ─── construction ───
+
+    public static Predicate<AuthAccount<?>> ofType(AuthAccountType type) {
+        return a -> a.getAuthAccountType() == type;
+    }
+
+    /**
+     * 返回该账户的认证类型 — 委托至 {@link #getId()}.{@link AuthAccountId#authAccountType() authAccountType()}。
+     */
     public final AuthAccountType getAuthAccountType() {
         return Objects.requireNonNull(getId()).authAccountType();
     }
 
-    /** 是否激活。 */
+    /**
+     * 是否激活。
+     */
     public boolean isActive() {
         return active.value();
     }
 
-    /** 激活账户。 */
+    /**
+     * 激活账户。
+     */
     public void activate() {
         this.active = Active.TRUE;
     }
 
-    /** 停用账户。 */
+    /**
+     * 停用账户。
+     */
     public void deactivate() {
         this.active = Active.FALSE;
     }

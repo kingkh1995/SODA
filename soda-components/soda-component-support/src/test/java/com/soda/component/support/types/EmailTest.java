@@ -1,8 +1,5 @@
 package com.soda.component.support.types;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
@@ -10,10 +7,41 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 @DisplayName("邮箱值对象")
 class EmailTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    @DisplayName("localPart() 返回 @ 前本地部分")
+    void should_returnLocalPart_when_validEmail() {
+        var email = new Email("alice@example.com");
+        assertThat(email.localPart()).isEqualTo("alice");
+    }
+
+    @Test
+    @DisplayName("localPart() 包含点号")
+    void should_returnLocalPart_when_withDots() {
+        var email = new Email("alice.smith@example.com");
+        assertThat(email.localPart()).isEqualTo("alice.smith");
+    }
+
+    @Test
+    @DisplayName("domain() 返回 @ 后域名")
+    void should_returnDomain_when_validEmail() {
+        var email = new Email("alice@example.com");
+        assertThat(email.domain()).isEqualTo("example.com");
+    }
+
+    @Test
+    @DisplayName("domain() 包含子域名")
+    void should_returnDomain_when_subdomain() {
+        var email = new Email("alice@mail.example.co.uk");
+        assertThat(email.domain()).isEqualTo("mail.example.co.uk");
+    }
 
     @Nested
     @DisplayName("构造")
@@ -40,6 +68,8 @@ class EmailTest {
             assertThat(email.value()).isEqualTo("user.name+tag@example.co.uk");
         }
     }
+
+    // ——— 业务方法 ———
 
     @Nested
     @DisplayName("校验与异常")
@@ -148,35 +178,5 @@ class EmailTest {
             assertThatThrownBy(() -> MAPPER.readValue("\"invalid-email\"", Email.class))
                     .isInstanceOf(JsonProcessingException.class);
         }
-    }
-
-    // ——— 业务方法 ———
-
-    @Test
-    @DisplayName("localPart() 返回 @ 前本地部分")
-    void should_returnLocalPart_when_validEmail() {
-        var email = new Email("alice@example.com");
-        assertThat(email.localPart()).isEqualTo("alice");
-    }
-
-    @Test
-    @DisplayName("localPart() 包含点号")
-    void should_returnLocalPart_when_withDots() {
-        var email = new Email("alice.smith@example.com");
-        assertThat(email.localPart()).isEqualTo("alice.smith");
-    }
-
-    @Test
-    @DisplayName("domain() 返回 @ 后域名")
-    void should_returnDomain_when_validEmail() {
-        var email = new Email("alice@example.com");
-        assertThat(email.domain()).isEqualTo("example.com");
-    }
-
-    @Test
-    @DisplayName("domain() 包含子域名")
-    void should_returnDomain_when_subdomain() {
-        var email = new Email("alice@mail.example.co.uk");
-        assertThat(email.domain()).isEqualTo("mail.example.co.uk");
     }
 }

@@ -12,7 +12,6 @@ import java.util.List;
  * 避免调用方直接依赖 Entity 具体类型。
  *
  * @see DomainEventBus
-
  */
 public interface EventSource<ID extends Identifier<?>> {
 

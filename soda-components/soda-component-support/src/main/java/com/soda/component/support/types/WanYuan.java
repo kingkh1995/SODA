@@ -30,11 +30,6 @@ public final class WanYuan implements Type {
 
     @EqualsAndHashCode.Include
     private final String value;
-    @JsonValue
-    public String value() {
-        return this.value;
-    }
-
     @Getter
     private final BigDecimal bigDecimalValue;
 
@@ -55,12 +50,16 @@ public final class WanYuan implements Type {
         return new WanYuan(bd.toPlainString(), bd);
     }
 
-    /** 从字符串解析构造。格式同 {@link ParseUtils#parseBigDecimal}。 */
+    /**
+     * 从字符串解析构造。格式同 {@link ParseUtils#parseBigDecimal}。
+     */
     public static WanYuan parse(String s) {
         return of(s);
     }
 
-    /** 从元（元/分）构造，默认 {@link java.math.RoundingMode#HALF_UP HALF_UP} 舍入。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。 */
+    /**
+     * 从元（元/分）构造，默认 {@link java.math.RoundingMode#HALF_UP HALF_UP} 舍入。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。
+     */
     public static WanYuan fromYuan(BigDecimal yuan) {
         return fromYuan(yuan, java.math.RoundingMode.HALF_UP);
     }
@@ -79,12 +78,21 @@ public final class WanYuan implements Type {
         return of(result.toPlainString());
     }
 
-    /** 转换为元（乘以 10000），结果不保留小数。 */
+    @JsonValue
+    public String value() {
+        return this.value;
+    }
+
+    /**
+     * 转换为元（乘以 10000），结果不保留小数。
+     */
     public BigDecimal toYuan() {
         return bigDecimalValue.multiply(WAN).setScale(0, java.math.RoundingMode.UNNECESSARY);
     }
 
-    /** 中文展示文本。格式：{@code 111.11万元}。 */
+    /**
+     * 中文展示文本。格式：{@code 111.11万元}。
+     */
     public String toPlainText() {
         return bigDecimalValue.toPlainString() + "万元";
     }

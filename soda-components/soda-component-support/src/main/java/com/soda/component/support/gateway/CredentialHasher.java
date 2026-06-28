@@ -19,9 +19,13 @@ import com.soda.component.support.types.RawCredential;
  */
 public interface CredentialHasher extends Gateway {
 
-    /** 对原始凭证进行哈希。 */
+    /**
+     * 对原始凭证进行哈希。
+     */
     CredentialHash hash(RawCredential credential);
 
-    /** 校验原始凭证是否与哈希值匹配。 */
+    /**
+     * 校验原始凭证是否与哈希值匹配。
+     */
     boolean matches(RawCredential credential, CredentialHash hash);
 }

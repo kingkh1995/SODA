@@ -13,17 +13,23 @@ import java.util.function.Supplier;
  */
 public abstract class Aggregate<ID extends Identifier<?>> extends Entity<ID> {
 
-    /** 手动设置 / 已有数据恢复。 */
+    /**
+     * 手动设置 / 已有数据恢复。
+     */
     protected Aggregate(ID id) {
         super(id);
     }
 
-    /** 客户端生成。 */
+    /**
+     * 客户端生成。
+     */
     protected Aggregate(Supplier<ID> generator) {
         super(generator);
     }
 
-    /** 服务端生成。 */
+    /**
+     * 服务端生成。
+     */
     protected Aggregate() {
         super();
     }

@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 public record Username(@JsonValue String value) implements Type, Comparable<Username> {
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9]{4,30}$");
+
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Username {
         ValidateUtils.nonBlank(value);

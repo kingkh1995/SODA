@@ -7,8 +7,9 @@ import com.soda.component.support.types.Mobile;
 import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
 import lombok.Builder;
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
+
+import java.util.Optional;
 
 /**
  * 短信认证账户实体 — 手机号 + 短信验证码方式的认证。
@@ -19,7 +20,9 @@ import org.jspecify.annotations.Nullable;
  */
 public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
-    /** 默认短信验证码策略：6 位，5 分钟过期。 */
+    /**
+     * 默认短信验证码策略：6 位，5 分钟过期。
+     */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_SMS;
     private @Nullable VerificationCode verificationCode;
 
@@ -27,7 +30,9 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     // ─── construction ───
 
-    /** 持久化恢复 / JSON 反序列化。 */
+    /**
+     * 持久化恢复 / JSON 反序列化。
+     */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     protected SmsAuthAccount(
             @JsonProperty("id") SmsAuthAccountId id,
@@ -41,9 +46,11 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     // ─── factories ───
 
-    /** 创建新短信账户 — active 默认 TRUE，ID 从 mobile 派生。验证码通过 replaceCode() 后续注入。 */
+    /**
+     * 创建新短信账户 — active 默认 TRUE，ID 从 mobile 派生。验证码通过 replaceCode() 后续注入。
+     */
     @Builder(builderClassName = "SmsAuthAccountCreateBuilder",
-             builderMethodName = "createBuilder")
+            builderMethodName = "createBuilder")
     public static SmsAuthAccount create(Mobile mobile) {
         return new SmsAuthAccount(
                 SmsAuthAccountId.from(mobile),
@@ -53,9 +60,11 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
         );
     }
 
-    /** 从持久化恢复短信账户 — 全部字段显式传入。 */
+    /**
+     * 从持久化恢复短信账户 — 全部字段显式传入。
+     */
     @Builder(builderClassName = "SmsAuthAccountRestoreBuilder",
-             builderMethodName = "restoreBuilder")
+            builderMethodName = "restoreBuilder")
     public static SmsAuthAccount restore(
             SmsAuthAccountId id, Active active,
             @Nullable VerificationCode verificationCode,
@@ -65,12 +74,16 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     // ─── policy ───
 
-    /** 当前生效的策略。 */
+    /**
+     * 当前生效的策略。
+     */
     public Optional<VerificationCode> getVerificationCode() {
         return Optional.ofNullable(verificationCode);
     }
 
-    /** 当前生效的策略。 */
+    /**
+     * 当前生效的策略。
+     */
     public VerificationCodePolicy getVerificationCodePolicy() {
         return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
     }
@@ -93,16 +106,17 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
      * 注入验证码（替换已有）。
      *
      * @param code 新验证码，非 null
-     * @return true 替换成功；false 新码已过期或当前码仍有效
+     * @return true 替换成功；false 新码已过期
      */
     public boolean replaceCode(VerificationCode code) {
         ValidateUtils.notNull(code);
-        if (code.expired() || (verificationCode != null && !verificationCode.expired())) {
+        if (code.expired()) {
             return false;
         }
         this.verificationCode = code;
         return true;
     }
+
     /**
      * 使用验证码（标记为已使用）。
      * 无验证码时无操作。

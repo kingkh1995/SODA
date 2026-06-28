@@ -23,13 +23,13 @@ public enum SocialType implements EnumType {
 
     private final String desc;
 
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
-    }
-
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SocialType of(String name) {
         return ParseUtils.parseEnum(SocialType.class, name);
+    }
+
+    @JsonValue
+    private String jsonValue() {
+        return this.name();
     }
 }

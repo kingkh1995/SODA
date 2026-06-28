@@ -73,14 +73,124 @@ hasPrefix("P:", value)     // String prefix, String value
 
 ### JSpecify 注解
 
-- 每个包的 `package-info.java` 必须标注 `@NullMarked`，使包内所有类型默认为 `@NonNull`
-- 仅在确实可为空的参数/返回值处使用 `@Nullable` 覆盖默认
+项目使用 JSpecify 1.0 作为空性标注标准，覆盖 `org.jspecify.annotations` 包中全部 4 个注解。
+Nullness Specification（空性标注）原则：通过 JSpecify 注解在编译期明确每个类型的空性，杜绝 NullPointerException。
+
+#### 注解速览
+
+| 注解 | 目标 | 语义 | 本项目使用 |
+|---|---|---|---|
+| `@NullMarked` | MODULE, PACKAGE, TYPE, METHOD, CONSTRUCTOR | 作用域内类型默认 `@NonNull` | ✅ 必须 — 仅包级 |
+| `@Nullable` | TYPE_USE | 该类型可以包含 `null` | ✅ 按场景使用 |
+| `@NonNull` | TYPE_USE | 该类型排除 `null`（在 `@NullMarked` 下极少需要） | ⚠️ 仅非空投影 |
+| `@NullUnmarked` | PACKAGE, TYPE, METHOD, CONSTRUCTOR | 退出 `@NullMarked`，回到未指定空性 | ❌ 禁止使用 |
+
+---
+
+#### `@NullMarked` — 包级默认非空
+
+每个包须在 `package-info.java` 第一行标注 `@NullMarked`：
 
 ```java
+@NullMarked
 @ApplicationModule(allowedDependencies = {})
-@NullMarked                                 // 包内默认非空
 package com.soda.component.support.util;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.ApplicationModule;
 ```
+
+- 位置：`@NullMarked` 在前，`@ApplicationModule` 在后（纯约定，语义等价；安全契约优先于模块契约）
+
+- 仅限包级（本项目约定；JSpecify 同时支持 MODULE/TYPE/METHOD/CONSTRUCTOR 级别）
+- 未加 `@NullMarked` 的包视为不合规
+- `@NullMarked` 不级联子包，每个包独立标注
+
+---
+
+#### `@Nullable` — 按场景使用
+
+**必须加 `@Nullable` 的场景：**
+
+| 场景 | 字段标注 | getter 返回值 | 示例 |
+| 实体的可选字段 | `@Nullable` | `Optional<T>` | `private @Nullable Mobile mobile;` → `public Optional<Mobile> getMobile()` |
+| 未持久化的标识符 | `@Nullable` | `@Nullable`（基类特例） | `private @Nullable ID id;` → `public final @Nullable ID getId()` |
+| 工厂/构造方法中与可选字段对应的参数 | `@Nullable` | — | `create(@Nullable Email email)` |
+| 工具方法接受 null 并立即校验拒绝的参数 | `@Nullable`（参数） | — | `notNull(@Nullable Object value)` |
+
+**禁止加 `@Nullable` 的场景：**
+
+| public/protected 方法返回值 | `Optional<T>` 或空集合/空数组 | 返回值永远不允许 null（项目约定；JSpecify 允许返回值 `@Nullable`） |
+> 注：`Optional<T>` 返回值每次调用分配对象。领域层不属于热路径，接受此开销。
+> 如有性能敏感路径需豁免，应在代码评审中逐案评估。
+
+**不受限的场景：**
+
+- `Entity.getId()` 和 `Identifiable.getId()`：实体在服务端生成 ID 模式下，持久化前 ID 为 null，getter 须保留 `@Nullable`（领域模型约定，不可用 `Optional` 替代）
+
+
+---
+
+#### `@NonNull` — 仅语义需要
+
+在 `@NullMarked` 全覆盖的项目中，`@NonNull` 的唯一合理用途是**非空投影（non-null projection）**：
+
+```java
+// 当 E 有 @Nullable 上界时，强制某个使用点非空
+interface List<E extends @Nullable Object> {
+    Optional<@NonNull E> findFirst();
+}
+```
+
+- 禁止为"文档强调"目的冗余标注
+- 触发条件：泛型类的类型参数声明为 `<E extends @Nullable Object>` 时，若某个使用点需要强制非空（如 `Optional<@NonNull E>`），应标注 `@NonNull E`
+- 当前项目没有非空投影需求，如引入需评审
+
+---
+
+#### `@NullUnmarked` — 禁止使用
+
+仅用于遗留代码渐进迁移，本项目为新项目，不适用。
+
+---
+
+#### 外部库互操作
+
+外部库未标注 `@NullMarked` 时，其返回值具有未指定空性（unspecified nullness）。
+Java 编译器不会因此产生警告，但静态分析工具可能报错。
+建议在调用点显式 null 检查或使用 `Optional.ofNullable()` 包装，避免传播空性不确定性。
+
+---
+
+#### 泛型空性
+
+```java
+// 声明侧：默认非空上界
+public class MyList<E> { ... }                // E 不可为 null
+
+// 声明侧：可 null 上界（当前项目无此模式）
+public class MyList<E extends @Nullable Object> { ... }  // E 可 null
+
+// 使用侧：
+E                 // parametric — E 可 null 则 null，否则非空
+@Nullable E       // nullable projection — 始终可 null
+@NonNull E        // non-null projection — 始终非空
+```
+
+---
+
+#### 数组空性
+
+```java
+@Nullable String[]   // 元素可 null，数组本身不可 null
+String @Nullable []  // 数组本身可 null，元素不可 null
+```
+
+---
+
+#### 局部变量
+
+局部变量的根类型**不标注**空性注解，由赋值推断。
 
 ### Lombok 注解
 

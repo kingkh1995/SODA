@@ -39,16 +39,23 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     @JsonIgnore
     private transient List<DomainEvent<ID>> domainEvents = new ArrayList<>();
 
-    /** 手动设置 / 已有数据恢复（reconstitution）。 */
+    /**
+     * 手动设置 / 已有数据恢复（reconstitution）。
+     */
     protected Entity(ID id) {
         this.id = Objects.requireNonNull(id, "id must not be null");
     }
-    /** 客户端生成：构造时由 {@code generator} 产生 ID，发生在构造器内部。 */
+
+    /**
+     * 客户端生成：构造时由 {@code generator} 产生 ID，发生在构造器内部。
+     */
     protected Entity(Supplier<ID> generator) {
         this.id = Objects.requireNonNull(Objects.requireNonNull(generator, "generator must not be null").get());
     }
 
-    /** 服务端生成：构造时无 ID，后续由 {@link #assignId(Identifier)} 填补。 */
+    /**
+     * 服务端生成：构造时无 ID，后续由 {@link #assignId(Identifier)} 填补。
+     */
     protected Entity() {
     }
 

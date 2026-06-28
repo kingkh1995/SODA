@@ -39,7 +39,9 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
     }
 
-    /** 从 {@link UserId} 构造密码认证账户标识符。 */
+    /**
+     * 从 {@link UserId} 构造密码认证账户标识符。
+     */
     public static PasswordAuthAccountId from(UserId userId) {
         ValidateUtils.notNull(userId);
         return new PasswordAuthAccountId(PREFIX + userId.value(), userId);
@@ -50,7 +52,9 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         return ACCOUNT_TYPE;
     }
 
-    /** 返回底层 {@link UserId} 的 {@link LongId} 表示。 */
+    /**
+     * 返回底层 {@link UserId} 的 {@link LongId} 表示。
+     */
     public LongId toLongId() {
         return new LongId(userId.value());
     }

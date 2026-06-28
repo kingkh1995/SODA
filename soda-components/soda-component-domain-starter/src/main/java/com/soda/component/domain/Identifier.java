@@ -1,4 +1,5 @@
 package com.soda.component.domain;
+
 /**
  *
  * 标识符是 <strong>不可变</strong> 的领域原语，在限界上下文内唯一标识一个实体。

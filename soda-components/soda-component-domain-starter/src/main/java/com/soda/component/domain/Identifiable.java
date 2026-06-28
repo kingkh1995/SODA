@@ -20,7 +20,9 @@ public interface Identifiable<ID extends Identifier<?>> {
      */
     @Nullable ID getId();
 
-    /** 是否已分配标识符。 */
+    /**
+     * 是否已分配标识符。
+     */
     default boolean isIdentified() {
         return getId() != null;
     }

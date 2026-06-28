@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.soda.component.support.types.RandomString;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.SocialType;

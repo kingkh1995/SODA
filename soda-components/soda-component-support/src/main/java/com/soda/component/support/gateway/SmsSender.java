@@ -13,6 +13,8 @@ import com.soda.component.support.types.SmsContent;
  */
 public interface SmsSender extends Gateway {
 
-    /** 向指定手机号发送短信内容。 */
+    /**
+     * 向指定手机号发送短信内容。
+     */
     void send(Mobile to, SmsContent content);
 }

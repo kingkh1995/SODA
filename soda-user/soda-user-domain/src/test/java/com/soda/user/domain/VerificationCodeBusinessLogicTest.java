@@ -1,13 +1,13 @@
 package com.soda.user.domain;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.soda.component.support.types.RandomString;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("VerificationCode 业务逻辑")
 class VerificationCodeBusinessLogicTest {
@@ -28,6 +28,30 @@ class VerificationCodeBusinessLogicTest {
     void expired_pastDate_returnsTrue() {
         var vc = new VerificationCode(CODE, PAST, false);
         assertThat(vc.expired()).isTrue();
+    }
+
+    @Test
+    @DisplayName("expiredAt 精确边界：expireAt 之后 1ns 返回 true")
+    void expiredAt_afterExpiry_returnsTrue() {
+        var expireAt = Instant.parse("2026-06-28T12:00:00.000Z");
+        var vc = new VerificationCode(CODE, expireAt, false);
+        assertThat(vc.expiredAt(expireAt.plusNanos(1))).isTrue();
+    }
+
+    @Test
+    @DisplayName("expiredAt 精确边界：expireAt 之前 1ns 返回 false")
+    void expiredAt_beforeExpiry_returnsFalse() {
+        var expireAt = Instant.parse("2026-06-28T12:00:00.000Z");
+        var vc = new VerificationCode(CODE, expireAt, false);
+        assertThat(vc.expiredAt(expireAt.minusNanos(1))).isFalse();
+    }
+
+    @Test
+    @DisplayName("expiredAt 精确边界：expireAt 同一时刻返回 false（严格 after）")
+    void expiredAt_exactExpiry_returnsFalse() {
+        var expireAt = Instant.parse("2026-06-28T12:00:00.000Z");
+        var vc = new VerificationCode(CODE, expireAt, false);
+        assertThat(vc.expiredAt(expireAt)).isFalse();
     }
 
     @Test

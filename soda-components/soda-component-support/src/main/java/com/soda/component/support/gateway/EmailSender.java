@@ -13,6 +13,8 @@ import com.soda.component.support.types.EmailContent;
  */
 public interface EmailSender extends Gateway {
 
-    /** 向指定邮箱发送邮件。 */
+    /**
+     * 向指定邮箱发送邮件。
+     */
     void send(Email to, EmailContent content);
 }

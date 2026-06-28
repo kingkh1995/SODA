@@ -16,7 +16,7 @@ import java.util.Optional;
  *   <li>{@link #findAllById(Iterable)} — 同 {@code CrudRepository.findAllById(Iterable)}</li>
  * </ul>
  *
- * @param <T> 实体类型，必须实现 {@link Entity}
+ * @param <T>  实体类型，必须实现 {@link Entity}
  * @param <ID> 标识符类型，必须实现 {@link Identifier}
  * @see Gateway
  * @see Aggregate

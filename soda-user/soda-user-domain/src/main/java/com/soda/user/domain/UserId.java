@@ -23,7 +23,9 @@ public record UserId(@JsonValue long value) implements Identifier<Long>, Compara
         ValidateUtils.minValue(0, false, value);
     }
 
-    /** 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。 */
+    /**
+     * 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。
+     */
     public static UserId parse(String s) {
         return new UserId(ParseUtils.parseLong(s));
     }
@@ -39,7 +41,9 @@ public record UserId(@JsonValue long value) implements Identifier<Long>, Compara
         return Long.compare(this.value, other.value);
     }
 
-    /** 转换为通用 {@link LongId}。 */
+    /**
+     * 转换为通用 {@link LongId}。
+     */
     public LongId toLongId() {
         return new LongId(value);
     }

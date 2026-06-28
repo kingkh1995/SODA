@@ -25,6 +25,7 @@ import com.soda.component.support.util.ValidateUtils;
 public final class RawCredential extends Secret {
 
     private final String value;
+
     public RawCredential(String value) {
         ValidateUtils.nonBlank(value);
         this.value = value;

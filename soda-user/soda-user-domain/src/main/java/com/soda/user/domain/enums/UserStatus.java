@@ -18,13 +18,13 @@ public enum UserStatus implements EnumType {
 
     private final String desc;
 
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
-    }
-
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static UserStatus of(String name) {
         return ParseUtils.parseEnum(UserStatus.class, name);
+    }
+
+    @JsonValue
+    private String jsonValue() {
+        return this.name();
     }
 }

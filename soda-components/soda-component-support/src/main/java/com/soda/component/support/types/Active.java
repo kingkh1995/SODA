@@ -28,24 +28,29 @@ public final class Active implements Type {
         this.value = value;
     }
 
-    @JsonValue
-    public boolean value() {
-        return this.value;
-    }
-
-    /** 从 boolean 构造（含 {@link JsonCreator} 入口）。 */
+    /**
+     * 从 boolean 构造（含 {@link JsonCreator} 入口）。
+     */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Active of(boolean value) {
         return value ? TRUE : FALSE;
     }
 
-
-    /** 从字符串解析构造。格式同 {@link ParseUtils#parseBoolean}。 */
+    /**
+     * 从字符串解析构造。格式同 {@link ParseUtils#parseBoolean}。
+     */
     public static Active parse(String s) {
         return of(ParseUtils.parseBoolean(s));
     }
 
-    /** 取反。 */
+    @JsonValue
+    public boolean value() {
+        return this.value;
+    }
+
+    /**
+     * 取反。
+     */
     public Active negate() {
         return value ? FALSE : TRUE;
     }

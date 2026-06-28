@@ -6,8 +6,8 @@ import com.soda.component.domain.Aggregate;
 import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.Mobile;
-import com.soda.component.support.types.RawCredential;
 import com.soda.component.support.types.RandomString;
+import com.soda.component.support.types.RawCredential;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.UserStatus;
@@ -33,9 +33,12 @@ import java.util.function.Predicate;
 @Getter
 public class User extends Aggregate<UserId> {
 
-    @Getter private Username username;
-    @Getter private Nickname nickname;
-    @Getter private UserStatus status;
+    @Getter
+    private Username username;
+    @Getter
+    private Nickname nickname;
+    @Getter
+    private UserStatus status;
     private @Nullable Mobile mobile;
     private @Nullable Email email;
     private @Nullable Sex sex;
@@ -44,7 +47,9 @@ public class User extends Aggregate<UserId> {
 
     // ─── 唯一构造器（@JsonCreator + 创建/恢复共用）───
 
-    /** @param id 服务端分配后的 ID；null 表示尚未持久化（创建路径） */
+    /**
+     * @param id 服务端分配后的 ID；null 表示尚未持久化（创建路径）
+     */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     protected User(
             @JsonProperty("id") @Nullable UserId id,
@@ -89,30 +94,47 @@ public class User extends Aggregate<UserId> {
 
     // ─── 恢复 builder（public，暴露全部持久化字段）───
 
-    /** 从持久化数据恢复 User，不触发事件。 */
+    /**
+     * 从持久化数据恢复 User，不触发事件。
+     */
     @Builder(builderClassName = "UserRestoreBuilder", builderMethodName = "restoreBuilder")
     public static User restore(UserId id, Username username, Nickname nickname,
                                UserStatus status,
                                @Nullable Mobile mobile, @Nullable Email email,
                                @Nullable Sex sex, @Nullable Avatar avatar,
-                               List<AuthAccount<?>> accounts) {
+                               @Nullable List<AuthAccount<?>> accounts) {
         return new User(id, username, nickname, status, mobile, email, sex, avatar,
                 accounts != null ? new LinkedList<>(accounts) : null);
     }
 
     // ─── accessors ───
 
-    /** 返回账户列表的不可修改视图。 */
+    /**
+     * 返回账户列表的不可修改视图。
+     */
     public List<AuthAccount<?>> getAccounts() {
         return accounts != null ? List.copyOf(accounts) : List.of();
     }
 
-    public Optional<Mobile> getMobile() { return Optional.ofNullable(mobile); }
-    public Optional<Email> getEmail() { return Optional.ofNullable(email); }
-    public Optional<Sex> getSex() { return Optional.ofNullable(sex); }
-    public Optional<Avatar> getAvatar() { return Optional.ofNullable(avatar); }
+    public Optional<Mobile> getMobile() {
+        return Optional.ofNullable(mobile);
+    }
 
-    /** 查找第一个匹配条件的账户。 */
+    public Optional<Email> getEmail() {
+        return Optional.ofNullable(email);
+    }
+
+    public Optional<Sex> getSex() {
+        return Optional.ofNullable(sex);
+    }
+
+    public Optional<Avatar> getAvatar() {
+        return Optional.ofNullable(avatar);
+    }
+
+    /**
+     * 查找第一个匹配条件的账户。
+     */
     public Optional<AuthAccount<?>> findAccount(Predicate<AuthAccount<?>> filter) {
         if (accounts == null) {
             return Optional.empty();
@@ -127,8 +149,8 @@ public class User extends Aggregate<UserId> {
     /**
      * 认证 — 根据账户类型分发到对应子类验证。
      *
-     * @param type            认证类型
-     * @param rawCredential   原始凭证串（密码 / 验证码）
+     * @param type             认证类型
+     * @param rawCredential    原始凭证串（密码 / 验证码）
      * @param credentialHasher 凭证哈希器（仅用于 PasswordAuthAccount 验证）
      * @return 验证成功返回 true
      */
@@ -145,5 +167,5 @@ public class User extends Aggregate<UserId> {
                     default -> false;
                 })
                 .orElse(false);
-}
+    }
 }

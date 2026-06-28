@@ -20,9 +20,13 @@ import java.time.Instant;
  */
 public interface DomainEvent<ID extends Identifier<?>> {
 
-    /** 来源实体的标识符。 */
+    /**
+     * 来源实体的标识符。
+     */
     ID entityId();
 
-    /** 事件发生时间。 */
+    /**
+     * 事件发生时间。
+     */
     Instant occurredAt();
 }

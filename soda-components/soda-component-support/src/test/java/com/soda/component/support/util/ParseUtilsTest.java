@@ -83,6 +83,7 @@ class ParseUtilsTest {
     void parseLong_stringWithSpaces_trimmed() {
         assertEquals(789L, ParseUtils.parseLong("  789  "));
     }
+
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"xyz"})

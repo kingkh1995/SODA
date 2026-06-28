@@ -11,13 +11,16 @@ import java.util.ServiceLoader;
  */
 public final class TypeConfig {
 
-    private TypeConfig() {
-        throw new UnsupportedOperationException();
-    }
-
-    /** SPI 提供者，仅加载第一个。无注册实现时使用默认回退。 */
+    /**
+     * SPI 提供者，仅加载第一个。无注册实现时使用默认回退。
+     */
     public static final TypeConfigProvider PROVIDER =
             ServiceLoader.load(TypeConfigProvider.class)
                     .findFirst()
-                    .orElseGet(() -> new TypeConfigProvider() {});
+                    .orElseGet(() -> new TypeConfigProvider() {
+                    });
+
+    private TypeConfig() {
+        throw new UnsupportedOperationException();
+    }
 }

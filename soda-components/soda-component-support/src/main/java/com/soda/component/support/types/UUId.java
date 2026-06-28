@@ -22,8 +22,13 @@ import java.util.regex.Pattern;
  */
 public record UUId(@JsonValue String value) implements Identifier<String>, Comparable<UUId> {
 
+    /**
+     * 自动生成策略 — 用于客户端生成 {@code Entity(Supplier)} 构造器。
+     */
+    public static final Supplier<UUId> AUTO = UUId::random;
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public UUId {
@@ -32,14 +37,12 @@ public record UUId(@JsonValue String value) implements Identifier<String>, Compa
         ValidateUtils.matches(UUID_PATTERN, value);
     }
 
-
-    /** 生成随机 UUID，等价于 {@link UUID#randomUUID()}。 */
+    /**
+     * 生成随机 UUID，等价于 {@link UUID#randomUUID()}。
+     */
     public static UUId random() {
         return new UUId(UUID.randomUUID().toString());
     }
-
-    /** 自动生成策略 — 用于客户端生成 {@code Entity(Supplier)} 构造器。 */
-    public static final Supplier<UUId> AUTO = UUId::random;
 
     @Override
     public String identifier() {

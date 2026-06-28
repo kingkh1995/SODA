@@ -38,7 +38,9 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
         return new SmsAuthAccountId(value, new Mobile(suffix));
     }
 
-    /** 从 {@link Mobile} 构造短信认证账户标识符。 */
+    /**
+     * 从 {@link Mobile} 构造短信认证账户标识符。
+     */
     public static SmsAuthAccountId from(Mobile mobile) {
         ValidateUtils.notNull(mobile);
         return new SmsAuthAccountId(PREFIX + mobile.value(), mobile);

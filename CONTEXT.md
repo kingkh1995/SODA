@@ -78,153 +78,71 @@ archRule.failOnEmptyShould=false
 
 ## Language
 
-### Domain Primitive（领域原语）
-不可变的值对象，承载领域含义，通过类型系统表达业务约束。所有 DP 必须：不可变、自校验（构造时验证）、可序列化、可比较。参见 `Type` 接口。
-
-### Entity
-具有连续身份标识（identity thread）的领域对象。实现 {@link Identifiable}、{@link EventSource} 接口，直接持有 {@link Identifier} DP 作为身份标识。三个构造器对应不同场景：{@code Entity(ID)}（手动 / 已有数据恢复）、{@code Entity(Supplier)}（客户端生成，构造器内部调用 generator）、{@code Entity()}（服务端生成，由上层调用 {@code assignId()} 填补）。不覆写 {@code equals}/{@code hashCode}。
-
-### Aggregate
-聚合一致性边界内的顶层实体，负责保证聚合内部的所有不变量不被破坏。对聚合的所有操作必须通过聚合根进行。
-
-### Identifiable
-可标识的领域对象标记接口（{@code package domain.Identifiable}），提供 {@code getId()} 和 {@code isIdentified()} 查询契约。所有 Entity 和 Aggregate 必须实现此接口。
-
-### Type
-所有领域原语（Domain Primitive）的根标记接口。扩展 `Serializable` — 类型安全的可比较性由子类各自实现 `Comparable<Self>` 保证。直接实现 Type 的类需提供 `compareTo(Self)`.
-
-### EnumType
-枚举类型的根标记接口（{@code com.soda.component.domain.EnumType}），继承 {@link Type}，同时也是 Domain Primitive。提供 {@code desc()} 返回英文描述。业务模块中所有业务枚举必须实现此接口。序列化使用枚举自带 {@code name()} 短名（如 {@code "E"}），各枚举额外提供 {@code of(String)}（{@code @JsonCreator} 入口）。
-
-### Identifier
-不可变的领域原语，扩展 `Type`，在限界上下文内唯一标识一个实体。底层值类型是泛型的（`Identifier<T extends Comparable<T>>`）。子类自行实现 `Comparable<Self>` 提供类型安全的比较。实现类需提供 `identifier()` 返回类型化值，以及基于值的 `equals()`/`hashCode()`。
-
-### LongId
-通用的长整型标识符 DP（{@code support.types.LongId}），实现 {@code Identifier<Long>}，位于可选模块 {@code soda-component-support}。紧凑构造器为主入口，提供 {@code parse(String)} 字符串解析。支持 Jackson 序列化。默认使用服务端生成策略（{@code super()} + {@code assignId()}）。
-
-### UUId
-UUID 格式标识符 DP（{@code support.types.UUId}），实现 {@code Identifier<String>}，位于可选模块 {@code soda-component-support}。校验规则：格式匹配 {@code 8-4-4-4-12} 十六进制，归一化为小写。紧凑构造器为主入口，提供 {@code random()} 随机生成，支持 Jackson 序列化。默认使用客户端生成策略（{@code super(UUId.AUTO)}）。
-
-### Email
-电子邮箱地址 DP（`com.soda.component.support.types.Email`），实现 {@link Type} 而非标识符。校验格式并归一化为小写。提供 `localPart()` 和 `domain()` 访问邮箱组成部分。
-
-### WanYuan
-人民币万元 DP（{@code support.types.WanYuan}），实现 `Type` 而非标识符。内部以万元单位存储，精度到百元（最多两位小数）。紧凑构造器为主入口（以万元 {@link BigDecimal} 值），提供 {@code fromYuan(BigDecimal)} 从元转换、{@code toYuan()} 转回元。
-
-### Version
-乐观锁版本号 DP（{@code support.types.Version}），实现 `Type` 而非标识符。基于 {@code int}，带内部缓存（[0, 99] 返回缓存实例，参考 {@code Integer} 缓存设计）。提供 {@code of(int)} 可靠构造、{@code parse(String)} 字符串解析、{@code next()} 递增。初始版本 {@code PRIMARY = 0}。
-### SmsContent
-短信内容 DP（{@code support.types.SmsContent}），实现 {@link Type}。最长 70 字符（参照主流短信平台单条上限）。
-### EmailContent
-邮件内容 DP（{@code support.types.EmailContent}），实现 {@link Type}。由 {@code subject}（最长 255 字符）和 {@code body} 组成。
-### PositiveInt
-正整数 DP（{@code support.types.PositiveInt}），实现 {@link Type}，{@link Comparable}。值 >= 1。可用于长度、数量、序号等通用场景。
-### RandomString
-随机字符串 DP（{@code support.types.RandomString}），实现 {@link Type}。由 {@link RandomStringGenerator} 生成。字符集和随机源由基础设施层决定，领域层只关心长度。
-### Secret
-秘密值基类（{@code domain.Secret}），{@link Type} 的子类型，用于敏感数据。自动脱敏 toString（{@code Xxx[***]}），通过私有构造器 + 非标准访问器命名拒绝序列化。子类：{@link RawCredential}、{@code Password}（拟）、{@code ApiKey}（拟）。
-
-### RawCredential
-原始凭证（{@code support.types.RawCredential}），继承 {@link Secret}。通用载体，不绑定算法，不实现 value-based identity。用于传递密码、API Key、Token 等长期有效凭证的原始值给 {@link CredentialHasher}。不可 JSON 序列化/反序列化。
-### CredentialHash
-凭证哈希 DP（{@code support.types.CredentialHash}），实现 {@link Type}。算法无关，不校验格式。仅约束非 blank。
-
-### Cacheable
-不是领域层概念，而是应用层（Application）的缓存关注点。通过 Spring `@Cacheable` 在 ApplicationService 上声明缓存区域和 key，领域层零缓存感知。不允许在 Entity / Aggregate 上添加与缓存相关的接口或基类方法。
-
-### Lockable
-不是领域层概念，而是应用层（Application）的锁定关注点。通过自定义 `@Lockable` 注解（参照 Spring `@Cacheable` 设计模式）声明锁资源 key，领域层零锁定感知。不允许在 Entity / Aggregate 上添加与锁相关的接口或基类方法。
-
-### Trackable
-不是领域层概念，而是基础设施层（Infrastructure / Repository）的持久化优化。Repository 实现层基于 snapshot/diff 做部分更新（参考 kk-ddd `AggregateTrackingManager`），Aggregate 本身无追踪逻辑。不允许在 Aggregate 上添加变更追踪接口或基类方法。
-
-### KeyUtils
-工具方法，位于 `com.soda.component.support.util`，用于从 Entity 推导缓存/锁资源 key。不在 Entity 基类上实现 `cacheKey()` / `lockKey()`，防止领域层膨胀。
-
-### Gateway
-标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。
-
-### EntityGateway
-实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。
-提供 `save(T)`, `remove(T)`, `findById(ID)`, `findAllById(Iterable<ID>)` 四个方法。
-`save` 返回 `ID`（可能新生成），`remove` 接收实体。ApplicationService 先通过 Gateway 持久化，再调用 {@link EventSource#flushEvents} 取出事件并通过 {@link DomainEventBus#fireAll} 发送。
-
-### CredentialHasher (Gateway)
-凭证哈希器契约（{@code support.gateway.CredentialHasher}），继承 {@link Gateway}。提供 {@code hash(RawCredential)} → {@link CredentialHash} 和 {@code matches(RawCredential, CredentialHash)}。算法无关，实现层可对接 BCrypt、Argon2、SCrypt 等。
-### RandomStringGenerator (Gateway)
-随机字符串生成器契约（{@code support.gateway.RandomStringGenerator}），继承 {@link Gateway}。提供 {@code generate(PositiveInt)} → {@link RandomString}。实现层决定字符集和随机源。
-### SmsSender (Gateway)
-短信发送器契约（{@code support.gateway.SmsSender}），继承 {@link Gateway}。提供 {@code send(Mobile, SmsContent)}。实现层对接短信渠道（阿里云、腾讯云等）。
-### EmailSender (Gateway)
-邮件发送器契约（{@code support.gateway.EmailSender}），继承 {@link Gateway}。提供 {@code send(Email, EmailContent)}。实现层对接邮件服务器或邮件 SDK。
-
-### DomainEvent
-领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()` 两个方法。业务模块用 `record` 实现，`entityId` 和 `occurredAt` 作为 record 组件自动实现接口方法。
-类型参数 `ID` 与 Entity 一致，编译期确保事件来源不混用。
-
-### DomainEventBus
-领域事件总线接口，继承 `Gateway`（DIP：领域层定义契约，基础设施层实现）。
-提供 `fire(DomainEvent<?>)` 和 `fireAll(Iterable<? extends DomainEvent<?>>)`。
-实现在基础设施层，对接 Spring ApplicationEventPublisher、Modulith 事件总线或 MQ。
-
-### EventSource
-领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。{@link Entity} 实现此接口表明自身可作为领域事件来源。通过 {@link #flushEvents} 取出已注册但未发送的事件。ApplicationService 在 {@link EntityGateway} 持久化后调用此方法取出事件，再通过 {@link DomainEventBus#fireAll} 发送。
-
-
-### VerificationCodePolicy
-验证码策略 DP（{@code soda-user.domain.VerificationCodePolicy}），实现 {@link Type}。封装 {@code codeLength}（验证码位数）和 {@code expiry}（过期时长）。各 AuthAccount 子类持有静态 {@code DEFAULT_POLICY} 常量，可通过 {@link ServiceLoader} 机制全局替换。AuthAccount 实例上也可设置非空 {@code verificationCodePolicy} 字段覆写。
-
 ### User
-用户身份聚合根（{@code soda-user.domain.User}），{@link Aggregate} 子类。持有一组 {@link AuthAccount} 子实体。提供 {@code authenticate(AuthAccountType, credential)} 域方法，委托给对应 AuthAccount 验证。
+用户身份聚合根。持有一组 AuthAccount 子实体。提供 `authenticate(AuthAccountType, String, CredentialHasher)` 域方法，sealed 模式匹配分发到对应 AuthAccount 验证。
+_Avoid_: 用户管理、系统用户
+
+### UserId
+用户的唯一标识符。`LongId` 子类，服务端自动生成。
+_Avoid_: id、userId（raw number）
 
 ### Username
-用户账号 DP（{@code soda-user.domain.Username}），实现 {@link Type}。规则：4-30 位字母数字。可通过 {@code User.changeUsername()} 变更，变更时需保证全局唯一。
+用户账号。4-30 位字母数字。全局唯一。
+_Avoid_: 账号、账号名
 
 ### Nickname
-用户昵称 DP（{@code soda-user.domain.Nickname}），实现 {@link Type}。显示名，最长 30 字符。
+用户昵称。最长 30 字符，禁止空白字符。
+_Avoid_: 名称、显示名
 
 ### Mobile
-手机号 DP（{@code support.types.Mobile}），实现 {@link Type}。格式校验，归一化。同时是 {@link SmsAuthAccountId} 的派生源。
+手机号（定义在 `support.types`）。格式校验 + 归一化。是 SmsAuthAccountId 的派生源。
+_Avoid_: 电话号码、手机
 
 ### Sex
-性别枚举（{@code soda-user.domain.enums.Sex}），实现 {@link EnumType}（同时也是 DP）。取值：{@code M}（Male）、{@code F}（Female）。序列化短名 {@code "M"} / {@code "F"}。提供 {@code of(String)} 入口。
+性别枚举。取值：`M`（Male）、`F`（Female）。
 
 ### Avatar
-头像 URL DP（{@code soda-user.domain.Avatar}），实现 {@link Type}。URL 格式校验。
+头像 URL。URL 格式校验。
 
 ### UserStatus
-用户状态枚举（{@code soda-user.domain.enums.UserStatus}），实现 {@link EnumType}（同时也是 DP）。取值：{@code E}（Enabled）、{@code D}（Disabled）。序列化短名 {@code "E"} / {@code "D"}。提供 {@code of(String)} 入口。
+用户状态枚举。取值：`E`（Enabled）、`D`（Disabled）。
+
 ### SocialType
-社交平台类型枚举（{@code soda-user.domain.enums.SocialType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code GE}（Gitee）、{@code DT}（DingTalk）、{@code WENT}（WechatWork）、{@code WMP}（WechatMp）、{@code WOPN}（WechatOpen）、{@code WMIN}（WechatMini）、{@code ALIP}（AlipayMini）。序列化短名。提供 {@code of(String)} 入口。
+社交平台类型枚举。取值：`GE`（Gitee）、`DT`（DingTalk）、`WENT`（WechatWork）、`WMP`（WechatMp）、`WOPN`（WechatOpen）、`WMIN`（WechatMini）、`ALIP`（AlipayMini）。
 
 ### AuthAccount
-用户认证账号实体（{@code soda-user.domain.AuthAccount}），{@link Entity} 密封子类，每个子类对应一种认证方式。作为 {@link User} 聚合的子实体，由聚合根管理生命周期。{@code accountId} 使用 {@link AuthAccountId} 密封基类，序列化为包含 {@link AuthAccountType} 短名前缀的字符串（例：{@code "S:13800138000"}）。
-构造器手动传入 ID（与 User 的服务端生成不同），通过 {@code active} 参数指定激活状态。
-验证码通过 {@code replaceCode(VerificationCode)} 注入，由 ApplicationService 在外部生成验证码并调用发送器 Gateway 发送。验证码策略（长度、过期时间）由 {@link VerificationCodePolicy} DP 表达，构造时可选传入，各子类持有静态默认值。
-提供静态 Predicate 常量 {@code ACTIVE} 和工厂方法 {@code ofType(AuthAccountType)}，可与 {@code findAccount(Predicate)} 组合使用。
+用户认证账号。密封基类，4 个子类对应 4 种认证方式。作为 User 聚合的子实体，由聚合根管理生命周期。`active` 使用 `Active` DP。
+_Avoid_: 认证信息、登录方式、Account
 
-密码认证账号（{@code soda-user.domain.PasswordAuthAccount}），{@link AuthAccount} 子类。{@code accountId = PasswordAuthAccountId.from(UserId)}。持有一个不可变的 {@code passwordHash}（{@link CredentialHash}）。提供 {@code verify(RawCredential, CredentialHasher)} 和 {@code changePassword(RawCredential, CredentialHasher)} 业务方法。
+### PasswordAuthAccount
+密码认证账号。持有 `passwordHash`（`CredentialHash`）。提供 `verify(RawCredential, CredentialHasher)` 和 `changePassword(RawCredential, CredentialHasher)`。
 
 ### SmsAuthAccount
-短信认证账号（{@code soda-user.domain.SmsAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SmsAuthAccountId.from(Mobile)}。持有一个可选的 {@link VerificationCode} DP，通过 {@code replaceCode(VerificationCode)} 注入。提供 {@code verifyCode()}、{@code useCode()}、{@code getPolicy()} 方法。
+短信认证账号。持有可选的 `VerificationCode` DP。提供 `replaceCode(VerificationCode)`、`verifyCode(RandomString)`、`useCode()`。
 
 ### EmailAuthAccount
-邮箱认证账号（{@code soda-user.domain.EmailAuthAccount}），{@link AuthAccount} 子类。{@code accountId = EmailAuthAccountId.from(Email)}。持有一个可选的 {@link VerificationCode} DP，通过 {@code replaceCode(VerificationCode)} 注入。提供 {@code verifyCode()}、{@code useCode()}、{@code getPolicy()} 方法。
+邮箱认证账号。行为同 SmsAuthAccount。
 
 ### SocialAuthAccount
-社交认证账号（{@code soda-user.domain.SocialAuthAccount}），{@link AuthAccount} 子类。{@code accountId = SocialAuthAccountId.from(SocialType, openId)}。纯标识映射，无密码验证。
+社交认证账号。纯标识映射，无密码验证。`socialType`/`openId` 编码在 AuthAccountId 中。
 
 ### AuthAccountId
-账户标识符密封基类（{@code soda-user.domain.AuthAccountId}），实现 {@link Identifier}{@code <String>}。所有 AuthAccount 子类的标识符统一为此类型。序列化格式：{@code "{AuthAccountType短名}:{业务键}"}。四个子类：
+账户标识符密封基类。序列化格式：`"{AuthAccountType短名}:{业务键}"`。4 个子类：
 
 | 子类 | 格式示例 | 持有属性 |
 |---|---|---|
-| {@link PasswordAuthAccountId} | {@code "P:42"} | {@link UserId} |
-| {@link SmsAuthAccountId} | {@code "S:13800138000"} | {@link Mobile} |
-| {@link EmailAuthAccountId} | {@code "E:user@example.com"} | {@link Email} |
-| {@link SocialAuthAccountId} | {@code "O:GE:open123"} | {@link SocialType} + {@code openId} |
-反序列化通过各子类的 {@code of(String)} 完成，Jackson 需声明具体子类类型。
-认证方式枚举（{@code soda-user.domain.enums.AuthAccountType}），实现 {@link EnumType}（同时也是 DP）。取值：{@code P}（Password）、{@code S}（Sms）、{@code E}（Email）、{@code O}（OAuth）。序列化短名。提供 {@code of(String)} 入口。
+| `PasswordAuthAccountId` | `"P:42"` | `UserId` |
+| `SmsAuthAccountId` | `"S:13800138000"` | `Mobile` |
+| `EmailAuthAccountId` | `"E:user@example.com"` | `Email` |
+| `SocialAuthAccountId` | `"O:GE:open123"` | `SocialType` + `openId` |
+
+反序列化通过密封基类的 `AuthAccountId.of(String)` 按前缀路由到对应子类。
+
+### AuthAccountType
+认证方式枚举。取值：`P`（Password）、`S`（Sms）、`E`（Email）、`O`（OAuth）。
+
+### VerificationCodePolicy
+验证码策略 DP（`soda-user.domain.VerificationCodePolicy`）。封装 `codeLength` 和 `expiry`。提供 `DEFAULT_SMS`（6位/5分钟）和 `DEFAULT_EMAIL`（8位/30分钟）。
 
 ### VerificationCode
-验证码 DP（{@code soda-user.domain.VerificationCode}），实现 {@link Type}。封装验证码值、过期时间、是否已使用。提供 {@code expired()}、{@code used()}、{@code verify(code)}、{@code use()} 等业务方法。
+验证码 DP（`soda-user.domain.VerificationCode`）。封装 `code`、`expireAt`、`used`。不可变，`use()` 返回新副本。提供 `expired()`、`verify(RandomString)`。

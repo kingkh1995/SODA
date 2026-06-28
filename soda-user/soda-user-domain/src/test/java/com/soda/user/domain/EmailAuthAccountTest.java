@@ -13,9 +13,9 @@ import java.util.Optional;
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * {@link EmailAuthAccount} 单元测试。
@@ -35,7 +35,9 @@ class EmailAuthAccountTest {
     private static final Email EMAIL = new Email("test@example.com");
     private static final EmailAuthAccountId ID = EmailAuthAccountId.from(EMAIL);
 
-    /** 永不过期的验证码，用于测试。 */
+    /**
+     * 永不过期的验证码，用于测试。
+     */
     private static final VerificationCode CODE = new VerificationCode("abcdef12", Instant.MAX, false);
 
     @Test
@@ -89,11 +91,11 @@ class EmailAuthAccountTest {
     }
 
     @Test
-    void replaceCode_whenCurrentStillValid_returnsEmpty() {
+    void replaceCode_replacesWhenNewCodeValid() {
         var account = new EmailAuthAccount(ID, Active.TRUE, CODE, null);
         var newCode = new VerificationCode("111111", Instant.MAX, false);
-        assertFalse(account.replaceCode(newCode));
-        assertEquals(Optional.of(CODE), account.getVerificationCode()); // unchanged
+        assertTrue(account.replaceCode(newCode));
+        assertEquals(Optional.of(newCode), account.getVerificationCode());
     }
 
     @Test
@@ -119,7 +121,6 @@ class EmailAuthAccountTest {
         assertTrue(account.replaceCode(CODE));
         assertEquals(Optional.of(CODE), account.getVerificationCode());
     }
-
 
 
     @Test

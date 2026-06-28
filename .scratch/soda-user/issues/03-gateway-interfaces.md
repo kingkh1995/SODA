@@ -12,27 +12,32 @@ Domain 层的所有 Gateway 接口。每个接口继承 `Gateway`（复合标记
 interface UserGateway extends EntityGateway<User, UserId> {
     Optional<User> findByUsername(Username username);
     Optional<User> findByMobile(Mobile mobile);
+    Optional<User> findByEmail(Email email);
     boolean existsByUsername(Username username);
     boolean existsByMobile(Mobile mobile);
     boolean existsByEmail(Email email);
 }
 
-interface PasswordEncoder extends Gateway {
-    String encode(String rawPassword);
-    boolean matches(String rawPassword, String encodedPassword);
-}
+// CredentialHasher — 定义在 soda-component-support 的 support.gateway 包中
+// interface CredentialHasher extends Gateway {
+//     CredentialHash hash(RawCredential credential);
+//     boolean matches(RawCredential credential, CredentialHash hash);
+// }
 
-interface CodeGenerator extends Gateway {
-    String generate(int length);
-}
+// RandomStringGenerator — 定义在 soda-component-support 的 support.gateway 包中
+// interface RandomStringGenerator extends Gateway {
+//     RandomString generate(PositiveInt length);
+// }
 
-interface SmsSender extends Gateway {
-    void send(Mobile mobile, String code);
-}
+// SmsSender — 定义在 soda-component-support 的 support.gateway 包中
+// interface SmsSender extends Gateway {
+//     void send(Mobile mobile, SmsContent content);
+// }
 
-interface EmailSender extends Gateway {
-    void send(Email email, String code);
-}
+// EmailSender — 定义在 soda-component-support 的 support.gateway 包中
+// interface EmailSender extends Gateway {
+//     void send(Email email, EmailContent content);
+// }
 ```
 
 `UserGateway` 放在 `soda-user-domain` 的 `gateway` 子包下。其他 Gateway 放 domain 根包或 `gateway` 子包均可，需保持风格一致。

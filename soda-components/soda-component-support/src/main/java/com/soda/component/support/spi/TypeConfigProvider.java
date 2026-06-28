@@ -11,32 +11,45 @@ package com.soda.component.support.spi;
  */
 public interface TypeConfigProvider {
 
-    /** 版本号缓存上限（含）。默认 99，至少 99。 */
+    /**
+     * 版本号缓存上限（含）。默认 99，至少 99。
+     */
     default int versionCacheHigh() {
         return 99;
     }
 
-    /** 短信内容最大长度。默认 70，至少 70。 */
+    /**
+     * 短信内容最大长度。默认 70，至少 70。
+     */
     default int smsContentMaxLength() {
         return 70;
     }
 
-    /** 邮件主题最大长度。默认 255，至少 255。 */
+    /**
+     * 邮件主题最大长度。默认 255，至少 255。
+     */
     default int emailSubjectMaxLength() {
         return 255;
     }
 
 
-    /** 正整数缓存上限（含）。默认 100，至少 100。 */
+    /**
+     * 正整数缓存上限（含）。默认 100，至少 100。
+     */
     default int positiveIntCacheHigh() {
         return 100;
     }
-    /** 验证码最小长度。默认 1，至少 1。 */
+
+    /**
+     * 验证码最小长度。默认 1，至少 1。
+     */
     default int codeLengthMin() {
         return 1;
     }
 
-    /** 验证码最大长度。默认 100，至少 100。 */
+    /**
+     * 验证码最大长度。默认 100，至少 100。
+     */
     default int codeLengthMax() {
         return 100;
     }

@@ -18,13 +18,13 @@ public enum Sex implements EnumType {
 
     private final String desc;
 
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
-    }
-
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Sex of(String name) {
         return ParseUtils.parseEnum(Sex.class, name);
+    }
+
+    @JsonValue
+    private String jsonValue() {
+        return this.name();
     }
 }

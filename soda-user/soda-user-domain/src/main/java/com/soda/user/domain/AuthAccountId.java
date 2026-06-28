@@ -30,7 +30,9 @@ import lombok.experimental.Accessors;
 public abstract sealed class AuthAccountId implements Identifier<String>
         permits PasswordAuthAccountId, SmsAuthAccountId, EmailAuthAccountId, SocialAuthAccountId {
 
-    /** 认证账户标识符各部分之间的分隔符。 */
+    /**
+     * 认证账户标识符各部分之间的分隔符。
+     */
     protected static final String DELIMITER = ":";
 
     @JsonValue
@@ -39,18 +41,6 @@ public abstract sealed class AuthAccountId implements Identifier<String>
     protected AuthAccountId(String value) {
         ValidateUtils.nonBlank(value);
         this.value = value;
-    }
-
-    @Override
-    public final String identifier() {
-        return value;
-    }
-
-    public abstract AuthAccountType authAccountType();
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "[value=" + value + "]";
     }
 
     /**
@@ -74,5 +64,17 @@ public abstract sealed class AuthAccountId implements Identifier<String>
             case E -> EmailAuthAccountId.of(value);
             case O -> SocialAuthAccountId.of(value);
         };
+    }
+
+    @Override
+    public final String identifier() {
+        return value;
+    }
+
+    public abstract AuthAccountType authAccountType();
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[value=" + value + "]";
     }
 }

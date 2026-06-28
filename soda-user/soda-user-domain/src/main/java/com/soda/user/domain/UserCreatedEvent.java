@@ -11,7 +11,7 @@ import java.time.Instant;
  * {@link com.soda.component.domain.Entity#registerEvent} 注册。
  * <p>
  * {@code entityId} 通过 {@link #user()} 实体引用延迟求值——事件注册时 ID 可能尚未分配
- *（由 Repository 的 {@code save()} 调用 {@code assignId()} 填补），
+ * （由 Repository 的 {@code save()} 调用 {@code assignId()} 填补），
  * 但事件持有实体引用，任何时候 {@code user().getId()} 都能取到最新 ID。
  *
  * @param user       创建的用户实体
@@ -20,7 +20,9 @@ import java.time.Instant;
 public record UserCreatedEvent(User user, Instant occurredAt)
         implements DomainEvent<UserId> {
 
-    /** 默认使用当前时间。 */
+    /**
+     * 默认使用当前时间。
+     */
     public UserCreatedEvent(User user) {
         this(user, Instant.now());
     }

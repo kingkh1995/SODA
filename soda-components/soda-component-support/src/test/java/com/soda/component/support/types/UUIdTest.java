@@ -1,9 +1,5 @@
 package com.soda.component.support.types;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
@@ -11,11 +7,36 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 @DisplayName("UUID 标识符值对象")
 class UUIdTest {
 
     private static final String VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    @DisplayName("random() 生成合法实例")
+    void should_generateValidInstance_when_random() {
+        var id = UUId.random();
+        assertThat(id).isNotNull();
+        assertThatCode(() -> new UUId(id.value())).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("random() 生成不同值")
+    void should_generateDistinctValues_when_random() {
+        assertThat(UUId.random()).isNotEqualTo(UUId.random());
+    }
+
+    @Test
+    @DisplayName("identifier() 返回字符串值")
+    void should_returnString_when_identifier() {
+        var id = new UUId(VALID_UUID);
+        assertThat(id.identifier()).isEqualTo(VALID_UUID);
+    }
 
     @Nested
     @DisplayName("构造")
@@ -122,6 +143,8 @@ class UUIdTest {
         }
     }
 
+    // ——— 业务方法 ———
+
     @Nested
     @DisplayName("比较")
     class ComparableTest {
@@ -181,28 +204,5 @@ class UUIdTest {
             assertThatThrownBy(() -> MAPPER.readValue("12345", UUId.class))
                     .isInstanceOf(JsonProcessingException.class);
         }
-    }
-
-    // ——— 业务方法 ———
-
-    @Test
-    @DisplayName("random() 生成合法实例")
-    void should_generateValidInstance_when_random() {
-        var id = UUId.random();
-        assertThat(id).isNotNull();
-        assertThatCode(() -> new UUId(id.value())).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("random() 生成不同值")
-    void should_generateDistinctValues_when_random() {
-        assertThat(UUId.random()).isNotEqualTo(UUId.random());
-    }
-
-    @Test
-    @DisplayName("identifier() 返回字符串值")
-    void should_returnString_when_identifier() {
-        var id = new UUId(VALID_UUID);
-        assertThat(id.identifier()).isEqualTo(VALID_UUID);
     }
 }

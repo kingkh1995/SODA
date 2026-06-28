@@ -1,8 +1,5 @@
 package com.soda.component.support.types;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
@@ -12,10 +9,27 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 @DisplayName("随机字符串值对象")
 class RandomStringTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    @DisplayName("matches() 匹配相同字符串")
+    void should_match_when_sameValue() {
+        var rs = new RandomString("abc");
+        assertThat(rs.matches("abc")).isTrue();
+    }
+
+    @Test
+    @DisplayName("matches() 不匹配不同字符串")
+    void should_notMatch_when_differentValue() {
+        var rs = new RandomString("abc");
+        assertThat(rs.matches("xyz")).isFalse();
+    }
 
     @Nested
     @DisplayName("构造")
@@ -65,6 +79,7 @@ class RandomStringTest {
         void should_notBeEqual_when_differentValue() {
             assertThat(new RandomString("abc")).isNotEqualTo(new RandomString("xyz"));
         }
+
         @Test
         @DisplayName("hashCode 与 equals 一致")
         void should_haveConsistentHashCode() {
@@ -73,6 +88,8 @@ class RandomStringTest {
             assertThat(a).hasSameHashCodeAs(b);
         }
     }
+
+    // ——— 业务方法 ———
 
     @Nested
     @DisplayName("调试")
@@ -102,21 +119,5 @@ class RandomStringTest {
             assertThatThrownBy(() -> MAPPER.readValue("{}", RandomString.class))
                     .isInstanceOf(JsonProcessingException.class);
         }
-    }
-
-    // ——— 业务方法 ———
-
-    @Test
-    @DisplayName("matches() 匹配相同字符串")
-    void should_match_when_sameValue() {
-        var rs = new RandomString("abc");
-        assertThat(rs.matches("abc")).isTrue();
-    }
-
-    @Test
-    @DisplayName("matches() 不匹配不同字符串")
-    void should_notMatch_when_differentValue() {
-        var rs = new RandomString("abc");
-        assertThat(rs.matches("xyz")).isFalse();
     }
 }

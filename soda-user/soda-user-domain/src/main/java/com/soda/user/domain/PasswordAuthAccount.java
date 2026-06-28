@@ -25,7 +25,9 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     // ─── construction ───
 
-    /** 持久化恢复 / JSON 反序列化。 */
+    /**
+     * 持久化恢复 / JSON 反序列化。
+     */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     protected PasswordAuthAccount(
             @JsonProperty("id") PasswordAuthAccountId id,
@@ -37,9 +39,11 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     // ─── factories ───
 
-    /** 创建新密码账户 — active 默认 TRUE，ID 从 userId 派生。 */
+    /**
+     * 创建新密码账户 — active 默认 TRUE，ID 从 userId 派生。
+     */
     @Builder(builderClassName = "PasswordAuthAccountCreateBuilder",
-             builderMethodName = "createBuilder")
+            builderMethodName = "createBuilder")
     public static PasswordAuthAccount create(UserId userId, CredentialHash passwordHash) {
         return new PasswordAuthAccount(
                 PasswordAuthAccountId.from(userId),
@@ -48,9 +52,11 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
         );
     }
 
-    /** 从持久化恢复密码账户 — 全部字段显式传入。 */
+    /**
+     * 从持久化恢复密码账户 — 全部字段显式传入。
+     */
     @Builder(builderClassName = "PasswordAuthAccountRestoreBuilder",
-             builderMethodName = "restoreBuilder")
+            builderMethodName = "restoreBuilder")
     public static PasswordAuthAccount restore(PasswordAuthAccountId id, Active active, CredentialHash passwordHash) {
         return new PasswordAuthAccount(id, active, passwordHash);
     }

@@ -26,20 +26,11 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 public final class Version implements Type, Comparable<Version> {
 
-    /** 缓存内部类 — 通过 SPI 确定上限。至少 99。 */
-    private static class Cache {
-        static final int HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
-        static final Version[] INSTANCES = new Version[HIGH + 1];
+    private static final int CACHE_HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
+    private static final ArrayTypeCache<Version> CACHE =
+            new ArrayTypeCache<>(0, CACHE_HIGH, Version::new);
 
-        static {
-            for (int i = 0; i < INSTANCES.length; i++) {
-                INSTANCES[i] = new Version(i);
-            }
-        }
-    }
-
-    /** 初始版本号（0）。 */
-    public static final Version PRIMARY = Cache.INSTANCES[0];
+    public static final Version PRIMARY = CACHE.get(0);  // 0 始终在缓存范围
 
     private final int value;
 
@@ -48,27 +39,30 @@ public final class Version implements Type, Comparable<Version> {
         this.value = value;
     }
 
+    /**
+     * 从可靠输入构造。缓存范围内的值返回缓存实例。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static Version of(int value) {
+        var cached = CACHE.get(value);
+        return cached != null ? cached : new Version(value);
+    }
+
+    /**
+     * 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。
+     */
+    public static Version parse(String s) {
+        return of(ParseUtils.parseInt(s));
+    }
+
     @JsonValue
     public int value() {
         return this.value;
     }
 
-    /** 从可靠输入构造。缓存范围内的值返回缓存实例。 */
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static Version of(int value) {
-        if (0 <= value && value < Cache.INSTANCES.length) {
-            return Cache.INSTANCES[value];
-        }
-        return new Version(value);
-    }
-
-
-    /** 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。 */
-    public static Version parse(String s) {
-        return of(ParseUtils.parseInt(s));
-    }
-
-    /** 返回递增后的新版本号（不修改自身）。 */
+    /**
+     * 返回递增后的新版本号（不修改自身）。
+     */
     public Version next() {
         return of(value + 1);
     }

@@ -13,12 +13,15 @@ public final class JacksonTestUtil {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** 对 {@code original} 序列化后反序列化，断言双向一致。 */
+    private JacksonTestUtil() {
+    }
+
+    /**
+     * 对 {@code original} 序列化后反序列化，断言双向一致。
+     */
     public static <T> void assertRoundTrip(T original, Class<T> type) throws Exception {
         var json = MAPPER.writeValueAsString(original);
         var restored = MAPPER.readValue(json, type);
         assertEquals(original, restored);
     }
-
-    private JacksonTestUtil() {}
 }

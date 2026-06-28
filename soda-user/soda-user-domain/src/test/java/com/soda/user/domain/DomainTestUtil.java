@@ -12,9 +12,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  */
 public final class DomainTestUtil {
 
-    /** 预配置了 JSR310 模块的共享 ObjectMapper，可处理 {@code Instant}、{@code Duration} 等类型。 */
+    /**
+     * 预配置了 JSR310 模块的共享 ObjectMapper，可处理 {@code Instant}、{@code Duration} 等类型。
+     */
     public static final ObjectMapper MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
-    private DomainTestUtil() {}
+    private DomainTestUtil() {
+    }
 }

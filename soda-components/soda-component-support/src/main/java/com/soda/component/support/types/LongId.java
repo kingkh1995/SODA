@@ -23,7 +23,9 @@ public record LongId(@JsonValue long value) implements Identifier<Long>, Compara
         ValidateUtils.minValue(0, false, value);
     }
 
-    /** 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。 */
+    /**
+     * 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。
+     */
     public static LongId parse(String s) {
         return new LongId(ParseUtils.parseLong(s));
     }

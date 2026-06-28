@@ -21,7 +21,9 @@ import java.util.Optional;
  */
 public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
-    /** 默认邮箱验证码策略：8 位，30 分钟过期。 */
+    /**
+     * 默认邮箱验证码策略：8 位，30 分钟过期。
+     */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_EMAIL;
 
     private @Nullable VerificationCode verificationCode;
@@ -30,7 +32,9 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     // ─── construction ───
 
-    /** 持久化恢复 / JSON 反序列化。 */
+    /**
+     * 持久化恢复 / JSON 反序列化。
+     */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     protected EmailAuthAccount(
             @JsonProperty("id") EmailAuthAccountId id,
@@ -44,9 +48,11 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     // ─── factories ───
 
-    /** 创建新邮箱账户 — active 默认 TRUE，ID 从 email 派生。验证码通过 replaceCode() 后续注入。 */
+    /**
+     * 创建新邮箱账户 — active 默认 TRUE，ID 从 email 派生。验证码通过 replaceCode() 后续注入。
+     */
     @Builder(builderClassName = "EmailAuthAccountCreateBuilder",
-             builderMethodName = "createBuilder")
+            builderMethodName = "createBuilder")
     public static EmailAuthAccount create(Email email) {
         return new EmailAuthAccount(
                 EmailAuthAccountId.from(email),
@@ -56,9 +62,11 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
         );
     }
 
-    /** 从持久化恢复邮箱账户 — 全部字段显式传入。 */
+    /**
+     * 从持久化恢复邮箱账户 — 全部字段显式传入。
+     */
     @Builder(builderClassName = "EmailAuthAccountRestoreBuilder",
-             builderMethodName = "restoreBuilder")
+            builderMethodName = "restoreBuilder")
     public static EmailAuthAccount restore(
             EmailAuthAccountId id, Active active,
             @Nullable VerificationCode verificationCode,
@@ -72,7 +80,9 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
         return Optional.ofNullable(verificationCode);
     }
 
-    /** 当前生效的策略。 */
+    /**
+     * 当前生效的策略。
+     */
     public VerificationCodePolicy getVerificationCodePolicy() {
         return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
     }
@@ -95,11 +105,11 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
      * 注入验证码（替换已有）。
      *
      * @param code 新验证码，非 null
-     * @return true 替换成功；false 新码已过期或当前码仍有效
+     * @return true 替换成功；false 新码已过期
      */
     public boolean replaceCode(VerificationCode code) {
         ValidateUtils.notNull(code);
-        if (code.expired() || (verificationCode != null && !verificationCode.expired())) {
+        if (code.expired()) {
             return false;
         }
         this.verificationCode = code;
@@ -118,7 +128,9 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     // ─── email ───
 
-    /** 从 ID 中提取邮箱（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。 */
+    /**
+     * 从 ID 中提取邮箱（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。
+     */
     public Email getEmail() {
         return getId().email();
     }
