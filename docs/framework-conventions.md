@@ -8,8 +8,7 @@
 不可变的值对象，承载领域含义，通过类型系统表达业务约束。所有 DP 必须：不可变、自校验（构造时验证）、可序列化、可比较。参见 `Type` 接口。
 
 ### Entity
-具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。不覆写 `equals`/`hashCode`。
-
+具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。使用 Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)` 继承父类字段。
 **双 Builder 模式**：业务模块 Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化 ID，由服务端 `assignId()` 填补），`restoreBuilder()` 暴露全部持久化字段（含 ID）。两种路径共享同一个 `@JsonCreator(mode = Mode.PROPERTIES)` + `@JsonProperty` 构造器，确保 JSON 反序列化与手动恢复路径一致。
 
 ### Aggregate

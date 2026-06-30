@@ -1,4 +1,3 @@
 dependencies {
     implementation project(':soda-components:soda-component-domain-starter')
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }

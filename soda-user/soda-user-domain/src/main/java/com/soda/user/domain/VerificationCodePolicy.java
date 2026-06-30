@@ -1,7 +1,5 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
 
@@ -17,8 +15,8 @@ import java.time.Duration;
  * @see Type
  */
 public record VerificationCodePolicy(
-        @JsonProperty("codeLength") int codeLength,
-        @JsonProperty("expiry") Duration expiry
+        int codeLength,
+        Duration expiry
 ) implements Type {
 
 
@@ -32,10 +30,9 @@ public record VerificationCodePolicy(
      */
     public static final VerificationCodePolicy DEFAULT_EMAIL = new VerificationCodePolicy(8, Duration.ofMinutes(30));
 
-    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public VerificationCodePolicy {
-        ValidateUtils.range(1, 20, codeLength);
-        ValidateUtils.minValue(Duration.ZERO, false, expiry);
+        ValidateUtils.range(codeLength, 1, 20);
+        ValidateUtils.minValue(expiry, Duration.ZERO, false);
     }
 
 }

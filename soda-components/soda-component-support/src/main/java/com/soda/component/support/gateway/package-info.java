@@ -1,5 +1,5 @@
 @NullMarked
-@ApplicationModule(type = ApplicationModule.Type.OPEN, allowedDependencies = {"domain", "support.types"})
+@ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {"domain", "support.types"})
 package com.soda.component.support.gateway;
 
 import org.jspecify.annotations.NullMarked;

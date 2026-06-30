@@ -1,9 +1,9 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
+import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 凭证哈希 DP —— 原始凭证经 {@link com.soda.component.support.gateway.CredentialHasher} 哈希后的值。
@@ -16,10 +16,15 @@ import com.soda.component.support.util.ValidateUtils;
  * @see com.soda.component.support.gateway.CredentialHasher
  * @see RawCredential
  */
-public record CredentialHash(@JsonValue String value) implements Type {
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+public record CredentialHash(String value) implements Type {
+
+    private static final int MAX_LENGTH = Math.max(128, TypeConfig.PROVIDER.credentialHashMaxLength());
 
     public CredentialHash {
-        ValidateUtils.nonBlank(value);
+        ValidateUtils.hasText(value);
+        ValidateUtils.maxLength(value, MAX_LENGTH);
     }
+
+    @JsonValue
+    public String value() { return this.value; }
 }

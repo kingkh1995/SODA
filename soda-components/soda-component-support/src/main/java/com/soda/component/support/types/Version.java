@@ -27,6 +27,7 @@ import lombok.experimental.Accessors;
 public final class Version implements Type, Comparable<Version> {
 
     private static final int CACHE_HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
+
     private static final ArrayTypeCache<Version> CACHE =
             new ArrayTypeCache<>(0, CACHE_HIGH, Version::new);
 
@@ -35,7 +36,7 @@ public final class Version implements Type, Comparable<Version> {
     private final int value;
 
     private Version(int value) {
-        ValidateUtils.minValue(0, true, value);
+        ValidateUtils.minValue(value, 0, true);
         this.value = value;
     }
 

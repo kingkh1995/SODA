@@ -1,10 +1,9 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,10 +66,10 @@ class RawCredentialTest {
     @DisplayName("序列化")
     class Serialization {
         @Test
-        @DisplayName("序列化拒绝")
-        void should_throw_when_serialize() {
-            assertThatThrownBy(() -> MAPPER.writeValueAsString(new RawCredential("s")))
-                    .isInstanceOf(JsonProcessingException.class);
+        @DisplayName("序列化返回空对象，不暴露内部值")
+        void should_serializeToEmpty_when_serialize() throws Exception {
+            var json = MAPPER.writeValueAsString(new RawCredential("short"));
+            assertThat(json).isEqualTo("{}");
         }
 
 

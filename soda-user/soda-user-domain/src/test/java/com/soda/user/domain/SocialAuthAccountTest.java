@@ -123,11 +123,13 @@ class SocialAuthAccountTest {
     // ——— identity ———
 
     @Test
-    void notEqual_whenDifferentInstance() {
-        // Entities use reference identity — same fields ≠ equal
-        var a = new SocialAuthAccount(ID, Active.TRUE);
-        var b = new SocialAuthAccount(ID, Active.TRUE);
-        assertNotEquals(a, b);
+    void equals_byFields() {
+        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
+        var same = new SocialAuthAccount(ID, Active.TRUE);
+        var equal = new SocialAuthAccount(ID, Active.TRUE);
+        var diffId = new SocialAuthAccount(SocialAuthAccountId.from(SocialType.GE, "otherOpen"), Active.TRUE);
+        assertEquals(same, equal, "相同字段应相等");
+        assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test

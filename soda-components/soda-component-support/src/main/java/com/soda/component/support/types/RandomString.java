@@ -1,6 +1,5 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
@@ -14,11 +13,13 @@ import com.soda.component.support.util.ValidateUtils;
  * @see Type
  * @see com.soda.component.support.gateway.RandomStringGenerator
  */
-public record RandomString(@JsonValue String value) implements Type {
+public record RandomString(String value) implements Type {
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    @JsonValue
+    public String value() { return this.value; }
+
     public RandomString {
-        ValidateUtils.nonBlank(value);
+        ValidateUtils.hasText(value);
     }
 
     /**

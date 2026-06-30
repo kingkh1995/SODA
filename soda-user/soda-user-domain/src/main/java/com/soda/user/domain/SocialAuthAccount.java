@@ -1,9 +1,11 @@
 package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.SocialType;
+import lombok.EqualsAndHashCode;
 import lombok.Builder;
 
 /**
@@ -13,8 +15,9 @@ import lombok.Builder;
  *
  * @see AuthAccount
  */
+@JsonTypeName("O")
+@EqualsAndHashCode(callSuper = true)
 public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
-
     // ─── construction ───
 
     /**

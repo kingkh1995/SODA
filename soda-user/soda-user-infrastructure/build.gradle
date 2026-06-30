@@ -1,6 +1,7 @@
 dependencies {
+    implementation project(':soda-components:soda-component-infrastructure-starter')
     implementation project(':soda-user:soda-user-domain')
-    // MyBatis Spring Boot Starter — version managed by future BOM or explicit declaration
-    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4'
+    // MyBatis Spring Boot Starter — version managed by root ext
+    implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisSpringBootVersion}"
     runtimeOnly 'com.mysql:mysql-connector-j'
 }

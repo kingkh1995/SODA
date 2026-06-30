@@ -124,11 +124,15 @@ class PasswordAuthAccountTest {
     // ——— identity ———
 
     @Test
-    void notEqual_whenDifferentInstance() {
-        // Entities use reference identity — same fields ≠ equal
-        var a = new PasswordAuthAccount(ID, Active.TRUE, HASH);
-        var b = new PasswordAuthAccount(ID, Active.TRUE, HASH);
-        assertNotEquals(a, b);
+    void equals_byFields() {
+        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
+        var same = new PasswordAuthAccount(ID, Active.TRUE, HASH);
+        var equal = new PasswordAuthAccount(ID, Active.TRUE, HASH);
+        var diffHash = new PasswordAuthAccount(ID, Active.TRUE, new CredentialHash("$2a$10$different"));
+        var diffId = new PasswordAuthAccount(PasswordAuthAccountId.from(new UserId(2L)), Active.TRUE, HASH);
+        assertEquals(same, equal, "相同字段应相等");
+        assertNotEquals(same, diffHash, "不同密码哈希不应相等");
+        assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test

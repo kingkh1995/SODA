@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("MapTypeCache")
 class MapTypeCacheTest {
@@ -39,8 +39,8 @@ class MapTypeCacheTest {
     @Test
     @DisplayName("entries 为 null 抛异常")
     void constructor_nullEntries_throws() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> new MapTypeCache<>(null));
+        assertThatThrownBy(() -> new MapTypeCache<>(null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

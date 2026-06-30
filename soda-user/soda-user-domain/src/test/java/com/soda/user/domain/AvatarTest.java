@@ -1,12 +1,12 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,10 +118,24 @@ class AvatarTest {
         }
 
         @Test
+        @DisplayName("序列化为裸字符串")
+        void should_serializeToBareString() throws Exception {
+            var json = MAPPER.writeValueAsString(new Avatar(VALID_URL));
+            assertThat(json).isEqualTo("\"https://example.com/avatar.png\"");
+        }
+
+        @Test
+        @DisplayName("从裸字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            assertThat(MAPPER.readValue("\"https://example.com/avatar.png\"", Avatar.class))
+                    .isEqualTo(new Avatar(VALID_URL));
+        }
+
+        @Test
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("\"not-a-uri\"", Avatar.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 }

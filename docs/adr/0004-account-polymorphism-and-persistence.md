@@ -96,26 +96,29 @@ Repository 层通过 `account_type` 鉴别器分发到正确的子类映射。
 | 【2026-06-21】`overridePolicy()` 移除，策略在构造时设定，实例后不可变 | — |
 | 【2026-06-21】构造器显式要求 `active` 参数，消除默认 true 的隐式行为 | 所有调用方（含测试）都必须传递 active 参数 |
 
-### Jackson 多态序列化策略
+### Jackson 多态序列化策略（Jackson 3）
 
 `AuthAccount` 和 `AuthAccountId` 使用了不同的 Jackson 多态序列化策略，分别适配各自的输入形状：
 
 | 策略 | 使用方 | 输入形状 | 实现方式 |
 |------|--------|---------|---------|
-| `@JsonTypeInfo` + `@JsonSubTypes` | `AuthAccount` | JSON 对象（多属性，不同子类不同字段集） | Jackson 按 `authAccountType` 字段自动路由到子类，每个子类通过自己的 `@JsonCreator(mode = PROPERTIES)` 反序列化自己的字段 |
+| `@JsonTypeInfo` + sealed class native discovery | `AuthAccount` | JSON 对象（多属性，不同子类不同字段集） | Jackson 3 从 `permits` 子句自动发现密封子类。`@JsonTypeName` 标记子类类型名，`authAccountType` 属性作鉴别字段；无需 `@JsonSubTypes` |
 | 基类集中式 `@JsonCreator(DELEGATING)` + switch | `AuthAccountId` | 单字符串（`"P:42"`） | 基类 factory 方法拆前缀，switch + sealed 完备性路由到各子类的 `of(String)` |
 
 **为什么不能统一成一种方式？**
 
 两种输入形状不同，Jackson 提供了不同的工具来处理：
 
-- `AuthAccount` 的反序列化输入是带有多个字段的 JSON 对象（如 `{"id":"P:42","active":true,"credentialHash":"$2a$..."}`），不同子类有不同的字段集。`@JsonTypeInfo` + `@JsonSubTypes` 是 Jackson 对此场景的标准推荐做法：按鉴别字段路由到子类，各子类自行反序列化自己的属性。
+- `AuthAccount` 的反序列化输入是带有多个字段的 JSON 对象（如 `{"id":"P:42","active":true,"credentialHash":"$2a$..."}`），不同子类有不同的字段集。Jackson 3 的密封类原生支持从 `permits` 子句自动发现子类，通过 `@JsonTypeInfo` 按鉴别字段路由到子类，无需 `@JsonSubTypes`。
 
 - `AuthAccountId` 的反序列化输入是单字符串（如 `"P:42"`），类型信息嵌入在前缀中。`@JsonCreator(mode = DELEGATING)` + sealed switch 是最简方案，无需额外的鉴别字段或包装对象。
 
-试图统一只会增加不必要的复杂度（例如给 AuthAccount 写一个自定义 Deserializer 替代 4 行标准注解，或给 AuthAccountId 增加包装对象），没有实质收益。
+试图统一只会增加不必要的复杂度（例如给 AuthAccount 写一个自定义 Deserializer 替代标准注解，或给 AuthAccountId 增加包装对象），没有实质收益。
 
-**维护注意**：`@JsonSubTypes` 列表与 sealed 的 `permits` 子句是两份必须同步的子类名单。编译器检查 `permits` 但不检查 `@JsonSubTypes`。新增 AuthAccount 子类时若忘记更新 `@JsonSubTypes`，Jackson 在运行时抛异常（非静默失效），发现即修复。当前 Javadoc 已有提醒。
+**Jackson 3 迁移要点**：
+- `@JsonSubTypes` 已移除 — Jackson 3 从 `permits` 子句自动发现密封子类，编译器检查 `permits` 即覆盖了 JSON 类型注册
+- `@JsonTypeName` 在每个子类上声明，提供序列化时的类型别名
+- `@JsonIgnoreProperties("authAccountType")` 已移除 — `@JsonTypeInfo` 自动排除鉴别属性
 
 **Considered alternatives**:
 

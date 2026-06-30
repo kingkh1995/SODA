@@ -15,51 +15,51 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class ValidateUtilsTest {
 
-    // ——— nonBlank ———
+    // ——— hasText ———
 
     @Test
-    void nonBlank_valid_passes() {
+    void hasText_valid_passes() {
         // should not throw
-        ValidateUtils.nonBlank("valid");
+        ValidateUtils.hasText("valid");
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"  "})
-    void nonBlank_invalid_throws(String value) {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.nonBlank(value));
+    void hasText_invalid_throws(String value) {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.hasText(value));
     }
 
     // ——— minValue ———
 
     @Test
     void minValue_inclusive_equal_passes() {
-        ValidateUtils.minValue(5, true, 5);
+        ValidateUtils.minValue(5, 5, true);
     }
 
     @Test
     void minValue_inclusive_above_passes() {
-        ValidateUtils.minValue(5, true, 10);
+        ValidateUtils.minValue(10, 5, true);
     }
 
     @Test
     void minValue_inclusive_below_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(5, true, 3));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(3, 5, true));
     }
 
     @Test
     void minValue_exclusive_above_passes() {
-        ValidateUtils.minValue(5, false, 6);
+        ValidateUtils.minValue(6, 5, false);
     }
 
     @Test
     void minValue_exclusive_equal_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(5, false, 5));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(5, 5, false));
     }
 
     @Test
     void minValue_exclusive_below_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(5, false, 4));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.minValue(4, 5, false));
     }
 
     // ——— notNull ———
@@ -79,143 +79,92 @@ class ValidateUtilsTest {
     @Test
     void matches_valid_passes() {
         var digit = Pattern.compile("\\d+");
-        ValidateUtils.matches(digit, "123");
+        ValidateUtils.matches("123", digit);
     }
 
     @Test
     void matches_invalid_throws() {
         var digit = Pattern.compile("\\d+");
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.matches(digit, "abc"));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.matches("abc", digit));
     }
 
     // ——— maxLength ———
 
     @Test
     void maxLength_withinLimit_passes() {
-        ValidateUtils.maxLength(10, "hello");
+        ValidateUtils.maxLength("hello", 10);
     }
 
     @Test
     void maxLength_exact_passes() {
-        ValidateUtils.maxLength(5, "hello");
+        ValidateUtils.maxLength("hello", 5);
     }
 
     @Test
     void maxLength_exceeds_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxLength(3, "hello"));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxLength("hello", 3));
     }
 
     @Test
     void maxLength_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxLength(10, null));
-    }
-
-    // ——— maxValue ———
-
-    @Test
-    void maxValue_inclusive_equal_passes() {
-        ValidateUtils.maxValue(10, true, 10);
-    }
-
-    @Test
-    void maxValue_inclusive_below_passes() {
-        ValidateUtils.maxValue(10, true, 5);
-    }
-
-    @Test
-    void maxValue_inclusive_above_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxValue(10, true, 15));
-    }
-
-    @Test
-    void maxValue_exclusive_below_passes() {
-        ValidateUtils.maxValue(10, false, 9);
-    }
-
-    @Test
-    void maxValue_exclusive_equal_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxValue(10, false, 10));
-    }
-
-    @Test
-    void maxValue_exclusive_above_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxValue(10, false, 11));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxLength(null, 10));
     }
 
     // ——— range ———
 
     @Test
     void range_within_passes() {
-        ValidateUtils.range(1, 10, 5);
+        ValidateUtils.range(5, 1, 10);
     }
 
     @Test
     void range_minEqual_passes() {
-        ValidateUtils.range(1, 10, 1);
+        ValidateUtils.range(1, 1, 10);
     }
 
     @Test
     void range_maxEqual_passes() {
-        ValidateUtils.range(1, 10, 10);
+        ValidateUtils.range(10, 1, 10);
     }
 
     @Test
     void range_belowMin_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.range(1, 10, 0));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.range(0, 1, 10));
     }
 
     @Test
     void range_aboveMax_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.range(1, 10, 11));
-    }
-
-    // ——— validUri ———
-
-    @Test
-    void validUri_http_passes() {
-        ValidateUtils.validUri("http://example.com");
-    }
-
-    @Test
-    void validUri_https_passes() {
-        ValidateUtils.validUri("https://example.com/path?q=1");
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"not-a-uri"})
-    void validUri_invalid_throws(String value) {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.validUri(value));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.range(11, 1, 10));
     }
 
     // ——— hasPrefix ———
 
     @Test
     void hasPrefix_matching_passes() {
-        ValidateUtils.hasPrefix("P:", "P:42");
+        ValidateUtils.hasPrefix("P:42", "P:");
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"Q:42"})
     void hasPrefix_invalid_throws(String value) {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.hasPrefix("P:", value));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.hasPrefix(value, "P:"));
     }
 
     // ——— maxScale ———
 
     @Test
     void maxScale_withinLimit_passes() {
-        ValidateUtils.maxScale(2, new BigDecimal("10.50"));
+        ValidateUtils.maxScale(new BigDecimal("10.50"), 2);
     }
 
     @Test
     void maxScale_exact_passes() {
-        ValidateUtils.maxScale(2, new BigDecimal("10.55"));
+        ValidateUtils.maxScale(new BigDecimal("10.55"), 2);
     }
 
     @Test
     void maxScale_exceeds_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxScale(2, new BigDecimal("10.555")));
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxScale(new BigDecimal("10.555"), 2));
     }
 }

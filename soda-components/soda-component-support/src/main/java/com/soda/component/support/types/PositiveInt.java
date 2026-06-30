@@ -35,7 +35,7 @@ public final class PositiveInt implements Type, Comparable<PositiveInt> {
     private final int value;
 
     private PositiveInt(int value) {
-        ValidateUtils.minValue(1, true, value);
+        ValidateUtils.minValue(value, 1, true);
         this.value = value;
     }
 

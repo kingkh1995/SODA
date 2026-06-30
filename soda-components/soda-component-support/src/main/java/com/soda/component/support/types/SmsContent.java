@@ -1,6 +1,5 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.TypeConfig;
@@ -13,14 +12,15 @@ import com.soda.component.support.util.ValidateUtils;
  *
  * @see Type
  */
-public record SmsContent(@JsonValue String value) implements Type {
+public record SmsContent(String value) implements Type {
 
     private static final int MAX_LENGTH = Math.max(70, TypeConfig.PROVIDER.smsContentMaxLength());
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public SmsContent {
-        ValidateUtils.nonBlank(value);
-        ValidateUtils.maxLength(MAX_LENGTH, value);
-    }
+    @JsonValue
+    public String value() { return this.value; }
 
+    public SmsContent {
+        ValidateUtils.hasText(value);
+        ValidateUtils.maxLength(value, MAX_LENGTH);
+    }
 }

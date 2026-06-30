@@ -1,0 +1,3 @@
+dependencies {
+    implementation project(':soda-components:soda-component-api-starter')
+}

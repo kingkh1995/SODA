@@ -1,7 +1,6 @@
 package com.soda.user.domain.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.EnumType;
 import com.soda.component.support.util.ParseUtils;
 import lombok.Getter;
@@ -23,10 +22,5 @@ public enum AuthAccountType implements EnumType {
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static AuthAccountType of(String name) {
         return ParseUtils.parseEnum(AuthAccountType.class, name);
-    }
-
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
     }
 }

@@ -347,11 +347,19 @@ class UserTest {
     }
 
     @Test
-    void notEqual_whenDifferentInstance() {
-        // Entities use reference identity — same fields ≠ equal
+    void equals_byFields() {
+        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
         var a = fullUserWithPasswordAccount();
         var b = fullUserWithPasswordAccount();
-        assertNotEquals(a, b);
+        var user2 = User.restoreBuilder()
+                .id(new UserId(2L))
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .status(UserStatus.E)
+                .accounts(List.of())
+                .build();
+        assertEquals(a, b, "相同字段应相等");
+        assertNotEquals(a, user2, "不同 ID 不应相等");
     }
 
     @Test

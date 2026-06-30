@@ -1,10 +1,10 @@
 package com.soda.user.domain.enums;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +56,7 @@ class AuthAccountTypeTest {
     @DisplayName("非法枚举名称拒绝")
     void should_throw_when_invalidJson() {
         assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", AuthAccountType.class))
-                .isInstanceOf(JsonProcessingException.class);
+                .isInstanceOf(JacksonException.class);
     }
 
     @Test

@@ -1,11 +1,11 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 
@@ -136,7 +136,20 @@ class WanYuanTest {
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("{}", WanYuan.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
+        }
+
+        @Test
+        @DisplayName("序列化为裸字符串")
+        void should_serializeToBareString() throws Exception {
+            var json = MAPPER.writeValueAsString(WanYuan.of("1.5"));
+            assertThat(json).isEqualTo("\"1.50\"");
+        }
+
+        @Test
+        @DisplayName("从裸字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            assertThat(MAPPER.readValue("\"1.50\"", WanYuan.class)).isEqualTo(WanYuan.of("1.5"));
         }
     }
 }

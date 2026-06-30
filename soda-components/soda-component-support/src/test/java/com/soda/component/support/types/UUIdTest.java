@@ -1,11 +1,11 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -202,7 +202,7 @@ class UUIdTest {
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("12345", UUId.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 }

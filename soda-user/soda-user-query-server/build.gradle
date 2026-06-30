@@ -1,9 +1,8 @@
-// Deployable read-server — overrides root default to enable bootJar
-tasks.named('bootJar') {
-    enabled = true
-}
+apply plugin: 'org.springframework.boot'
+
+// Deployable read-server
 dependencies {
+    implementation project(':soda-components:soda-component-query-server-starter')
     implementation project(':soda-user:soda-user-api')
     implementation project(':soda-user:soda-user-infrastructure')
-    implementation 'org.springframework.boot:spring-boot-starter-web'
 }

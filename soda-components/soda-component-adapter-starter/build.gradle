@@ -1,0 +1,4 @@
+dependencies {
+    api project(':soda-components:soda-component-app-starter')
+    api 'org.springframework:spring-webmvc'
+}

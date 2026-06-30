@@ -1,11 +1,10 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.util.regex.Pattern;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 手机号 DP — 中国手机号格式校验 + 归一化，不可变、自校验、可比较。
@@ -14,14 +13,16 @@ import java.util.regex.Pattern;
  *
  * @see Type
  */
-public record Mobile(@JsonValue String value) implements Type {
+public record Mobile(String value) implements Type {
 
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Mobile {
-        ValidateUtils.nonBlank(value);
-        ValidateUtils.matches(MOBILE_PATTERN, value);
+        ValidateUtils.hasText(value);
+        ValidateUtils.matches(value, MOBILE_PATTERN);
     }
+
+    @JsonValue
+    public String value() { return this.value; }
 
 }

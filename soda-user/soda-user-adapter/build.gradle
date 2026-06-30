@@ -1,4 +1,4 @@
 dependencies {
+    implementation project(':soda-components:soda-component-adapter-starter')
     implementation project(':soda-user:soda-user-app')
-    implementation 'org.springframework:spring-webmvc'
 }

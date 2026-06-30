@@ -1,9 +1,9 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
 import java.time.Duration;
 
@@ -128,10 +128,27 @@ class VerificationCodePolicyTest {
         }
 
         @Test
+        @DisplayName("序列化为 JSON 对象")
+        void should_serializeToJsonObject() throws Exception {
+            var original = VerificationCodePolicy.DEFAULT_SMS;
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(json).contains("codeLength", "expiry");
+        }
+
+        @Test
+        @DisplayName("从 JSON 对象反序列化")
+        void should_deserializeFromJsonObject() throws Exception {
+            var original = VerificationCodePolicy.DEFAULT_SMS;
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, VerificationCodePolicy.class);
+            assertThat(restored).isEqualTo(original);
+        }
+
+        @Test
         @DisplayName("非法 JSON 拒绝（空对象）")
         void should_throw_when_emptyJson() {
             assertThatThrownBy(() -> MAPPER.readValue("{}", VerificationCodePolicy.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 }

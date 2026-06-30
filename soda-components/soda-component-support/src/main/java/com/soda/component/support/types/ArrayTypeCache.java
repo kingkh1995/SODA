@@ -1,8 +1,8 @@
 package com.soda.component.support.types;
 
+import com.soda.component.support.util.ValidateUtils;
 import org.jspecify.annotations.Nullable;
 
-import java.util.Objects;
 import java.util.function.IntFunction;
 
 /**
@@ -28,12 +28,9 @@ public final class ArrayTypeCache<V> {
      */
     @SuppressWarnings("unchecked")
     public ArrayTypeCache(int low, int high, IntFunction<V> factory) {
-        Objects.requireNonNull(factory);
-        if (low > high) {
-            throw new IllegalArgumentException(
-                    "low (" + low + ") must be <= high (" + high + ")");
-        }
-        int size = high - low + 1;
+        ValidateUtils.notNull(factory);
+        ValidateUtils.minValue(high, low, true);
+        var size = high - low + 1;
         this.offset = low;
         this.cache = (V[]) new Object[size];
         for (int i = 0; i < size; i++) {
@@ -48,7 +45,7 @@ public final class ArrayTypeCache<V> {
      * @return 命中返回缓存实例，未命中返回 {@code null}
      */
     public @Nullable V get(int value) {
-        int idx = value - offset;
+        var idx = value - offset;
         return 0 <= idx && idx < cache.length ? cache[idx] : null;
     }
 

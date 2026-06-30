@@ -2,8 +2,11 @@ package com.soda.component.support.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -96,21 +99,28 @@ class ParseUtilsTest {
         assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseLong(new Object()));
     }
 
-    // ——— parseString ———
+
+    // ——— parseUri ———
 
     @Test
-    void parseString_valid_returnsToString() {
-        assertEquals("hello", ParseUtils.parseString("hello"));
+    void parseUri_http_passes() {
+        ParseUtils.parseUri("http://example.com");
     }
 
     @Test
-    void parseString_integer_returnsToString() {
-        assertEquals("42", ParseUtils.parseString(42));
+    void parseUri_https_passes() {
+        ParseUtils.parseUri("https://example.com/path?q=1");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void parseUri_blank_throws(String value) {
+        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseUri(value));
     }
 
     @Test
-    void parseString_null_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ParseUtils.parseString(null));
+    void parseUri_relative_passes() {
+        assertEquals(URI.create("not-a-uri"), ParseUtils.parseUri("not-a-uri"));
     }
 
     // ——— parseEnum ———
@@ -118,11 +128,6 @@ class ParseUtilsTest {
     @Test
     void parseEnum_validString_parsed() {
         assertEquals(Thread.State.RUNNABLE, ParseUtils.parseEnum(Thread.State.class, "RUNNABLE"));
-    }
-
-    @Test
-    void parseEnum_enumInstance_identity() {
-        assertEquals(Thread.State.BLOCKED, ParseUtils.parseEnum(Thread.State.class, Thread.State.BLOCKED));
     }
 
     @ParameterizedTest

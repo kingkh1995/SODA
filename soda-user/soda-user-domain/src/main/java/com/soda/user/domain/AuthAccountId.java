@@ -3,7 +3,6 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
-import com.soda.component.support.util.IllegalArgumentExceptions;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
@@ -39,7 +38,7 @@ public abstract sealed class AuthAccountId implements Identifier<String>
     private final String value;
 
     protected AuthAccountId(String value) {
-        ValidateUtils.nonBlank(value);
+        ValidateUtils.hasText(value);
         this.value = value;
     }
 
@@ -51,13 +50,8 @@ public abstract sealed class AuthAccountId implements Identifier<String>
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static AuthAccountId of(String value) {
-        ValidateUtils.nonBlank(value);
-        var colonIndex = value.indexOf(DELIMITER);
-        if (colonIndex < 0) {
-            throw IllegalArgumentExceptions.forInvalidFormat(value);
-        }
-        var prefix = value.substring(0, colonIndex);
-        var accountType = ParseUtils.parseEnum(AuthAccountType.class, prefix);
+        var index = ParseUtils.indexOf(value, DELIMITER);
+        var accountType = ParseUtils.parseEnum(AuthAccountType.class, value.substring(0, index));
         return switch (accountType) {
             case P -> PasswordAuthAccountId.of(value);
             case S -> SmsAuthAccountId.of(value);

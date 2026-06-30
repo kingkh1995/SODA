@@ -1,6 +1,5 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.SocialType;
 import org.junit.jupiter.api.DisplayName;
@@ -8,6 +7,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -128,20 +128,25 @@ class SocialAuthAccountIdTest {
     @DisplayName("序列化")
     class Serialization {
         @Test
-        @DisplayName("Jackson 序列化反序列化")
-        void should_roundTrip_when_validJson() throws Exception {
-            var original = SocialAuthAccountId.from(SocialType.GE, "open123");
-            var json = MAPPER.writeValueAsString(original);
+        @DisplayName("序列化为裸字符串")
+        void should_serializeToBareString() throws Exception {
+            var id = SocialAuthAccountId.of("O:GE:open123");
+            var json = MAPPER.writeValueAsString(id);
             assertThat(json).isEqualTo("\"O:GE:open123\"");
-            var restored = MAPPER.readValue(json, SocialAuthAccountId.class);
-            assertThat(restored).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("从裸字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            assertThat(MAPPER.readValue("\"O:GE:open123\"", SocialAuthAccountId.class))
+                    .isEqualTo(SocialAuthAccountId.of("O:GE:open123"));
         }
 
         @Test
         @DisplayName("非法 JSON 抛出异常")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", SocialAuthAccountId.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 

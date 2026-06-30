@@ -1,6 +1,5 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
 import com.soda.component.support.util.ValidateUtils;
@@ -20,7 +19,7 @@ import java.util.regex.Pattern;
  *
  * @see Identifier
  */
-public record UUId(@JsonValue String value) implements Identifier<String>, Comparable<UUId> {
+public record UUId(String value) implements Identifier<String>, Comparable<UUId> {
 
     /**
      * 自动生成策略 — 用于客户端生成 {@code Entity(Supplier)} 构造器。
@@ -30,11 +29,13 @@ public record UUId(@JsonValue String value) implements Identifier<String>, Compa
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    @JsonValue
+    public String value() { return this.value; }
+
     public UUId {
-        ValidateUtils.nonBlank(value);
+        ValidateUtils.hasText(value);
         value = value.toLowerCase(Locale.ROOT);
-        ValidateUtils.matches(UUID_PATTERN, value);
+        ValidateUtils.matches(value, UUID_PATTERN);
     }
 
     /**

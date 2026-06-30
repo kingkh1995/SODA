@@ -2,11 +2,12 @@ package com.soda.component.domain;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
+import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -19,9 +20,8 @@ import java.util.function.Supplier;
  *   <li><b>手动设置 &amp; 已有数据恢复</b> — {@link #Entity(Identifier)} 传入 ID</li>
  *   <li><b>客户端生成</b> — {@link #Entity(Supplier)} 构造器内部调用 {@code generator.get()}</li>
  *   <li><b>服务端生成</b> — {@link #Entity()} 无 ID，由 Repository 调用 {@link #assignId(Identifier)}</li>
- * </ul>
  * <p>
- * 不覆写 {@code equals} / {@code hashCode}（保持 Object 引用相等）。
+ * 使用 Lombok {@code @EqualsAndHashCode} 生成基于字段的相等判断，排除领域事件列表（{@code domainEvents}）。
  *
  * @param <ID> 标识符类型
  * @see Aggregate
@@ -32,6 +32,7 @@ import java.util.function.Supplier;
         isGetterVisibility = JsonAutoDetect.Visibility.NONE,
         setterVisibility = JsonAutoDetect.Visibility.NONE
 )
+@EqualsAndHashCode(exclude = {"domainEvents"})
 public abstract class Entity<ID extends Identifier<?>> implements Identifiable<ID>, EventSource<ID> {
 
     private @Nullable ID id;
@@ -43,14 +44,18 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * 手动设置 / 已有数据恢复（reconstitution）。
      */
     protected Entity(ID id) {
-        this.id = Objects.requireNonNull(id, "id must not be null");
+        Assert.notNull(id, "id must not be null");
+        this.id = id;
     }
 
     /**
      * 客户端生成：构造时由 {@code generator} 产生 ID，发生在构造器内部。
      */
     protected Entity(Supplier<ID> generator) {
-        this.id = Objects.requireNonNull(Objects.requireNonNull(generator, "generator must not be null").get());
+        Assert.notNull(generator, "generator must not be null");
+        var id = generator.get();
+        Assert.notNull(id, "id must not be null");
+        this.id = id;
     }
 
     /**
@@ -75,7 +80,8 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
         if (this.isIdentified()) {
             return;
         }
-        this.id = Objects.requireNonNull(id);
+        Assert.notNull(id, "id must not be null");
+        this.id = id;
     }
 
     /**
@@ -86,7 +92,7 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * @param event 领域事件，非 null
      */
     protected void registerEvent(DomainEvent<ID> event) {
-        Objects.requireNonNull(event);
+        Assert.notNull(event, "event must not be null");
         domainEvents.add(event);
     }
 

@@ -2,6 +2,4 @@ dependencies {
     implementation project(':soda-components:soda-component-domain-starter')
     // soda-component-support is optional
     implementation project(':soda-components:soda-component-support')
-    // Jackson JSR310 module for Java 8 date/time types used in tests
-    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }

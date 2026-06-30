@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ParseUtils;
+import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 public final class WanYuan implements Type {
 
     private static final BigDecimal WAN = BigDecimal.valueOf(10000);
+    private static final int SCALE = Math.clamp(TypeConfig.PROVIDER.wanYuanScale(), 0, 4);
 
     @EqualsAndHashCode.Include
     private final String value;
@@ -45,8 +47,8 @@ public final class WanYuan implements Type {
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static WanYuan of(String jsonValue) {
         var bd = ParseUtils.parseBigDecimal(jsonValue);
-        ValidateUtils.maxScale(2, bd);
-        bd = bd.setScale(2, java.math.RoundingMode.UNNECESSARY);
+        ValidateUtils.maxScale(bd, SCALE);
+        bd = bd.setScale(SCALE, java.math.RoundingMode.UNNECESSARY);
         return new WanYuan(bd.toPlainString(), bd);
     }
 
@@ -67,14 +69,14 @@ public final class WanYuan implements Type {
     /**
      * 从元（元/分）构造，指定舍入模式。
      *
-     * @param yuan         元值
-     * @param roundingMode 舍入模式（除以 10000 时使用）
-     * @return WanYuan 实例
+     * @param yuan         元
+     * @param roundingMode 舍入模式
+     * @return WanYuan
      */
     public static WanYuan fromYuan(BigDecimal yuan, java.math.RoundingMode roundingMode) {
         ValidateUtils.notNull(yuan);
         ValidateUtils.notNull(roundingMode);
-        var result = yuan.divide(WAN, 2, roundingMode);
+        var result = yuan.divide(WAN, SCALE, roundingMode);
         return of(result.toPlainString());
     }
 

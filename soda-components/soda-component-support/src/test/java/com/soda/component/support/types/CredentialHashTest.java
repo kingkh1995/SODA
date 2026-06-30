@@ -1,13 +1,13 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soda.component.support.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -98,10 +98,24 @@ class CredentialHashTest {
         }
 
         @Test
+        @DisplayName("序列化为裸字符串")
+        void should_serializeToBareString() throws Exception {
+            var json = MAPPER.writeValueAsString(new CredentialHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"));
+            assertThat(json).isEqualTo("\"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy\"");
+        }
+
+        @Test
+        @DisplayName("从裸字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            assertThat(MAPPER.readValue("\"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy\"", CredentialHash.class))
+                    .isEqualTo(new CredentialHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"));
+        }
+
+        @Test
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("{}", CredentialHash.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 }

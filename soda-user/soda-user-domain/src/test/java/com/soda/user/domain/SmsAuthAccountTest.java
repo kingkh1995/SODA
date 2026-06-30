@@ -183,11 +183,14 @@ class SmsAuthAccountTest {
     // ——— identity ———
 
     @Test
-    void notEqual_whenDifferentInstance() {
-        // Entities use reference identity — same fields ≠ equal
-        var a = new SmsAuthAccount(ID, Active.TRUE, null, null);
-        var b = new SmsAuthAccount(ID, Active.TRUE, null, null);
-        assertNotEquals(a, b);
+    void equals_byFields() {
+        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
+        var same = new SmsAuthAccount(ID, Active.TRUE, null, null);
+        var equal = new SmsAuthAccount(ID, Active.TRUE, null, null);
+        var diffMobile = SmsAuthAccountId.from(new Mobile("13900139000"));
+        var diffId = new SmsAuthAccount(diffMobile, Active.TRUE, null, null);
+        assertEquals(same, equal, "相同字段应相等");
+        assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test

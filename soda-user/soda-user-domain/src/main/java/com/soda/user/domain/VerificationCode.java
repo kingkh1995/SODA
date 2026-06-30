@@ -1,7 +1,5 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Type;
 import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
@@ -19,14 +17,13 @@ import java.time.Instant;
  * @see Type
  */
 public record VerificationCode(
-        @JsonProperty("code") String code,
-        @JsonProperty("expireAt") Instant expireAt,
-        @JsonProperty("used") boolean used
+        String code,
+        Instant expireAt,
+        boolean used
 ) implements Type {
 
-    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public VerificationCode {
-        ValidateUtils.nonBlank(code);
+        ValidateUtils.hasText(code);
         ValidateUtils.notNull(expireAt);
     }
 
@@ -40,8 +37,8 @@ public record VerificationCode(
     /**
      * 在指定时刻检查是否已过期（纯函数，无隐式时钟依赖）。
      */
-    public boolean expiredAt(Instant now) {
-        return now.isAfter(expireAt);
+    public boolean expiredAt(Instant instant) {
+        return instant.isAfter(expireAt);
     }
 
 

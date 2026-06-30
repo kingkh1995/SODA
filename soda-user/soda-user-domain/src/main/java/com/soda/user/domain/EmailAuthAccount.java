@@ -2,11 +2,13 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.Email;
 import com.soda.component.support.types.RandomString;
 import com.soda.component.support.util.ValidateUtils;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
@@ -19,6 +21,8 @@ import java.util.Optional;
  *
  * @see AuthAccount
  */
+@JsonTypeName("E")
+@EqualsAndHashCode(callSuper = true)
 public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     /**

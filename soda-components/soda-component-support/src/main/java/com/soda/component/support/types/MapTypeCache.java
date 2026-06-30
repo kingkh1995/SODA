@@ -1,9 +1,9 @@
 package com.soda.component.support.types;
 
+import com.soda.component.support.util.ValidateUtils;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * DP 实例缓存 — HashMap O(1) 查找，不可变。
@@ -24,7 +24,7 @@ public final class MapTypeCache<K, V> {
      * @param entries 全部实例的键值映射
      */
     public MapTypeCache(Map<K, V> entries) {
-        Objects.requireNonNull(entries);
+        ValidateUtils.notNull(entries);
         this.cache = Map.copyOf(entries);
     }
 

@@ -1,10 +1,10 @@
 package com.soda.component.support.types;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import static com.soda.component.support.testutil.JacksonTestUtil.assertRoundTrip;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -133,10 +133,23 @@ class PositiveIntTest {
         }
 
         @Test
+        @DisplayName("序列化为裸数字")
+        void should_serializeToBareNumber() throws Exception {
+            var json = MAPPER.writeValueAsString(PositiveInt.of(42));
+            assertThat(json).isEqualTo("42");
+        }
+
+        @Test
+        @DisplayName("从裸数字反序列化")
+        void should_deserializeFromBareNumber() throws Exception {
+            assertThat(MAPPER.readValue("42", PositiveInt.class)).isEqualTo(PositiveInt.of(42));
+        }
+
+        @Test
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", PositiveInt.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
         }
     }
 

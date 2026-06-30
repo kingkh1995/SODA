@@ -1,6 +1,5 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.soda.component.support.types.Email;
 import com.soda.user.domain.enums.AuthAccountType;
 import org.junit.jupiter.api.DisplayName;
@@ -8,6 +7,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -129,7 +129,22 @@ class EmailAuthAccountIdTest {
         @DisplayName("非法 JSON 抛出异常")
         void should_throw_when_invalidJson() {
             assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", EmailAuthAccountId.class))
-                    .isInstanceOf(JsonProcessingException.class);
+                    .isInstanceOf(JacksonException.class);
+        }
+
+        @Test
+        @DisplayName("序列化为裸字符串")
+        void should_serializeToBareString() throws Exception {
+            var id = EmailAuthAccountId.of("E:user@example.com");
+            var json = MAPPER.writeValueAsString(id);
+            assertThat(json).isEqualTo("\"E:user@example.com\"");
+        }
+
+        @Test
+        @DisplayName("从裸字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            assertThat(MAPPER.readValue("\"E:user@example.com\"", EmailAuthAccountId.class))
+                    .isEqualTo(EmailAuthAccountId.of("E:user@example.com"));
         }
     }
 

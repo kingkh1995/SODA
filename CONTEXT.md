@@ -21,32 +21,70 @@ graph TD
     gateway --> types
 ```
 
-| Module | Type | Package | Allowed dependencies |
-|---|---|---|---|
-|`domain`|`OPEN`|`com.soda.component.domain`|(none)|
-|`support`|`OPEN`|`com.soda.component.support`|(none)|
-|`support.spi`|`OPEN`|`com.soda.component.support.spi`|(none)|
-|`support.util`|`OPEN`|`com.soda.component.support.util`|`support.spi`|
-|`support.types`|`OPEN`|`com.soda.component.support.types`|`domain`, `support.util`, `support.spi`|
-|`support.gateway`|`OPEN`|`com.soda.component.support.gateway`|`domain`, `support.types`|
+ | Module | Type | Package | Allowed dependencies |
+ |---|---|---|---|
+ |`domain`|`OPEN`|`com.soda.component.domain`|(none)|
+ |`support`|`OPEN`|`com.soda.component.support`|(none)|
+ |`support.spi`|`OPEN`|`com.soda.component.support.spi`|(none)|
+ |`support.util`|`CLOSED`|`com.soda.component.support.util`|`support.spi`|
+ |`support.types`|`CLOSED`|`com.soda.component.support.types`|`domain`, `support.util`, `support.spi`|
+ |`support.gateway`|`CLOSED`|`com.soda.component.support.gateway`|`domain`, `support.types`|
+
+### Component starter dependency chain
+
+分层 starter 按 DDD 架构层（api → domain → app → adapter）+ 基础设施 + 读服务 + 启动入口切割。每个 starter 通过 `allowedDependencies` 强制依赖方向——下层模块不允许反向引用上层。业务模块只需按需引入对应层。
+
+```mermaid
+graph TD
+    start(start) -->|allowedDeps: adapter, infrastructure| adapter
+    start --> infrastructure
+    adapter(adapter) -->|allowedDeps: app| app
+    app(app) -->|allowedDeps: domain, api| domain
+    app --> api
+    infrastructure(infrastructure) -->|allowedDeps: domain| domain
+    queryServer(query-server) -->|allowedDeps: api, infrastructure| api
+    queryServer --> infrastructure
+    domain(domain) -->|allowedDeps: (none)|
+    api(api) -->|allowedDeps: (none)|
+```
+
+ | Module | Type | Package | Role | Allowed dependencies |
+ |---|---|---|---|---|
+ |`api`|`OPEN`|`com.soda.component.api`|共享 DTO/Command/Query 基类|(none)|
+ |`domain`|`OPEN`|`com.soda.component.domain`|DDD 基类型（Entity/Aggregate/Identifier）|(none)|
+ |`app`|`CLOSED`|`com.soda.component.app`|Application Service 基类及编排基础设施|`domain`, `api`|
+ |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`app`|
+ |`infrastructure`|`CLOSED`|`com.soda.component.infrastructure`|Repository/持久化骨架|`domain`|
+ |`query-server`|`CLOSED`|`com.soda.component.queryserver`|读服务（混装）基类|`api`, `infrastructure`|
+ |`start`|`CLOSED`|`com.soda.component.start`|写侧启动入口基类及配置|`adapter`, `infrastructure`|
+
+业务模块（如 `soda-user-xxx`）在各自的 build.gradle 中按需引入这些 starter，替代手写原生的 Spring 依赖：
+
+| 业务模块 | 引入的 starter |
+|---|---|
+|`soda-user-api`|`soda-component-api-starter`|
+|`soda-user-domain`|`soda-component-domain-starter`|
+|`soda-user-app`|`soda-component-api-starter` + `soda-component-app-starter`|
+|`soda-user-adapter`|`soda-component-adapter-starter`|
+|`soda-user-infrastructure`|`soda-component-domain-starter` + `soda-component-infrastructure-starter`|
+|`soda-user-query-server`|`soda-component-api-starter` + `soda-component-infrastructure-starter`|
+|`soda-user-start`|`soda-component-adapter-starter` + `soda-component-infrastructure-starter` + `soda-component-start-starter`|
+
 ## Modulith 治理规则
 
 ### 白名单原则
-模块依赖通过 `@ApplicationModule(type = OPEN, allowedDependencies = …)` 严格白名单控制。
-所有模块均设为 `type = OPEN`（允许被任何模块引用）。
-无依赖的模块（如 {@code domain}、{@code support}）设 {@code allowedDependencies = {}}。
-有跨模块引用的模块（如 `support.types` 引用 `domain`、`support.util`）在 `allowedDependencies` 中显式声明。
-未声明的跨模块引用在编译时不会被阻止，但会被 `ModulithTest` 在测试阶段捕获并拒绝。
+模块依赖通过 `@ApplicationModule(allowedDependencies = …)` 严格白名单控制。
+按 `type` 分两类：
 
-| 模块角色 | `type` | `allowedDependencies` |
-|---|---|---|
-| 所有模块 | `OPEN` | `{}`（默认无依赖） |
-| 有依赖的模块（如 support.types） | `OPEN` | `{"domain", …}` 显式声明白名单 |
+| 模块角色 | `type` | 校验行为 | `allowedDependencies` |
+|---|---|---|---|
+| 根模块（无依赖） | `OPEN` | 允许被任何模块引用，自身依赖不校验 | `{}`（默认） |
+| 有依赖的业务层模块 | `CLOSED` | 依赖方向被 ModulithTest 强制校验，import 超出 `allowedDependencies` 的模块即失败 | 显式声明白名单 |
+
+未声明的跨模块引用在编译时不会被阻止，但会被 `ModulithTest.verify()` 在测试阶段捕获并拒绝（针对 `CLOSED` 模块）。
 
 ### ModulithTest 强制
 每个 Gradle 子项目（soda-components、soda-supports、将来每个 soda-xxx 业务模块）**必须**有一个 Modulith 一致性验证测试。
-
-> 由于所有模块均为 `type = OPEN`，cycle check 在无依赖链时无类可验证。需在 `src/test/resources/archunit.properties` 中设置 `archRule.failOnEmptyShould=false`。
 
 模板（放在项目的 `src/test/java/<base-package>/ModulithTest.java` 中）：
 
@@ -63,19 +101,12 @@ class ModulithTest {
 }
 ```
 
-模板（放在项目的 `src/test/resources/archunit.properties`）：
-
-```properties
-archRule.failOnEmptyShould=false
-```
-
 ### 新增模块步骤
-1. 在根包添加 `package-info.java`，标注 `@ApplicationModule(type = OPEN, allowedDependencies = {…})`，默认 `allowedDependencies = {}`
+1. 在根包添加 `package-info.java`，标注 `@ApplicationModule(allowedDependencies = {…})`
+   - 无依赖的根模块 → `type = OPEN`, `allowedDependencies = {}`
+   - 有依赖的业务层模块 → `type = CLOSED`, `allowedDependencies` 中声明所需模块的完整逻辑名（如 `support.util`，非 `util`）
 2. 在所属项目的 `ModulithTest` 注释表格中新增一行（文档用途，测试自动扫描）
-3. 在 `allowedDependencies` 中声明所需模块的完整逻辑名（如 `support.util`，非 `util`）；有依赖时才需声明，默认留空
-4. 确保项目 `src/test/resources/archunit.properties` 包含 `archRule.failOnEmptyShould=false`
-5. 运行 `ModulithTest.verifyModuleStructure()` 确认无违反
-
+3. 运行 `ModulithTest.verifyModuleStructure()` 确认无违反
 ## Language
 
 ### User

@@ -1,7 +1,6 @@
 package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.soda.component.support.util.IllegalArgumentExceptions;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
@@ -10,11 +9,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
-
 /**
  * 社交认证账户标识符 DP — 派生自 {@link SocialType} + openId。
  * <p>
- * 值 = {@code "O:{socialType}:{openId}"}（如 {@code "O:GE:12345"}），统一 {@link AuthAccountId} 格式。
+ * 格式：{@code "O:{社交类型短名}:{openId}"}（如 {@code "O:W:open123"}、{@code "O:A:456"}）。
  *
  * @see AuthAccountId
  */
@@ -22,7 +20,6 @@ import lombok.experimental.Accessors;
 @Getter
 @Accessors(fluent = true)
 public final class SocialAuthAccountId extends AuthAccountId implements Comparable<SocialAuthAccountId> {
-
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.O;
     private static final String PREFIX = ACCOUNT_TYPE.name() + AuthAccountId.DELIMITER;
@@ -37,17 +34,12 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
     }
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    /** 反序列化入口 — 格式 {@code "O:{socialType}:{openId}"}。 */
     public static SocialAuthAccountId of(String value) {
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
-        var colonIndex = suffix.indexOf(AuthAccountId.DELIMITER);
-        if (colonIndex < 0) {
-            throw IllegalArgumentExceptions.forInvalidFormat(value);
-        }
-        var socialType = ParseUtils.parseEnum(SocialType.class, suffix.substring(0, colonIndex));
-        var openId = suffix.substring(colonIndex + 1);
-        ValidateUtils.nonBlank(openId);
+        var suffix = ParseUtils.cutPrefix(value, PREFIX);
+        var socialParts = ParseUtils.splitPair(suffix, AuthAccountId.DELIMITER);
+        var socialType = ParseUtils.parseEnum(SocialType.class, socialParts[0]);
+        var openId = socialParts[1];
+        ValidateUtils.hasText(openId);
         return new SocialAuthAccountId(value, socialType, openId);
     }
 
@@ -56,8 +48,11 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
      */
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
-        ValidateUtils.nonBlank(openId);
-        return new SocialAuthAccountId(PREFIX + socialType.name() + AuthAccountId.DELIMITER + openId, socialType, openId);
+        ValidateUtils.hasText(openId);
+        return new SocialAuthAccountId(
+                PREFIX + socialType.name() + AuthAccountId.DELIMITER + openId,
+                socialType,
+                openId);
     }
 
     @Override

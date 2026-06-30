@@ -190,11 +190,14 @@ class EmailAuthAccountTest {
     // ——— identity ———
 
     @Test
-    void notEqual_whenDifferentInstance() {
-        // Entities use reference identity — same fields ≠ equal
-        var a = new EmailAuthAccount(ID, Active.TRUE, null, null);
-        var b = new EmailAuthAccount(ID, Active.TRUE, null, null);
-        assertNotEquals(a, b);
+    void equals_byFields() {
+        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
+        var same = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        var equal = new EmailAuthAccount(ID, Active.TRUE, null, null);
+        var diffEmail = EmailAuthAccountId.from(new Email("other@example.com"));
+        var diffId = new EmailAuthAccount(diffEmail, Active.TRUE, null, null);
+        assertEquals(same, equal, "相同字段应相等");
+        assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test

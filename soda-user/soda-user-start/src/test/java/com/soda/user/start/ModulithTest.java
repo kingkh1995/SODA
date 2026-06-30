@@ -2,16 +2,25 @@ package com.soda.user.start;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
-
 /**
  * Spring Modulith 模块依赖关系验证。
+ * <ul>
+ *   <li>{@code type = CLOSED} 的模块：依赖方向被严格校验，只能引用 {@code allowedDependencies} 中声明的模块</li>
+ *   <li>{@code type = OPEN} 的模块：根模块（无依赖），允许被任何人引用</li>
+ * </ul>
  * <p>
- * 扫描 {@code com.soda.user} 根包下所有 {@code @ApplicationModule} 注解的包，
- * 验证各子模块间依赖关系符合 package-info.java 中声明的白名单。
- * <p>
- * 全部模块为 OPEN 时 cycle check 无可验证的类，
- * 通过 {@code src/test/resources/archunit.properties} 设置
- * {@code archRule.failOnEmptyShould=false} 允许空 should 规则。
+ * <pre>
+ * ┌──────────────────┬──────────┬──────────────────────────────────────┐
+ * │ Module           │ Type     │ Allowed dependencies                 │
+ * ├──────────────────┼──────────┼──────────────────────────────────────┤
+ * │ api              │ OPEN     │ (none)                               │
+ * │ domain           │ OPEN     │ (none)                               │
+ * │ app              │ CLOSED   │ api, domain                          │
+ * │ adapter          │ CLOSED   │ app                                  │
+ * │ infrastructure   │ CLOSED   │ domain                               │
+ * │ queryserver      │ CLOSED   │ api, infrastructure                  │
+ * │ start            │ CLOSED   │ adapter, infrastructure              │
+ * </pre>
  */
 class ModulithTest {
 

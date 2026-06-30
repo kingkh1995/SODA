@@ -40,10 +40,10 @@ public final class Email implements Type {
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Email(String value) {
-        ValidateUtils.nonBlank(value);
-        ValidateUtils.matches(EMAIL_PATTERN, value);
+        ValidateUtils.hasText(value);
+        ValidateUtils.matches(value, EMAIL_PATTERN);
         value = value.toLowerCase(Locale.ROOT);
-        int at = value.indexOf('@');
+        var at = value.indexOf('@');
         this.value = value;
         this.localPart = value.substring(0, at);
         this.domain = value.substring(at + 1);

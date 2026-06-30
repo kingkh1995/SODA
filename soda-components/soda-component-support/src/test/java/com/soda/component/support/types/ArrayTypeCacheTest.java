@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("ArrayTypeCache")
 class ArrayTypeCacheTest {
@@ -47,8 +47,8 @@ class ArrayTypeCacheTest {
     @Test
     @DisplayName("factory 为 null 抛异常")
     void constructor_nullFactory_throws() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> new ArrayTypeCache<>(0, 10, null));
+        assertThatThrownBy(() -> new ArrayTypeCache<>(0, 10, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

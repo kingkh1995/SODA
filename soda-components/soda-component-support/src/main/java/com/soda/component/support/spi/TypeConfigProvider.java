@@ -32,25 +32,24 @@ public interface TypeConfigProvider {
         return 255;
     }
 
+    /**
+     * 凭证哈希值最大长度。默认 255，至少 128。
+     */
+    default int credentialHashMaxLength() {
+        return 255;
+    }
+
+    /**
+     * WanYuan 小数位数（万元后保留几位）。取值范围 0-4，默认 2。
+     */
+    default int wanYuanScale() {
+        return 2;
+    }
 
     /**
      * 正整数缓存上限（含）。默认 100，至少 100。
      */
     default int positiveIntCacheHigh() {
-        return 100;
-    }
-
-    /**
-     * 验证码最小长度。默认 1，至少 1。
-     */
-    default int codeLengthMin() {
-        return 1;
-    }
-
-    /**
-     * 验证码最大长度。默认 100，至少 100。
-     */
-    default int codeLengthMax() {
         return 100;
     }
 }

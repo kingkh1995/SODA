@@ -1,7 +1,6 @@
 package com.soda.user.domain.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.EnumType;
 import com.soda.component.support.util.ParseUtils;
 import lombok.Getter;
@@ -26,10 +25,5 @@ public enum SocialType implements EnumType {
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SocialType of(String name) {
         return ParseUtils.parseEnum(SocialType.class, name);
-    }
-
-    @JsonValue
-    private String jsonValue() {
-        return this.name();
     }
 }

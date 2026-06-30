@@ -52,13 +52,32 @@ public final class Version implements Type, Comparable<Version>, Serializable {
 ```
 ### 校验方法参数顺序
 
-`ValidateUtils` 中所有校验方法的参数遵循：辅助参数在前，被校验值（命名 `value`）在最后。
+`ValidateUtils` 中所有校验方法的参数遵循 Spring {@code Assert} 风格：被校验值在前，辅助参数在后。
 只有被校验值标注 `@Nullable` 并校验，辅助参数视为可信。
 
 ```java
-minValue(0, true, value)   // long min, boolean inclusive, long value
-maxLength(30, value)       // int max, String value
-hasPrefix("P:", value)     // String prefix, String value
+minValue(value, 0, false)     // long value, long min, boolean inclusive
+maxLength(value, 30)          // String value, int max
+hasPrefix(value, "P:")        // String value, String prefix
+matches(value, pattern)       // String value, Pattern pattern
+```
+
+### Entity 空值校验
+
+Entity 类的空值校验使用 Spring `Assert.notNull`，携带自解释的错误消息：
+
+```java
+Assert.notNull(username, "username must not be null");
+Assert.notNull(status, "status must not be null");
+```
+
+| 角色 | 判空工具 | 消息 |
+|---|---|---|
+| DP 类 | `ValidateUtils.notNull(value)` | 固定默认消息 |
+| Entity 类 | `Assert.notNull(value, "field must not be null")` | 每处自解释 |
+| 工具类 | `ValidateUtils.notNull(value)` | 固定默认消息 |
+
+原则：Entity 承载业务状态，判空时应当明确哪个字段为 null，便于故障排查。DP 类型简单，默认消息足够。
 
 ## 注解驱动
 
@@ -239,10 +258,10 @@ for (var item : value) {
 - 异常消息使用英文
 - 优先 `IllegalArgumentException` / `IllegalStateException`，不使用已废弃异常
 - 不在非异常路径上构造异常（性能考虑）
-- 工具类统一通过 `IllegalArgumentExceptions` 工厂方法生成异常消息
+- 工具类通过内联 `IllegalArgumentException` 消息文本校验，不引入工厂类
 
 ## 依赖管理
 - `implementation` 用于运行时需要的依赖（Jackson 注解、spring-modulith 等）
 - `compileOnly` 用于仅编译期需要的依赖（Lombok）
 - 不在基础模块用 `api` 暴露传递依赖，除非被依赖的是核心框架能力
-- `testImplementation` 用于测试需要的依赖（如 `jackson-databind` 用于对象序列化验证）
+- `testImplementation` 用于测试需要的依赖

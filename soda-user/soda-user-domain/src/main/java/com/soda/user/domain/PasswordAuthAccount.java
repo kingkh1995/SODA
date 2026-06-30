@@ -2,14 +2,16 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.support.gateway.CredentialHasher;
 import com.soda.component.support.types.Active;
 import com.soda.component.support.types.CredentialHash;
 import com.soda.component.support.types.RawCredential;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.EqualsAndHashCode;
 
-import java.util.Objects;
+import org.springframework.util.Assert;
 
 /**
  * 密码认证账户实体 — 用户名 + 密码方式的认证。
@@ -19,6 +21,8 @@ import java.util.Objects;
  * @see AuthAccount
  */
 @Getter
+@JsonTypeName("P")
+@EqualsAndHashCode(callSuper = true)
 public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId> {
 
     private CredentialHash passwordHash;
@@ -34,7 +38,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
             @JsonProperty("active") Active active,
             @JsonProperty("passwordHash") CredentialHash passwordHash) {
         super(id, active);
-        this.passwordHash = Objects.requireNonNull(passwordHash);
+        Assert.notNull(passwordHash, "passwordHash must not be null");
+        this.passwordHash = passwordHash;
     }
 
     // ─── factories ───
@@ -71,8 +76,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * @return true 若匹配
      */
     public boolean verify(RawCredential credential, CredentialHasher hasher) {
-        Objects.requireNonNull(credential);
-        Objects.requireNonNull(hasher);
+        Assert.notNull(credential, "credential must not be null");
+        Assert.notNull(hasher, "hasher must not be null");
         return hasher.matches(credential, passwordHash);
     }
 
@@ -85,8 +90,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * @param hasher     凭证哈希器
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
-        Objects.requireNonNull(credential);
-        Objects.requireNonNull(hasher);
+        Assert.notNull(credential, "credential must not be null");
+        Assert.notNull(hasher, "hasher must not be null");
         this.passwordHash = hasher.hash(credential);
     }
 }

@@ -1,18 +1,21 @@
 package com.soda.component.support.util;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.regex.Pattern;
 
 /**
  * 校验工具类 — 基础参数校验，校验失败抛出 {@link IllegalArgumentException}。
  * <p>
- * 参考 kk-ddd 的 {@code ValidateUtils} 设计。
- * <p>校验方法参数惯例：辅助参数在前，被校验值（命名均为 {@code value}）在最后。
- * 只有被校验值标注 {@link Nullable} 并校验，辅助参数视为可信。
+ * 参考 Spring {@code Assert} 设计，区别在于本工具类使用固定的默认错误消息，
+ * 调用方无需每次传入消息字符串。参数顺序与 Spring Assert 一致：被校验值在前，
+ * 辅助参数在后。
+ * <p>
+ * 仅负责校验，不做任何输入处理（trim、舍入等）。
+ * 被校验值标注 {@link Nullable} 并校验，辅助参数视为可信。
  */
 public final class ValidateUtils {
 
@@ -20,91 +23,107 @@ public final class ValidateUtils {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * 非 null 校验。
+     */
     public static void notNull(@Nullable Object value) {
-        if (value == null) {
-            throw IllegalArgumentExceptions.forIsNull();
-        }
+        Assert.notNull(value, "must not be null");
     }
 
-    public static void nonBlank(@Nullable String value) {
-        if (value == null || value.isBlank()) {
-            throw IllegalArgumentExceptions.forIsBlank();
-        }
+    /**
+     * 非 blank 校验。
+     */
+    public static void hasText(@Nullable String value) {
+        Assert.hasText(value, "must not be blank");
     }
 
-    public static void minValue(long min, boolean minInclusive, long value) {
+    /**
+     * 最小值校验（long 原始类型）。
+     */
+    public static void minValue(long value, long min, boolean inclusive) {
         var cmp = Long.compare(value, min);
-        if ((minInclusive && cmp < 0) || (!minInclusive && cmp <= 0)) {
-            throw IllegalArgumentExceptions.forMinValue(value, min, minInclusive);
+        if ((inclusive && cmp < 0) || (!inclusive && cmp <= 0)) {
+            throw minValueException(inclusive, min, value);
         }
     }
 
-    public static <T extends Comparable<? super T>> void minValue(T min, boolean minInclusive, @Nullable T value) {
+    /**
+     * 最小值校验（Comparable 泛型）。
+     */
+    public static <T extends Comparable<? super T>> void minValue(@Nullable T value, T min, boolean inclusive) {
         notNull(value);
         var cmp = value.compareTo(min);
-        if ((minInclusive && cmp < 0) || (!minInclusive && cmp <= 0)) {
-            throw IllegalArgumentExceptions.forMinValue(value, min, minInclusive);
+        if ((inclusive && cmp < 0) || (!inclusive && cmp <= 0)) {
+            throw minValueException(inclusive, min, value);
         }
     }
 
-    public static void matches(Pattern pattern, @Nullable String value) {
-        nonBlank(value);
+    /**
+     * 正则格式校验。
+     */
+    public static void matches(@Nullable String value, Pattern pattern) {
+        hasText(value);
         if (!pattern.matcher(value).matches()) {
-            throw IllegalArgumentExceptions.forInvalidFormat(value);
+            throw new IllegalArgumentException("invalid format: '" + value + "'");
         }
     }
 
-    public static void maxScale(int max, @Nullable BigDecimal value) {
+    /**
+     * BigDecimal 小数位数上限校验。
+     */
+    public static void maxScale(@Nullable BigDecimal value, int max) {
         notNull(value);
         if (value.scale() > max) {
-            throw IllegalArgumentExceptions.forMaxScale(value.scale(), max);
+            throw new IllegalArgumentException("scale must not exceed " + max + ", got: " + value.scale());
         }
     }
 
-    public static void maxLength(int max, @Nullable String value) {
-        nonBlank(value);
+    /**
+     * 字符串最大长度校验。
+     */
+    public static void maxLength(@Nullable String value, int max) {
+        hasText(value);
         if (value.length() > max) {
-            throw IllegalArgumentExceptions.forMaxLength(value.length(), max);
+            throw new IllegalArgumentException("length must not exceed " + max + ", got: " + value.length());
         }
     }
 
-    public static void maxValue(int max, boolean inclusive, int value) {
-        var cmp = Integer.compare(value, max);
-        if ((inclusive && cmp > 0) || (!inclusive && cmp >= 0)) {
-            throw IllegalArgumentExceptions.forMaxValue(value, max, inclusive);
-        }
-    }
-
-    public static void range(int min, int max, int value) {
+    /**
+     * 区间校验（包含两端）。
+     */
+    public static void range(int value, int min, int max) {
         if (value < min || value > max) {
-            throw IllegalArgumentExceptions.forOutOfRange(value, min, max);
-        }
-    }
-
-    public static void validUri(@Nullable String value) {
-        nonBlank(value);
-        URI uri;
-        try {
-            uri = new URI(value);
-        } catch (URISyntaxException e) {
-            throw IllegalArgumentExceptions.forInvalidUriFormat(value);
-        }
-        if (!uri.isAbsolute()) {
-            throw IllegalArgumentExceptions.forRelativeUri(value);
-        }
-        var scheme = uri.getScheme();
-        if (!"http".equals(scheme) && !"https".equals(scheme)) {
-            throw IllegalArgumentExceptions.forInvalidUriScheme(value, scheme);
+            throw new IllegalArgumentException("must be between " + min + " and " + max + " (inclusive), got: " + value);
         }
     }
 
     /**
      * 校验字符串以指定前缀开头，不匹配时抛出 {@link IllegalArgumentException}。
      */
-    public static void hasPrefix(String prefix, @Nullable String value) {
-        nonBlank(value);
+    public static void hasPrefix(@Nullable String value, String prefix) {
+        hasText(value);
         if (!value.startsWith(prefix)) {
-            throw IllegalArgumentExceptions.forMissingPrefix(prefix, value);
+            throw new IllegalArgumentException("must start with '" + prefix + "', got: '" + value + "'");
         }
+    }
+
+    /**
+     * 校验 URI 为合法 http/https URL。
+     */
+    public static void validUrl(@Nullable URI value) {
+        notNull(value);
+        var scheme = value.getScheme();
+        if (!"http".equals(scheme) && !"https".equals(scheme)) {
+            throw new IllegalArgumentException("URI scheme must be http/https, got: '" + scheme + "'");
+        }
+        if (!value.isAbsolute()) {
+            throw new IllegalArgumentException("URI must be absolute: '" + value + "'");
+        }
+    }
+
+    private static IllegalArgumentException minValueException(boolean inclusive, Object min, Object value) {
+        var msg = (inclusive ? "must be greater than or equal to " : "must be greater than ")
+                + min + ", got: " + value;
+        return new IllegalArgumentException(msg);
     }
 }

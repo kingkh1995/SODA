@@ -1,13 +1,12 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.soda.component.domain.Entity;
 import com.soda.component.support.types.Active;
 import com.soda.user.domain.enums.AuthAccountType;
+import lombok.EqualsAndHashCode;
+import org.springframework.util.Assert;
 
-import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
@@ -16,8 +15,8 @@ import java.util.function.Predicate;
  * 密封类，仅允许 {@link PasswordAuthAccount}、{@link SmsAuthAccount}、{@link EmailAuthAccount}、{@link SocialAuthAccount} 四种子类。
  * 子类通过多态实现不同认证方式的行为差异。
  * <p>
- * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，必须在 {@code @JsonSubTypes} 中添加对应
- * {@code @JsonSubTypes.Type}，否则 Jackson 反序列化时无法识别该子类（编译期不会报错）。
+ * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识。
+ * Jackson 3 从密封类 {@code permits} 子句自动发现子类，无需 {@code @JsonSubTypes}。
  * <p>
  * Jackson 序列化说明：{@link Entity 基类} 声明了 {@code @JsonAutoDetect(getterVisibility = NONE)}，
  * 因此子类上的 {@code @Getter}（Lombok 生成 getter）不影响 JSON 序列化／反序列化。
@@ -30,17 +29,8 @@ import java.util.function.Predicate;
  * @see EmailAuthAccount
  * @see SocialAuthAccount
  */
-@JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        property = "authAccountType"
-)
-@JsonIgnoreProperties("authAccountType")
-@JsonSubTypes({
-        @JsonSubTypes.Type(value = PasswordAuthAccount.class, name = "P"),
-        @JsonSubTypes.Type(value = SmsAuthAccount.class, name = "S"),
-        @JsonSubTypes.Type(value = EmailAuthAccount.class, name = "E"),
-        @JsonSubTypes.Type(value = SocialAuthAccount.class, name = "O")
-})
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authAccountType")
+@EqualsAndHashCode(callSuper = true)
 public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entity<ID>
         permits PasswordAuthAccount, SmsAuthAccount, EmailAuthAccount, SocialAuthAccount {
 
@@ -52,7 +42,8 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
      */
     protected AuthAccount(ID id, Active active) {
         super(id);
-        this.active = Objects.requireNonNull(active);
+        Assert.notNull(active, "active must not be null");
+        this.active = active;
     }
 
     // ─── construction ───
@@ -65,7 +56,7 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
      * 返回该账户的认证类型 — 委托至 {@link #getId()}.{@link AuthAccountId#authAccountType() authAccountType()}。
      */
     public final AuthAccountType getAuthAccountType() {
-        return Objects.requireNonNull(getId()).authAccountType();
+        return getId().authAccountType();
     }
 
     /**

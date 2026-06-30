@@ -34,8 +34,7 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     /** 反序列化入口 — 格式 {@code "P:{userId}"}。 */
     public static PasswordAuthAccountId of(String value) {
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
+        var suffix = ParseUtils.cutPrefix(value, PREFIX);
         return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
     }
 

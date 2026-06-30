@@ -2,6 +2,7 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.Email;
+import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
 import lombok.EqualsAndHashCode;
@@ -21,6 +22,7 @@ import lombok.experimental.Accessors;
 public final class EmailAuthAccountId extends AuthAccountId implements Comparable<EmailAuthAccountId> {
 
     public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.E;
+
     private static final String PREFIX = ACCOUNT_TYPE.name() + AuthAccountId.DELIMITER;
 
     private final Email email;
@@ -33,8 +35,7 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     /** 反序列化入口 — 格式 {@code "E:{email}"}。 */
     public static EmailAuthAccountId of(String value) {
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
+        var suffix = ParseUtils.cutPrefix(value, PREFIX);
         return new EmailAuthAccountId(value, new Email(suffix));
     }
 

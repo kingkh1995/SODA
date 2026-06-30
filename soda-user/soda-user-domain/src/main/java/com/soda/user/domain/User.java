@@ -12,12 +12,13 @@ import com.soda.user.domain.enums.AuthAccountType;
 import com.soda.user.domain.enums.Sex;
 import com.soda.user.domain.enums.UserStatus;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
+import org.springframework.util.Assert;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -28,9 +29,9 @@ import java.util.function.Predicate;
  * 持久化恢复通过 {@link #restoreBuilder()}。
  *
  * @see Aggregate
- * @see AuthAccount
  */
 @Getter
+@EqualsAndHashCode(callSuper = true)
 public class User extends Aggregate<UserId> {
 
     @Getter
@@ -65,9 +66,12 @@ public class User extends Aggregate<UserId> {
         if (id != null) {
             assignId(id);
         }
-        this.username = Objects.requireNonNull(username);
-        this.nickname = Objects.requireNonNull(nickname);
-        this.status = Objects.requireNonNull(status);
+        Assert.notNull(username, "username must not be null");
+        this.username = username;
+        Assert.notNull(nickname, "nickname must not be null");
+        this.nickname = nickname;
+        Assert.notNull(status, "status must not be null");
+        this.status = status;
         this.mobile = mobile;
         this.email = email;
         this.sex = sex;
@@ -103,6 +107,7 @@ public class User extends Aggregate<UserId> {
                                @Nullable Mobile mobile, @Nullable Email email,
                                @Nullable Sex sex, @Nullable Avatar avatar,
                                @Nullable List<AuthAccount<?>> accounts) {
+        Assert.notNull(id, "id must not be null");
         return new User(id, username, nickname, status, mobile, email, sex, avatar,
                 accounts != null ? new LinkedList<>(accounts) : null);
     }
@@ -155,9 +160,9 @@ public class User extends Aggregate<UserId> {
      * @return 验证成功返回 true
      */
     public boolean authenticate(AuthAccountType type, String rawCredential, CredentialHasher credentialHasher) {
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(rawCredential);
-        Objects.requireNonNull(credentialHasher);
+        Assert.notNull(type, "type must not be null");
+        Assert.notNull(rawCredential, "rawCredential must not be null");
+        Assert.notNull(credentialHasher, "credentialHasher must not be null");
         return findAccount(AuthAccount.ofType(type).and(AuthAccount.ACTIVE))
                 .map(account -> switch (account) {
                     case PasswordAuthAccount pa -> pa.verify(new RawCredential(rawCredential), credentialHasher);

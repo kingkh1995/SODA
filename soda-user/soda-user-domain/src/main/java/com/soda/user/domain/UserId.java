@@ -1,11 +1,10 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
 import com.soda.component.support.types.LongId;
 import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 
 /**
@@ -16,16 +15,18 @@ import com.soda.component.support.util.ValidateUtils;
  *
  * @see Identifier
  */
-public record UserId(@JsonValue long value) implements Identifier<Long>, Comparable<UserId> {
+public record UserId(long value) implements Identifier<Long>, Comparable<UserId> {
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public UserId {
-        ValidateUtils.minValue(0, false, value);
+        ValidateUtils.minValue(value, 0, false);
     }
 
     /**
      * 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。
      */
+    @JsonValue
+    public long value() { return this.value; }
+
     public static UserId parse(String s) {
         return new UserId(ParseUtils.parseLong(s));
     }

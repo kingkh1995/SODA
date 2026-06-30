@@ -2,6 +2,7 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.support.types.Mobile;
+import com.soda.component.support.util.ParseUtils;
 import com.soda.component.support.util.ValidateUtils;
 import com.soda.user.domain.enums.AuthAccountType;
 import lombok.EqualsAndHashCode;
@@ -33,8 +34,7 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     /** 反序列化入口 — 格式 {@code "S:{mobile}"}。 */
     public static SmsAuthAccountId of(String value) {
-        ValidateUtils.hasPrefix(PREFIX, value);
-        var suffix = value.substring(PREFIX.length());
+        var suffix = ParseUtils.cutPrefix(value, PREFIX);
         return new SmsAuthAccountId(value, new Mobile(suffix));
     }
 

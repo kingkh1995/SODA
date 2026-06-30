@@ -1,0 +1,5 @@
+dependencies {
+    api project(':soda-components:soda-component-api-starter')
+    api project(':soda-components:soda-component-infrastructure-starter')
+    api 'org.springframework.boot:spring-boot-starter-web'
+}

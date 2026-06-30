@@ -27,7 +27,7 @@ public final class RawCredential extends Secret {
     private final String value;
 
     public RawCredential(String value) {
-        ValidateUtils.nonBlank(value);
+        ValidateUtils.hasText(value);
         this.value = value;
     }
 
