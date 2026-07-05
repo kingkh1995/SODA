@@ -98,6 +98,16 @@ public final class ValidateUtils {
     }
 
     /**
+     * 区间校验（包含两端），泛型 Comparable 版本。
+     */
+    public static <T extends Comparable<? super T>> void range(@Nullable T value, T min, T max) {
+        notNull(value);
+        if (value.compareTo(min) < 0 || value.compareTo(max) > 0) {
+            throw new IllegalArgumentException("must be between " + min + " and " + max + " (inclusive), got: " + value);
+        }
+    }
+
+    /**
      * 校验字符串以指定前缀开头，不匹配时抛出 {@link IllegalArgumentException}。
      */
     public static void hasPrefix(@Nullable String value, String prefix) {

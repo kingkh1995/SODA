@@ -1,5 +1,6 @@
 dependencies {
-    implementation project(':soda-components:soda-component-infrastructure-starter')
+    // needed for query-server
+    api project(':soda-components:soda-component-infrastructure-starter')
     implementation project(':soda-user:soda-user-domain')
     // MyBatis Spring Boot Starter — version managed by root ext
     implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisSpringBootVersion}"

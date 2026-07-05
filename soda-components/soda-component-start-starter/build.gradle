@@ -1,5 +1,4 @@
 dependencies {
-    api project(':soda-components:soda-component-adapter-starter')
-    api project(':soda-components:soda-component-infrastructure-starter')
+    // adapter and infrastructure is runtimeOnly for start
     api 'org.springframework.boot:spring-boot-starter-web'
 }

@@ -16,11 +16,13 @@ public record SmsContent(String value) implements Type {
 
     private static final int MAX_LENGTH = Math.max(70, TypeConfig.PROVIDER.smsContentMaxLength());
 
-    @JsonValue
-    public String value() { return this.value; }
-
     public SmsContent {
         ValidateUtils.hasText(value);
         ValidateUtils.maxLength(value, MAX_LENGTH);
+    }
+
+    @JsonValue
+    public String value() {
+        return this.value;
     }
 }

@@ -15,11 +15,13 @@ import com.soda.component.support.util.ValidateUtils;
  */
 public record RandomString(String value) implements Type {
 
-    @JsonValue
-    public String value() { return this.value; }
-
     public RandomString {
         ValidateUtils.hasText(value);
+    }
+
+    @JsonValue
+    public String value() {
+        return this.value;
     }
 
     /**

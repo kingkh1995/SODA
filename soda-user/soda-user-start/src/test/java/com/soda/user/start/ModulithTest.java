@@ -16,7 +16,7 @@ import org.springframework.modulith.core.ApplicationModules;
  * │ api              │ OPEN     │ (none)                               │
  * │ domain           │ OPEN     │ (none)                               │
  * │ app              │ CLOSED   │ api, domain                          │
- * │ adapter          │ CLOSED   │ app                                  │
+ * │ adapter          │ CLOSED   │ api                                  │
  * │ infrastructure   │ CLOSED   │ domain                               │
  * │ queryserver      │ CLOSED   │ api, infrastructure                  │
  * │ start            │ CLOSED   │ adapter, infrastructure              │

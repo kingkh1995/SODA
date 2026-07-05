@@ -1,10 +1,10 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.ValidateUtils;
 
 import java.util.regex.Pattern;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 手机号 DP — 中国手机号格式校验 + 归一化，不可变、自校验、可比较。
@@ -23,6 +23,8 @@ public record Mobile(String value) implements Type {
     }
 
     @JsonValue
-    public String value() { return this.value; }
+    public String value() {
+        return this.value;
+    }
 
 }

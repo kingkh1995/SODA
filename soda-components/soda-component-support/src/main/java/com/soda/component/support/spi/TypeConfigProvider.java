@@ -47,6 +47,13 @@ public interface TypeConfigProvider {
     }
 
     /**
+     * 百分比小数位数（小数点后保留几位）。取值范围 0-4，默认 2。
+     */
+    default int percentageScale() {
+        return 2;
+    }
+
+    /**
      * 正整数缓存上限（含）。默认 100，至少 100。
      */
     default int positiveIntCacheHigh() {

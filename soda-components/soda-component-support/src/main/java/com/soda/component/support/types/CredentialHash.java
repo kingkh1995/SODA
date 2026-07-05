@@ -1,9 +1,9 @@
 package com.soda.component.support.types;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
 import com.soda.component.support.util.TypeConfig;
 import com.soda.component.support.util.ValidateUtils;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 凭证哈希 DP —— 原始凭证经 {@link com.soda.component.support.gateway.CredentialHasher} 哈希后的值。
@@ -26,5 +26,7 @@ public record CredentialHash(String value) implements Type {
     }
 
     @JsonValue
-    public String value() { return this.value; }
+    public String value() {
+        return this.value;
+    }
 }

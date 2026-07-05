@@ -1,4 +1,5 @@
 dependencies {
-    api project(':soda-components:soda-component-app-starter')
+    // app is runtimeOnly for adaptor
+    api project(':soda-components:soda-component-api-starter')
     api 'org.springframework:spring-webmvc'
 }

@@ -30,7 +30,7 @@ class WanYuanTest {
         @Test
         @DisplayName("parse 创建实例")
         void should_create_when_parseValidString() {
-            var amount = WanYuan.parse("15000");
+            var amount = WanYuan.of("15000");
             assertThat(amount.value()).isEqualTo("15000.00");
         }
 

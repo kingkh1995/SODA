@@ -14,32 +14,33 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 人民币万元 DP — 不可变、自校验。
+ * 百分比 DP — 不可变、自校验。字面值语义，例如 {@code 12.34} 表示 12.34%。
  * <p>
  * 规范值是对 {@link BigDecimal#toPlainString()} 的字符串，作为 {@link JsonValue JSON 序列化} 和
  * {@link Object#equals(Object) equals}/{@link Object#hashCode() hashCode} 的依据。
  * {@link BigDecimal} 作为派生缓存值，不参与序列化和相等性判断。
  * <p>
- * 通过 {@link #fromYuan(BigDecimal)} 从元转换，精度到百元（最多 2 位小数），可为负。
+ * 取值范围 {@code [0, 100]}，最多 2 位小数。需要舍入时使用 {@link #from(BigDecimal, RoundingMode)}。
  *
  * @see Type
  */
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Accessors(fluent = true)
-public final class WanYuan implements Type {
+public final class Percentage implements Type, Comparable<Percentage> {
 
-    private static final BigDecimal WAN = BigDecimal.valueOf(10000);
-    private static final int SCALE = Math.clamp(TypeConfig.PROVIDER.wanYuanScale(), 0, 4);
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final int SCALE = Math.clamp(TypeConfig.PROVIDER.percentageScale(), 0, 4);
 
     @EqualsAndHashCode.Include
     private final String value;
     @Getter
     private final BigDecimal bigDecimalValue;
 
-    private WanYuan(BigDecimal raw) {
+    private Percentage(BigDecimal raw) {
         ValidateUtils.notNull(raw);
         ValidateUtils.maxScale(raw, SCALE);
         var normalized = raw.setScale(SCALE, RoundingMode.UNNECESSARY);
+        ValidateUtils.range(normalized, BigDecimal.ZERO, HUNDRED);
         this.value = normalized.toPlainString();
         this.bigDecimalValue = normalized;
     }
@@ -48,31 +49,27 @@ public final class WanYuan implements Type {
      * JSON 反序列化入口。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static WanYuan of(String jsonValue) {
+    public static Percentage of(String jsonValue) {
         var bd = ParseUtils.parseBigDecimal(jsonValue);
-        return new WanYuan(bd);
+        return new Percentage(bd);
     }
 
     /**
      * 从 {@link BigDecimal} 构造。
      */
-    public static WanYuan from(BigDecimal value) {
+    public static Percentage from(BigDecimal value) {
         ValidateUtils.notNull(value);
-        return new WanYuan(value);
+        return new Percentage(value);
     }
 
     /**
-     * 从元（元/分）构造，默认 {@link RoundingMode#HALF_UP HALF_UP} 舍入。例如 {@code fromYuan(new BigDecimal("15000"))} → 1.5万元。
+     * 从 {@link BigDecimal} 构造，指定舍入模式。
      */
-    public static WanYuan fromYuan(BigDecimal yuan) {
-        return fromYuan(yuan, RoundingMode.HALF_UP);
-    }
-
-    public static WanYuan fromYuan(BigDecimal yuan, RoundingMode roundingMode) {
-        ValidateUtils.notNull(yuan);
+    public static Percentage from(BigDecimal value, RoundingMode roundingMode) {
+        ValidateUtils.notNull(value);
         ValidateUtils.notNull(roundingMode);
-        var result = yuan.divide(WAN, SCALE, roundingMode);
-        return new WanYuan(result);
+        var rounded = value.setScale(SCALE, roundingMode);
+        return new Percentage(rounded);
     }
 
     @JsonValue
@@ -81,21 +78,26 @@ public final class WanYuan implements Type {
     }
 
     /**
-     * 转换为元（乘以 10000），结果不保留小数。
+     * 转换为小数。例如 12.34% → {@code 0.1234}。
      */
-    public BigDecimal toYuan() {
-        return bigDecimalValue.multiply(WAN).setScale(0, RoundingMode.UNNECESSARY);
+    public BigDecimal toFraction() {
+        return bigDecimalValue.divide(HUNDRED, 4, RoundingMode.HALF_UP);
     }
 
     /**
-     * 展示文本。格式：{@code 111.11万元}。
+     * 展示文本。格式：{@code 12.34%}。
      */
     public String toDisplayString() {
-        return bigDecimalValue.toPlainString() + "万元";
+        return bigDecimalValue.toPlainString() + "%";
+    }
+
+    @Override
+    public int compareTo(Percentage other) {
+        return this.bigDecimalValue.compareTo(other.bigDecimalValue);
     }
 
     @Override
     public String toString() {
-        return "WanYuan[value=" + value + "]";
+        return "Percentage[value=" + value + "]";
     }
 }

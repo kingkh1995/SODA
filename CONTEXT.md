@@ -38,7 +38,7 @@ graph TD
 graph TD
     start(start) -->|allowedDeps: adapter, infrastructure| adapter
     start --> infrastructure
-    adapter(adapter) -->|allowedDeps: app| app
+    adapter(adapter) -->|allowedDeps: api + app(classpath)| api
     app(app) -->|allowedDeps: domain, api| domain
     app --> api
     infrastructure(infrastructure) -->|allowedDeps: domain| domain
@@ -52,8 +52,7 @@ graph TD
  |---|---|---|---|---|
  |`api`|`OPEN`|`com.soda.component.api`|共享 DTO/Command/Query 基类|(none)|
  |`domain`|`OPEN`|`com.soda.component.domain`|DDD 基类型（Entity/Aggregate/Identifier）|(none)|
- |`app`|`CLOSED`|`com.soda.component.app`|Application Service 基类及编排基础设施|`domain`, `api`|
- |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`app`|
+ |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`api` (app 只在 runtime classpath，ModulithTest 强制代码不得 import app)|
  |`infrastructure`|`CLOSED`|`com.soda.component.infrastructure`|Repository/持久化骨架|`domain`|
  |`query-server`|`CLOSED`|`com.soda.component.queryserver`|读服务（混装）基类|`api`, `infrastructure`|
  |`start`|`CLOSED`|`com.soda.component.start`|写侧启动入口基类及配置|`adapter`, `infrastructure`|
@@ -177,3 +176,8 @@ _Avoid_: 认证信息、登录方式、Account
 
 ### VerificationCode
 验证码 DP（`soda-user.domain.VerificationCode`）。封装 `code`、`expireAt`、`used`。不可变，`use()` 返回新副本。提供 `expired()`、`verify(RandomString)`。
+
+
+### Percentage
+百分比 DP（`com.soda.component.support.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
+_Avoid_: 百分数、比率、point（直译）

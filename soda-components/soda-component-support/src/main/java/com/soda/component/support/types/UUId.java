@@ -29,9 +29,6 @@ public record UUId(String value) implements Identifier<String>, Comparable<UUId>
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
 
-    @JsonValue
-    public String value() { return this.value; }
-
     public UUId {
         ValidateUtils.hasText(value);
         value = value.toLowerCase(Locale.ROOT);
@@ -43,6 +40,11 @@ public record UUId(String value) implements Identifier<String>, Comparable<UUId>
      */
     public static UUId random() {
         return new UUId(UUID.randomUUID().toString());
+    }
+
+    @JsonValue
+    public String value() {
+        return this.value;
     }
 
     @Override
