@@ -1,6 +1,7 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.RandomString;
+import com.soda.component.domain.types.RandomString;
+import com.soda.user.domain.types.VerificationCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

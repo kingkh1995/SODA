@@ -53,7 +53,7 @@ Seven Gradle sub-modules under `soda-user/`:
 | `soda-user-api` | `com.soda.user.api` | DTO / Command / Query / Feign 接口 |
 | `soda-user-start` | `com.soda.user` | Spring Boot 启动入口，聚合 adapter + infra |
 | `soda-user-adapter` | `com.soda.user.adapter` | Controller：DTO ↔ VO 转换 |
-| `soda-user-app` | `com.soda.user.app` | ApplicationService：业务编排，按 Command 拆分 |
+| `soda-user-application` | `com.soda.user.application` | ApplicationService：业务编排，按 Command 拆分 |
 | `soda-user-domain` | `com.soda.user.domain` | Aggregate/Entity/DP/Gateway 接口 |
 | `soda-user-infrastructure` | `com.soda.user.infrastructure` | Repository 实现，Mapper，PO |
 | `soda-user-query-server` | `com.soda.user.queryserver` | 读服务，三层混装，复用 infra Mapper |
@@ -129,20 +129,30 @@ Events defined in `soda-user-domain`:
 
 `soda-user-api` contains shared DTO and Command types. `soda-user-adapter` defines separate VO types and an Assembler for DTO ↔ VO conversion. This follows the pattern from ADR-0001.
 
-### ApplicationService granularity
+### ApplicationService 粒度与边界
 
-COLA-style: one AppService per Command.
+**已重构（2026-07-06）**：从 6 个 `*AppService` 合并为 1 个 `UserService`（接口在 `-api`） + `UserServiceImpl`（实现在 `-application`）。
 
-- `UserCreateAppService` — accepts `CreateUserCommand`, returns `UserId`
-- `UserUpdateAppService` — accepts `UpdateUserCommand`
-- `UserDeleteAppService` — accepts `UserId`
-- `UserPasswordAppService` — accepts `UpdatePasswordCommand`
-- `UserStatusAppService` — accepts `UpdateUserStatusCommand`
-- `UserProfileAppService` — accepts `UpdateProfileCommand`
-- `UsernameChangeAppService` — accepts `ChangeUsernameCommand`
-- `SendVerificationCodeAppService` — accepts `SendSmsCodeCommand` / `SendEmailCodeCommand`
-- `SocialBindAppService` — accepts `BindSocialCommand`
-- `SocialUnbindAppService` — accepts `UnbindSocialCommand`
+```
+soda-user-api:   UserService (interface)
+soda-user-application:   UserServiceImpl (implements UserService)
+soda-user-adapter: controller 通过 UserService 接口调用（不直接依赖 app）
+```
+
+方法：
+
+- `createUser(CreateUserCommand)` → `UserId`
+- `updateUser(UpdateUserCommand)`
+- `deleteUser(Long userId)`
+- `updateStatus(UpdateUserStatusCommand)`
+- `changePassword(UpdatePasswordCommand)`
+- `changeUsername(ChangeUsernameCommand)`
+
+**Adapter → App 边界**：`build.gradle` 保留 `implementation project(':soda-user-application')`（运行时 classpath），但 ModulithTest 强制 adapter 代码不得 import app 模块的类。
+
+**覆盖范围**：当前 6 个方法。后续扩展（SocialBind、SocialUnbind、SendVerificationCode 等）在此接口上追加，不超过 10 个方法。
+
+**备选**：`CommandExecutor` 接口和 `DomainFactory` 保留为未来复杂场景备用。
 
 ### Token / Session
 
@@ -155,7 +165,7 @@ include 'soda-user'
 include 'soda-user:soda-user-api'
 include 'soda-user:soda-user-start'
 include 'soda-user:soda-user-adapter'
-include 'soda-user:soda-user-app'
+include 'soda-user:soda-user-application'
 include 'soda-user:soda-user-domain'
 include 'soda-user:soda-user-infrastructure'
 include 'soda-user:soda-user-query-server'
@@ -209,7 +219,7 @@ Each tests: valid construction, invalid construction (throws), equality, Jackson
 ### Test module placement
 
 - DP + Domain tests: `soda-user-domain/src/test/`
-- ApplicationService tests: `soda-user-app/src/test/`
+- ApplicationService tests: `soda-user-application/src/test/`
 - Repository tests: `soda-user-infrastructure/src/test/`
 - ModulithTest: each sub-module's `src/test/`
 

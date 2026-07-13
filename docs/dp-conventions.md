@@ -103,13 +103,13 @@ ClassName[field1=value1, field2=value2, ...]
 record 是默认形态。下面模板同时覆盖标识符与非标识符：差异仅在 `implements Identifier<T>` 还是 `implements Type`。
 
 ```java
-package com.soda.component.support.types;
+package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;  // 标识符 DP
 // import com.soda.component.domain.Type;     // 非标识符 DP
-import com.soda.component.support.util.ParseUtils;
-import com.soda.component.support.util.ValidateUtils;
+import com.soda.component.domain.util.ParseUtils;
+import com.soda.component.domain.util.ValidateUtils;
 
 /**
  * Xxx DP — 不可变、自校验。
@@ -152,13 +152,13 @@ public record Xxx(T value) implements Identifier<T> {  // 或 implements Type
 用于需要缓存、派生字段或私有构造器的场景。无缓存与有缓存的差异仅在于构造器可见性和 `@JsonCreator` 位置。
 
 ```java
-package com.soda.component.support.types;
+package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Type;
-import com.soda.component.support.util.ParseUtils;
-import com.soda.component.support.util.ValidateUtils;
+import com.soda.component.domain.util.ParseUtils;
+import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -687,7 +687,7 @@ public enum Xxx implements EnumType {
 6. 需要自然顺序时实现 `Comparable<Self>`；
 7. 需要 JDK 序列化时显式实现 `Serializable`；
 8. 多字段 DP 必须用 `@JsonProperty` + `@JsonCreator(mode = PROPERTIES)`；
-9. 运行 `:soda-components:soda-component-support:build` 验证。
+9. 运行 `:soda-components:soda-component-domain-types:build` 验证。
 
 ## 附录 A：`compareTo` 编写规范
 

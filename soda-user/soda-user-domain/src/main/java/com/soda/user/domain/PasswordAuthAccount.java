@@ -3,14 +3,15 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.soda.component.support.gateway.CredentialHasher;
-import com.soda.component.support.types.Active;
-import com.soda.component.support.types.CredentialHash;
-import com.soda.component.support.types.RawCredential;
+import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.CredentialHash;
+import com.soda.component.domain.types.RawCredential;
+import com.soda.user.domain.types.PasswordAuthAccountId;
+import com.soda.user.domain.types.UserId;
 import lombok.Builder;
-import lombok.Getter;
 import lombok.EqualsAndHashCode;
-
+import lombok.Getter;
 import org.springframework.util.Assert;
 
 /**
@@ -88,10 +89,15 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      *
      * @param credential 新原始凭证
      * @param hasher     凭证哈希器
+     * @implNote 不在本方法内注册 PasswordChangedEvent，因为 PasswordAuthAccount 的
+     * 泛型 ID 是 {@code PasswordAuthAccountId}，而事件需要 {@code UserId}，
+     * 存在泛型不匹配。事件由 {@code UserServiceImpl} 在调用本方法后通过
+     * {@code domainEventBus.fire()} 直接发布。
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
         Assert.notNull(credential, "credential must not be null");
         Assert.notNull(hasher, "hasher must not be null");
         this.passwordHash = hasher.hash(credential);
     }
+
 }

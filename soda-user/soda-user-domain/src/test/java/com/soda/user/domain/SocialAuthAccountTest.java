@@ -1,8 +1,9 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.Active;
-import com.soda.user.domain.enums.AuthAccountType;
-import com.soda.user.domain.enums.SocialType;
+import com.soda.component.domain.types.Active;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.SocialAuthAccountId;
+import com.soda.user.domain.types.SocialType;
 import org.junit.jupiter.api.Test;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;

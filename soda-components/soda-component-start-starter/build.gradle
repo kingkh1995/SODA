@@ -1,4 +1,15 @@
 dependencies {
     // adapter and infrastructure is runtimeOnly for start
     api 'org.springframework.boot:spring-boot-starter-web'
+
+    testImplementation project(':soda-components:soda-component-api-starter')
+    testImplementation project(':soda-components:soda-component-application-starter')
+    testImplementation project(':soda-components:soda-component-adapter-starter')
+    testImplementation project(':soda-components:soda-component-domain-starter')
+    testImplementation project(':soda-components:soda-component-domain-types')
+    testImplementation project(':soda-components:soda-component-infrastructure-starter')
+    testImplementation project(':soda-components:soda-component-query-server-starter')
+    testImplementation project(':soda-components:soda-component-start-starter')
+    testImplementation 'org.springframework.modulith:spring-modulith-starter-core'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

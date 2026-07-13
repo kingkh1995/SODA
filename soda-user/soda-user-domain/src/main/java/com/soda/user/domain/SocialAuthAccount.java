@@ -1,12 +1,13 @@
 package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.soda.component.support.types.Active;
-import com.soda.user.domain.enums.SocialType;
-import lombok.EqualsAndHashCode;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.soda.component.domain.types.Active;
+import com.soda.user.domain.types.SocialAuthAccountId;
+import com.soda.user.domain.types.SocialType;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 
 /**
  * 社交认证账户实体 — 第三方社交账号（Gitee/DingTalk/WeChat）方式的认证。

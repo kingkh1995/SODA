@@ -15,7 +15,7 @@ package com.soda.component.domain;
  * 避免被 Jackson 等序列化框架自动发现。
  *
  * @see Type
- * @see com.soda.component.support.types.RawCredential
+ * @see com.soda.component.domain.types.RawCredential
  */
 public abstract class Secret implements Type {
 

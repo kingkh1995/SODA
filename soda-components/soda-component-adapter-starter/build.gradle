@@ -2,4 +2,5 @@ dependencies {
     // app is runtimeOnly for adaptor
     api project(':soda-components:soda-component-api-starter')
     api 'org.springframework:spring-webmvc'
+    api 'jakarta.validation:jakarta.validation-api'
 }

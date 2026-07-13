@@ -1,27 +1,31 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.gateway.CredentialHasher;
-import com.soda.component.support.types.Active;
-import com.soda.component.support.types.CredentialHash;
-import com.soda.component.support.types.Email;
-import com.soda.component.support.types.Mobile;
-import com.soda.component.support.types.RawCredential;
-import com.soda.user.domain.enums.AuthAccountType;
-import com.soda.user.domain.enums.Sex;
-import com.soda.user.domain.enums.SocialType;
-import com.soda.user.domain.enums.UserStatus;
+import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.CredentialHash;
+import com.soda.component.domain.types.Email;
+import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.RawCredential;
+import com.soda.user.domain.event.UserCreatedEvent;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.Avatar;
+import com.soda.user.domain.types.EmailAuthAccountId;
+import com.soda.user.domain.types.Nickname;
+import com.soda.user.domain.types.PasswordAuthAccountId;
+import com.soda.user.domain.types.Sex;
+import com.soda.user.domain.types.SmsAuthAccountId;
+import com.soda.user.domain.types.SocialType;
+import com.soda.user.domain.types.UserId;
+import com.soda.user.domain.types.UserStatus;
+import com.soda.user.domain.types.Username;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Optional;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link User} 聚合根单元测试。
@@ -34,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>创建时注册 {@link UserCreatedEvent}，entityId 延迟求值</li>
  * </ul>
  */
+@DisplayName("User 聚合根")
 class UserTest {
 
     private static final UserId USER_ID = new UserId(1L);
@@ -55,11 +60,8 @@ class UserTest {
         }
     };
 
-    // ——— construction ———
+    // ─── helpers ───
 
-    /**
-     * 创建含 PasswordAccount 的完整 User（已有 ID 和账户，常用于认证测试）。
-     */
     private static User fullUserWithPasswordAccount() {
         var hash = PASSWORD_HASHER.hash(new RawCredential("password123"));
         var passwordAccount = new PasswordAuthAccount(PasswordAuthAccountId.from(USER_ID), Active.TRUE, hash);
@@ -130,241 +132,291 @@ class UserTest {
                 .build();
     }
 
-    // ——— authenticate ———
+    // ─── construction ───
 
-    @Test
-    void createBuilder_createsUserWithDefaults() {
-        var user = User.createBuilder()
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .build();
+    @Nested
+    @DisplayName("构造")
+    class Construction {
 
-        assertNull(user.getId());
-        assertEquals(USERNAME, user.getUsername());
-        assertEquals(NICKNAME, user.getNickname());
-        assertEquals(UserStatus.E, user.getStatus());
-        assertTrue(user.getSex().isEmpty());
+        @Test
+        @DisplayName("默认值创建 User")
+        void should_createWithDefaults_when_requiredFieldsOnly() {
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .build();
 
-        assertTrue(user.getAccounts().isEmpty());
+            assertThat(user.getId()).isNull();
+            assertThat(user.getUsername()).isEqualTo(USERNAME);
+            assertThat(user.getNickname()).isEqualTo(NICKNAME);
+            assertThat(user.getStatus()).isEqualTo(UserStatus.E);
+            assertThat(user.getSex()).isEmpty();
+            assertThat(user.getAccounts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("创建时注册 UserCreatedEvent")
+        void should_registerUserCreatedEvent_when_created() {
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .build();
+            var events = user.flushEvents();
+            assertThat(events).hasSize(1);
+            assertThat(events.getFirst()).isInstanceOf(UserCreatedEvent.class);
+            // event.entityId 在 flush 时 id 尚为 null，返回 null
+            assertThat(events.getFirst().entityId()).isNull();
+        }
+
+        @Test
+        @DisplayName("携带可选字段创建")
+        void should_includeOptionalFields_when_provided() {
+            var mobile = new Mobile("13800138000");
+            var email = new Email("test@example.com");
+            var avatar = new Avatar("https://example.com/avatar.png");
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .mobile(mobile)
+                    .email(email)
+                    .sex(Sex.F)
+                    .avatar(avatar)
+                    .build();
+
+            assertThat(user.getMobile()).hasValue(mobile);
+            assertThat(user.getEmail()).hasValue(email);
+            assertThat(user.getSex()).hasValue(Sex.F);
+            assertThat(user.getAvatar()).hasValue(avatar);
+        }
     }
 
-    @Test
-    void createBuilder_registersUserCreatedEvent() {
-        var user = User.createBuilder()
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .build();
-        var events = user.flushEvents();
-        assertEquals(1, events.size());
-        assertInstanceOf(UserCreatedEvent.class, events.getFirst());
-        // event.entityId 在 flush 时 id 尚为 null，返回 null
-        assertNull(events.getFirst().entityId());
+    // ─── restoration ───
+
+    @Nested
+    @DisplayName("恢复")
+    class Restoration {
+
+        @Test
+        @DisplayName("恢复后状态与持久化一致")
+        void should_restoreAllFields_when_usingRestoreBuilder() {
+            var mobile = new Mobile("13800138000");
+            var email = new Email("test@example.com");
+            var avatar = new Avatar("https://example.com/avatar.png");
+            var passwordAccount = new PasswordAuthAccount(
+                    PasswordAuthAccountId.from(USER_ID), Active.TRUE,
+                    PASSWORD_HASHER.hash(new RawCredential("pwd")));
+            var accounts = List.<AuthAccount<?>>of(passwordAccount);
+
+            var user = User.restoreBuilder()
+                    .id(USER_ID)
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .mobile(mobile)
+                    .email(email)
+                    .sex(Sex.F)
+                    .avatar(avatar)
+                    .status(UserStatus.D)
+                    .accounts(accounts)
+                    .build();
+
+            assertThat(user.getId()).isEqualTo(USER_ID);
+            assertThat(user.getUsername()).isEqualTo(USERNAME);
+            assertThat(user.getNickname()).isEqualTo(NICKNAME);
+            assertThat(user.getMobile()).hasValue(mobile);
+            assertThat(user.getEmail()).hasValue(email);
+            assertThat(user.getSex()).hasValue(Sex.F);
+            assertThat(user.getAvatar()).hasValue(avatar);
+            assertThat(user.getStatus()).isEqualTo(UserStatus.D);
+            assertThat(user.getAccounts()).hasSize(1);
+            // restore 不应产生新事件
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("恢复时空可选字段为空")
+        void should_restoreNullOptionals_when_notProvided() {
+            var user = User.restoreBuilder()
+                    .id(USER_ID)
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .status(UserStatus.E)
+                    .accounts(List.of())
+                    .build();
+
+            assertThat(user.getId()).isEqualTo(USER_ID);
+            assertThat(user.getMobile()).isEmpty();
+            assertThat(user.getEmail()).isEmpty();
+            assertThat(user.getSex()).isEmpty();
+            assertThat(user.getAvatar()).isEmpty();
+        }
     }
 
-    @Test
-    void createBuilder_withOptionalFields() {
-        var mobile = new Mobile("13800138000");
-        var email = new Email("test@example.com");
-        var avatar = new Avatar("https://example.com/avatar.png");
-        var user = User.createBuilder()
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .mobile(mobile)
-                .email(email)
-                .sex(Sex.F)
-                .avatar(avatar)
-                .build();
+    // ─── authentication ───
 
-        assertEquals(Optional.of(mobile), user.getMobile());
-        assertEquals(Optional.of(email), user.getEmail());
-        assertEquals(Optional.of(Sex.F), user.getSex());
-        assertEquals(Optional.of(avatar), user.getAvatar());
+    @Nested
+    @DisplayName("认证")
+    class Authentication {
+
+        @Test
+        @DisplayName("密码账户正确密码返回 true")
+        void should_returnTrue_when_passwordMatches() {
+            var user = fullUserWithPasswordAccount();
+            assertThat(user.authenticate(AuthAccountType.P, "password123", PASSWORD_HASHER)).isTrue();
+        }
+
+        @Test
+        @DisplayName("密码账户错误密码返回 false")
+        void should_returnFalse_when_passwordMismatches() {
+            var user = fullUserWithPasswordAccount();
+            assertThat(user.authenticate(AuthAccountType.P, "wrong", PASSWORD_HASHER)).isFalse();
+        }
+
+        @Test
+        @DisplayName("不存在的账户类型返回 false")
+        void should_returnFalse_when_noSuchAccountType() {
+            var user = fullUserWithPasswordAccount();
+            assertThat(user.authenticate(AuthAccountType.S, "any", PASSWORD_HASHER)).isFalse();
+        }
     }
 
-    // ——— events ———
+    // ─── events ───
 
-    @Test
-    void restoreBuilder_restoresState() {
-        var mobile = new Mobile("13800138000");
-        var email = new Email("test@example.com");
-        var avatar = new Avatar("https://example.com/avatar.png");
-        var passwordAccount = new PasswordAuthAccount(
-                PasswordAuthAccountId.from(USER_ID), Active.TRUE,
-                PASSWORD_HASHER.hash(new RawCredential("pwd")));
-        var accounts = List.<AuthAccount<?>>of(passwordAccount);
+    @Nested
+    @DisplayName("领域事件")
+    class Events {
 
-        var user = User.restoreBuilder()
-                .id(USER_ID)
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .mobile(mobile)
-                .email(email)
-                .sex(Sex.F)
-                .avatar(avatar)
-                .status(UserStatus.D)
-                .accounts(accounts)
-                .build();
+        @Test
+        @DisplayName("flushEvents 包含 UserCreatedEvent")
+        void should_containUserCreatedEvent_when_flushAfterCreate() {
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .build();
+            var events = user.flushEvents();
+            assertThat(events).isNotEmpty();
+            assertThat(events.getFirst()).isInstanceOf(UserCreatedEvent.class);
+        }
 
-        assertEquals(USER_ID, user.getId());
-        assertEquals(USERNAME, user.getUsername());
-        assertEquals(NICKNAME, user.getNickname());
-        assertEquals(Optional.of(mobile), user.getMobile());
-        assertEquals(Optional.of(email), user.getEmail());
-        assertEquals(Optional.of(Sex.F), user.getSex());
-        assertEquals(Optional.of(avatar), user.getAvatar());
-        assertEquals(UserStatus.D, user.getStatus());
-        assertEquals(1, user.getAccounts().size());
-        assertTrue(user.flushEvents().isEmpty()); // no new events from restore
+        @Test
+        @DisplayName("UserCreatedEvent.entityId 延迟求值")
+        void should_resolveEntityIdLazily_when_assignIdAfterCreate() {
+            var userId = new UserId(42L);
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .build();
+            user.assignId(userId);
+
+            var events = user.flushEvents();
+            var event = (UserCreatedEvent) events.getFirst();
+            assertThat(event.entityId()).isEqualTo(userId);
+        }
     }
 
-    @Test
-    void restoreBuilder_withNullOptionals() {
-        var user = User.restoreBuilder()
-                .id(USER_ID)
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .status(UserStatus.E)
-                .accounts(List.of())
-                .build();
+    // ─── serialization ───
 
-        assertEquals(USER_ID, user.getId());
-        assertTrue(user.getMobile().isEmpty());
-        assertTrue(user.getEmail().isEmpty());
-        assertTrue(user.getSex().isEmpty());
-        assertTrue(user.getAvatar().isEmpty());
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("密码账户 Jackson round-trip")
+        void should_serializeDeserialize_when_passwordAccount() throws Exception {
+            var original = fullUserWithPasswordAccount();
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, User.class);
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getUsername()).isEqualTo(original.getUsername());
+            assertThat(restored.getNickname()).isEqualTo(original.getNickname());
+            assertThat(restored.getStatus()).isEqualTo(original.getStatus());
+            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
+            assertThat(restored.getAccounts().get(0).getId()).isEqualTo(original.getAccounts().get(0).getId());
+            assertThat(restored.getAccounts().get(0).getAuthAccountType())
+                    .isEqualTo(original.getAccounts().get(0).getAuthAccountType());
+        }
+
+        @Test
+        @DisplayName("短信账户 Jackson round-trip")
+        void should_serializeDeserialize_when_smsAccount() throws Exception {
+            var original = fullUserWithSmsAccount();
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, User.class);
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
+            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.S);
+        }
+
+        @Test
+        @DisplayName("邮箱账户 Jackson round-trip")
+        void should_serializeDeserialize_when_emailAccount() throws Exception {
+            var original = fullUserWithEmailAccount();
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, User.class);
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
+            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.E);
+        }
+
+        @Test
+        @DisplayName("社交账户 Jackson round-trip")
+        void should_serializeDeserialize_when_socialAccount() throws Exception {
+            var original = fullUserWithSocialAccount();
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, User.class);
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
+            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.O);
+        }
+
+        @Test
+        @DisplayName("混合账户 Jackson round-trip")
+        void should_serializeDeserialize_when_mixedAccounts() throws Exception {
+            var original = fullUserWithMixedAccounts();
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, User.class);
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getAccounts()).hasSize(4);
+            var restoredTypes = restored.getAccounts().stream()
+                    .map(a -> a.getAuthAccountType())
+                    .toList();
+            assertThat(restoredTypes).containsExactlyInAnyOrder(
+                    AuthAccountType.P, AuthAccountType.S, AuthAccountType.E, AuthAccountType.O
+            );
+        }
     }
 
-    // ——— JSON ———
+    // ─── identity ───
 
-    @Test
-    void authenticate_passwordAccount_correctPassword_returnsTrue() {
-        var user = fullUserWithPasswordAccount();
-        assertTrue(user.authenticate(AuthAccountType.P, "password123", PASSWORD_HASHER));
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+
+        @Test
+        @DisplayName("相同字段相等")
+        void should_beEqual_when_sameFields() {
+            var a = fullUserWithPasswordAccount();
+            var b = fullUserWithPasswordAccount();
+            var user2 = User.restoreBuilder()
+                    .id(new UserId(2L))
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .status(UserStatus.E)
+                    .accounts(List.of())
+                    .build();
+            assertThat(a).isEqualTo(b);
+            assertThat(a).isNotEqualTo(user2);
+        }
     }
 
-    // ——— additional auth account types ———
+    @Nested
+    @DisplayName("调试")
+    class Debug {
 
-    @Test
-    void authenticate_passwordAccount_wrongPassword_returnsFalse() {
-        var user = fullUserWithPasswordAccount();
-        assertFalse(user.authenticate(AuthAccountType.P, "wrong", PASSWORD_HASHER));
-    }
-
-    @Test
-    void authenticate_noSuchAccount_returnsFalse() {
-        var user = fullUserWithPasswordAccount();
-        assertFalse(user.authenticate(AuthAccountType.S, "any", PASSWORD_HASHER));
-    }
-
-    @Test
-    void flushEvents_returnsUserCreatedEvent() {
-        var user = User.createBuilder()
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .build();
-        var events = user.flushEvents();
-        assertFalse(events.isEmpty());
-        assertInstanceOf(UserCreatedEvent.class, events.getFirst());
-    }
-
-    @Test
-    void userCreatedEvent_entityId_lazyResolved() {
-        var userId = new UserId(42L);
-        var user = User.createBuilder()
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .build();
-        user.assignId(userId);
-
-        var events = user.flushEvents();
-        var event = (UserCreatedEvent) events.getFirst();
-        assertEquals(userId, event.entityId());
-    }
-
-    // ——— identity ———
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = fullUserWithPasswordAccount();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, User.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(original.getUsername(), restored.getUsername());
-        assertEquals(original.getNickname(), restored.getNickname());
-        assertEquals(original.getStatus(), restored.getStatus());
-        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
-        assertEquals(original.getAccounts().get(0).getId(), restored.getAccounts().get(0).getId());
-        assertEquals(
-                original.getAccounts().get(0).getAuthAccountType(),
-                restored.getAccounts().get(0).getAuthAccountType()
-        );
-    }
-
-    @Test
-    void jackson_serializeDeserialize_withSmsAccount() throws Exception {
-        var original = fullUserWithSmsAccount();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, User.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
-        assertEquals(AuthAccountType.S, restored.getAccounts().get(0).getAuthAccountType());
-    }
-    // ——— helper ———
-
-    @Test
-    void jackson_serializeDeserialize_withEmailAccount() throws Exception {
-        var original = fullUserWithEmailAccount();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, User.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
-        assertEquals(AuthAccountType.E, restored.getAccounts().get(0).getAuthAccountType());
-    }
-
-    @Test
-    void jackson_serializeDeserialize_withSocialAccount() throws Exception {
-        var original = fullUserWithSocialAccount();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, User.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(original.getAccounts().size(), restored.getAccounts().size());
-        assertEquals(AuthAccountType.O, restored.getAccounts().get(0).getAuthAccountType());
-    }
-
-    @Test
-    void jackson_serializeDeserialize_withMixedAccounts() throws Exception {
-        var original = fullUserWithMixedAccounts();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, User.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(4, restored.getAccounts().size());
-        var restoredTypes = restored.getAccounts().stream()
-                .map(a -> a.getAuthAccountType())
-                .toList();
-        assertTrue(restoredTypes.containsAll(List.of(
-                AuthAccountType.P, AuthAccountType.S, AuthAccountType.E, AuthAccountType.O
-        )));
-    }
-
-    @Test
-    void equals_byFields() {
-        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
-        var a = fullUserWithPasswordAccount();
-        var b = fullUserWithPasswordAccount();
-        var user2 = User.restoreBuilder()
-                .id(new UserId(2L))
-                .username(USERNAME)
-                .nickname(NICKNAME)
-                .status(UserStatus.E)
-                .accounts(List.of())
-                .build();
-        assertEquals(a, b, "相同字段应相等");
-        assertNotEquals(a, user2, "不同 ID 不应相等");
-    }
-
-    @Test
-    void toString_containsClassName() {
-        var user = fullUserWithPasswordAccount();
-        assertTrue(user.toString().contains("User@"));
+        @Test
+        @DisplayName("toString 包含类名")
+        void should_containClassName_when_toString() {
+            var user = fullUserWithPasswordAccount();
+            assertThat(user.toString()).contains("User@");
+        }
     }
 }

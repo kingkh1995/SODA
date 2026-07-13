@@ -3,7 +3,10 @@
 **Status**: accepted
 
 **Context**: 项目从零搭建 DDD 脚手架，需要确定模块拆分方案、命名约定和依赖方向。参考了 COLA（领域共享 + 业务 5 层）、yudao-cloud（基础设施 starter + 读服务简单混装）、kk-ddd（上一轮实践的教训）。
-
+- 写服务用 DDD（COLA 4 层：adapter + app + domain + infra），读服务用简单混装（yudao `-server` 风格：query-server）。
+- 读写共用 `soda-xxx-api` 模块存放共享 DTO、Feign 接口。
+- 写侧用 `soda-xxx-start` 模块作为启动入口，聚合 adapter + infra。
+- **2026-07-06 补充**：`adapter` 编译依赖 `app`（运行时 classpath），但通过 ModulithTest 强制 adapter 代码只引用 `api` 模块的接口。依赖图：`adapter → api (编译期可见性) + app (运行时注入)`
 **Decision**:
 
 - **领域共享**放 `soda-components/`，子模块按 `soda-component-xxx` 命名。纯 jar 或 starter 皆可，依赖原始 spring-core / lombok。参考 COLA 组件列表。
@@ -40,7 +43,7 @@ soda/                                        ← rootProject
 │   ├── soda-user-api/              ← 共享 DTO/Feign 接口（读写共用）
 │   ├── soda-user-start/            ← 写侧启动入口（@SpringBootApplication）
 │   ├── soda-user-adapter/          ← COLA adapter — 写 Controller
-│   ├── soda-user-app/              ← COLA app — 写 ApplicationService
+│   ├── soda-user-application/          ← COLA app — 写 ApplicationService
 │   ├── soda-user-domain/           ← COLA domain — 领域层
 │   ├── soda-user-infrastructure/   ← COLA infra — Gateway 实现
 │   └── soda-user-query-server/     ← 读 Controller + Service + DAO（可复用infrastructure）
@@ -76,7 +79,7 @@ soda/                                        ← rootProject
 **依赖方向**: 无外部依赖（纯 POJO）。
 
 **被依赖**:
-- `soda-user-app` — 直接依赖
+- `soda-user-application` — 直接依赖
 - `soda-user-query-server` — 使用 DTO
 
 ### `soda-user-start` — 写侧启动入口
@@ -117,14 +120,13 @@ soda/                                        ← rootProject
 - `soda-user-api` 中的 DTO 是通用模型
 - `soda-user-adapter` 中的 VO 是 Controller 专属的展现模型
 
-**依赖**:
-- `soda-user-app` — 调用 ApplicationService
+- `soda-user-api` — 调用 UserService 接口（不直接依赖 app 实现）
 
 **被依赖**:
 - `soda-user-start` — 直接依赖
 
 
-### `soda-user-app` — 应用层
+### `soda-user-application` — 应用层
 
 **职责**: 业务编排。接收 Command/Query，构造或查询领域对象，调用领域方法，持久化，发布领域事件，管理事务。
 
@@ -165,7 +167,7 @@ soda/                                        ← rootProject
 - `soda-component-domain-starter` — Entity/Aggregate/Identifier 基类和接口（另有 `soda-component-exception`、`soda-component-dto` 计划中）
 
 **被依赖**:
-- `soda-user-app` — 调用领域方法
+- `soda-user-application` — 调用领域方法
 - `soda-user-infrastructure` — 实现 Gateway 接口
 
 ### `soda-user-infrastructure` — 基础设施层

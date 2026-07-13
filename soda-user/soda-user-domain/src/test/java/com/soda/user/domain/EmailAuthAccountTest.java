@@ -1,9 +1,12 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.Active;
-import com.soda.component.support.types.Email;
-import com.soda.component.support.types.RandomString;
-import com.soda.user.domain.enums.AuthAccountType;
+import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.Email;
+import com.soda.component.domain.types.RandomString;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.EmailAuthAccountId;
+import com.soda.user.domain.types.VerificationCode;
+import com.soda.user.domain.types.VerificationCodePolicy;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

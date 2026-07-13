@@ -12,23 +12,19 @@
 ```mermaid
 graph TD
     domain(domain) -->|OPEN: any may depend| none
-    support(support) -->|OPEN: any may depend| none
-    util(support.util) -->|OPEN: deps: support.spi| spi(support.spi)
-    types(support.types) -->|OPEN + deps: domain, support.util, support.spi| domain
+    util(domain.util) -->|CLOSED| none
+    types(domain.types) -->|CLOSED: deps: domain, domain.util| domain
     types --> util
-    types --> spi
-    gateway(support.gateway) -->|OPEN + deps: domain, support.types| domain
+    gateway(domain.gateway) -->|CLOSED: deps: domain, domain.types| domain
     gateway --> types
 ```
 
  | Module | Type | Package | Allowed dependencies |
  |---|---|---|---|
  |`domain`|`OPEN`|`com.soda.component.domain`|(none)|
- |`support`|`OPEN`|`com.soda.component.support`|(none)|
- |`support.spi`|`OPEN`|`com.soda.component.support.spi`|(none)|
- |`support.util`|`CLOSED`|`com.soda.component.support.util`|`support.spi`|
- |`support.types`|`CLOSED`|`com.soda.component.support.types`|`domain`, `support.util`, `support.spi`|
- |`support.gateway`|`CLOSED`|`com.soda.component.support.gateway`|`domain`, `support.types`|
+ |`domain.util`|`CLOSED`|`com.soda.component.domain.util`|(none)|
+ |`domain.types`|`CLOSED`|`com.soda.component.domain.types`|`domain`, `domain.util`|
+ |`domain.gateway`|`CLOSED`|`com.soda.component.domain.gateway`|`domain`, `domain.types`|
 
 ### Component starter dependency chain
 
@@ -38,9 +34,9 @@ graph TD
 graph TD
     start(start) -->|allowedDeps: adapter, infrastructure| adapter
     start --> infrastructure
-    adapter(adapter) -->|allowedDeps: api + app(classpath)| api
-    app(app) -->|allowedDeps: domain, api| domain
-    app --> api
+    adapter(adapter) -->|allowedDeps: api + application(classpath)| api
+    application(application) -->|allowedDeps: domain, api| domain
+    application --> api
     infrastructure(infrastructure) -->|allowedDeps: domain| domain
     queryServer(query-server) -->|allowedDeps: api, infrastructure| api
     queryServer --> infrastructure
@@ -52,7 +48,8 @@ graph TD
  |---|---|---|---|---|
  |`api`|`OPEN`|`com.soda.component.api`|共享 DTO/Command/Query 基类|(none)|
  |`domain`|`OPEN`|`com.soda.component.domain`|DDD 基类型（Entity/Aggregate/Identifier）|(none)|
- |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`api` (app 只在 runtime classpath，ModulithTest 强制代码不得 import app)|
+ |`application`|`CLOSED`|`com.soda.component.application`|ApplicationService 基类 + CommandExecutor|`domain`, `api`|
+ |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`api` (application 只在 runtime classpath，ModulithTest 强制代码不得 import application)|
  |`infrastructure`|`CLOSED`|`com.soda.component.infrastructure`|Repository/持久化骨架|`domain`|
  |`query-server`|`CLOSED`|`com.soda.component.queryserver`|读服务（混装）基类|`api`, `infrastructure`|
  |`start`|`CLOSED`|`com.soda.component.start`|写侧启动入口基类及配置|`adapter`, `infrastructure`|
@@ -62,11 +59,10 @@ graph TD
 | 业务模块 | 引入的 starter |
 |---|---|
 |`soda-user-api`|`soda-component-api-starter`|
-|`soda-user-domain`|`soda-component-domain-starter`|
-|`soda-user-app`|`soda-component-api-starter` + `soda-component-app-starter`|
+|`soda-user-domain`|`soda-component-domain-starter` + `soda-component-domain-types`|
 |`soda-user-adapter`|`soda-component-adapter-starter`|
 |`soda-user-infrastructure`|`soda-component-domain-starter` + `soda-component-infrastructure-starter`|
-|`soda-user-query-server`|`soda-component-api-starter` + `soda-component-infrastructure-starter`|
+|`soda-user-application`|`soda-component-api-starter` + `soda-component-application-starter`|
 |`soda-user-start`|`soda-component-adapter-starter` + `soda-component-infrastructure-starter` + `soda-component-start-starter`|
 
 ## Modulith 治理规则
@@ -103,7 +99,7 @@ class ModulithTest {
 ### 新增模块步骤
 1. 在根包添加 `package-info.java`，标注 `@ApplicationModule(allowedDependencies = {…})`
    - 无依赖的根模块 → `type = OPEN`, `allowedDependencies = {}`
-   - 有依赖的业务层模块 → `type = CLOSED`, `allowedDependencies` 中声明所需模块的完整逻辑名（如 `support.util`，非 `util`）
+   - 有依赖的业务层模块 → `type = CLOSED`, `allowedDependencies` 中声明所需模块的完整逻辑名（如 `domain.util`，非 `util`）
 2. 在所属项目的 `ModulithTest` 注释表格中新增一行（文档用途，测试自动扫描）
 3. 运行 `ModulithTest.verifyModuleStructure()` 确认无违反
 ## Language
@@ -125,8 +121,7 @@ _Avoid_: 账号、账号名
 _Avoid_: 名称、显示名
 
 ### Mobile
-手机号（定义在 `support.types`）。格式校验 + 归一化。是 SmsAuthAccountId 的派生源。
-_Avoid_: 电话号码、手机
+手机号（定义在 `domain.types`）。格式校验 + 归一化。是 SmsAuthAccountId 的派生源。
 
 ### Sex
 性别枚举。取值：`M`（Male）、`F`（Female）。
@@ -179,5 +174,25 @@ _Avoid_: 认证信息、登录方式、Account
 
 
 ### Percentage
-百分比 DP（`com.soda.component.support.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
-_Avoid_: 百分数、比率、point（直译）
+百分比 DP（`com.soda.component.domain.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
+
+
+### Result
+统一 API 操作结果信封。`{ code, msg, data }`。所有 REST Controller 的返回值必须用此类包裹。
+定义在 `soda-component-adapter-starter` 的 `com.soda.component.web` 包。
+_Avoid_: CommonResult、R 对象
+
+### Request（Adapter 层）
+HTTP 请求体专用类型。放在 `web/request/` 子包，携带 JSR 380 `@Valid` 校验注解。
+不受领域层概念约束，只描述 HTTP 协议格式。
+_Avoid_: 与 Command 混用
+
+### Response（Adapter 层）
+HTTP 响应体 `data` 段专用类型。放在 `web/response/` 子包。
+只描述返回给前端的数据形状，不含 `Result` 信封。
+_Avoid_: 与 DTO 混用
+
+### WebAssembler
+Adapter 层转换器，负责 `Request → Command`（入站）和 `DTO → Response`（出站）的双向转换。
+支持依赖注入（`@Component`），可单独单元测试。
+_Avoid_: 在 Request/Response 上定义静态转换方法

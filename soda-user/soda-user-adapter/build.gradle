@@ -1,5 +1,5 @@
 dependencies {
     implementation project(':soda-components:soda-component-adapter-starter')
     implementation project(':soda-user:soda-user-api')     // compile time — UserService interface, Commands, DTOs
-    implementation project(':soda-user:soda-user-app')    // runtime only — Spring bean injection
+    implementation project(':soda-user:soda-user-application')    // runtime only — Spring bean injection
 }

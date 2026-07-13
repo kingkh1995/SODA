@@ -29,18 +29,26 @@ subprojects {
     ext {
         set('springBootVersion', '4.0.7')
         set('springModulithVersion', "2.0.6")
+        set('mapstructVersion', '1.6.3')
         set('mybatisSpringBootVersion', "3.0.4")
     }
 
     dependencies {
+        // === Main ===
         implementation 'org.springframework.modulith:spring-modulith-starter-core'
         compileOnly 'org.projectlombok:lombok'
+        compileOnly "org.mapstruct:mapstruct:${mapstructVersion}"
         annotationProcessor 'org.projectlombok:lombok'
+        annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+        // === Test ===
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+        testImplementation "org.mapstruct:mapstruct:${mapstructVersion}"
         testCompileOnly 'org.projectlombok:lombok'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testAnnotationProcessor 'org.projectlombok:lombok'
+        testAnnotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
     }
 
     dependencyManagement {

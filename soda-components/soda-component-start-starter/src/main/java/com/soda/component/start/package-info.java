@@ -5,7 +5,7 @@
  * 仅在标记 {@code @Nullable} 处允许空值。
  */
 @NullMarked
-@ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {"adapter", "infrastructure"})
+@ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {})
 package com.soda.component.start;
 
 import org.jspecify.annotations.NullMarked;

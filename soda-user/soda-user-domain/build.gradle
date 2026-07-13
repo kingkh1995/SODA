@@ -1,5 +1,4 @@
 dependencies {
-    api project(':soda-components:soda-component-domain-starter')
-    // soda-component-support is optional
-    api project(':soda-components:soda-component-support')
+    // soda-component-domain-types is optional
+    api project(':soda-components:soda-component-domain-types')
 }

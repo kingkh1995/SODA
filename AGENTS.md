@@ -25,7 +25,7 @@ soda-xxx/
 ├── api/          共享 DTO / Feign 接口（读写共用）
 ├── start/        写侧启动入口
 ├── adapter/      写 Controller（COLA）
-├── app/          写 ApplicationService（COLA）
+├── application/  写 ApplicationService（COLA）
 ├── domain/       领域层（COLA）
 ├── infrastructure/  写 Repository 实现（COLA）
 └── query-server/    读服务（yudao 混装风格）
@@ -47,3 +47,6 @@ soda-xxx/
 
 单上下文模式 — 根目录 `CONTEXT.md` 包含完整领域词汇。详见 `docs/agents/domain.md`。
 
+## Ponytail
+
+Default ponytail level: lite. Full reasoning, minimal code.

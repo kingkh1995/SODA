@@ -14,22 +14,21 @@ rootProject.name = 'soda'
 include 'soda-components'
 include 'soda-components:soda-component-domain-starter'
 include 'soda-components:soda-component-api-starter'
-include 'soda-components:soda-component-app-starter'
+include 'soda-components:soda-component-application-starter'
 include 'soda-components:soda-component-adapter-starter'
 include 'soda-components:soda-component-infrastructure-starter'
 include 'soda-components:soda-component-start-starter'
 include 'soda-components:soda-component-query-server-starter'
 
-
-// —— Shared domain support (optional concrete DPs, factories, mappers) ——
-include 'soda-components:soda-component-support'
+// —— Shared domain types (concrete DPs, SPI, utilities, gateway interfaces) ——
+include 'soda-components:soda-component-domain-types'
 
 
 // —— Business modules (added incrementally) ——
 include 'soda-user'
 include 'soda-user:soda-user-adapter'
 include 'soda-user:soda-user-api'
-include 'soda-user:soda-user-app'
+include 'soda-user:soda-user-application'
 include 'soda-user:soda-user-domain'
 include 'soda-user:soda-user-infrastructure'
 include 'soda-user:soda-user-query-server'

@@ -1,6 +1,13 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.LongId;
+import com.soda.component.domain.types.LongId;
+import com.soda.user.domain.types.EmailAuthAccountId;
+import com.soda.user.domain.types.Nickname;
+import com.soda.user.domain.types.PasswordAuthAccountId;
+import com.soda.user.domain.types.SmsAuthAccountId;
+import com.soda.user.domain.types.SocialAuthAccountId;
+import com.soda.user.domain.types.UserId;
+import com.soda.user.domain.types.Username;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

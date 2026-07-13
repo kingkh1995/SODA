@@ -2,8 +2,9 @@ package com.soda.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.soda.component.domain.Entity;
-import com.soda.component.support.types.Active;
-import com.soda.user.domain.enums.AuthAccountType;
+import com.soda.component.domain.types.Active;
+import com.soda.user.domain.types.AuthAccountId;
+import com.soda.user.domain.types.AuthAccountType;
 import lombok.EqualsAndHashCode;
 import org.springframework.util.Assert;
 

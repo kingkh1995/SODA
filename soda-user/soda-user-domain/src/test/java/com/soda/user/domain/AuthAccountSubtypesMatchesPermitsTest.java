@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 验证 {@link AuthAccount} 的 {@code permits} 子句与各子类上的 {@link JsonTypeName} 一致。

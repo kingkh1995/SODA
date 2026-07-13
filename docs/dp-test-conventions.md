@@ -159,7 +159,7 @@ should_expectedBehavior_when_condition
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 
 // ✅ 支持模块：使用 JacksonTestUtil（或共享 SupportTestUtil.MAPPER）
-import static com.soda.component.support.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
 
 // ❌ 禁止：每个文件 new ObjectMapper()
 private static final ObjectMapper MAPPER = new ObjectMapper();  // ❌
@@ -262,7 +262,7 @@ void toString(String value, String expected) { ... }
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static com.soda.user.domain.DomainTestUtil.MAPPER;   // 用户模块共享 Mapper
-// 支持模块：import static com.soda.component.support.testutil.JacksonTestUtil.MAPPER;
+// 支持模块：import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import tools.jackson.core.JacksonException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

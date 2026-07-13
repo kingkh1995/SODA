@@ -1,5 +1,6 @@
 package com.soda.user.domain;
 
+import com.soda.user.domain.types.VerificationCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

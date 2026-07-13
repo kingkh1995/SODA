@@ -1,5 +1,0 @@
-dependencies {
-    api project(':soda-components:soda-component-app-starter')
-    api project(':soda-user:soda-user-api')
-    implementation project(':soda-user:soda-user-domain')
-}

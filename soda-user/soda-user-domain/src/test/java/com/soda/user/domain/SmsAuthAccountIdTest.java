@@ -1,7 +1,8 @@
 package com.soda.user.domain;
 
-import com.soda.component.support.types.Mobile;
-import com.soda.user.domain.enums.AuthAccountType;
+import com.soda.component.domain.types.Mobile;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.SmsAuthAccountId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

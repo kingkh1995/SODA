@@ -3,14 +3,20 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
-import com.soda.component.support.gateway.CredentialHasher;
-import com.soda.component.support.types.Email;
-import com.soda.component.support.types.Mobile;
-import com.soda.component.support.types.RandomString;
-import com.soda.component.support.types.RawCredential;
-import com.soda.user.domain.enums.AuthAccountType;
-import com.soda.user.domain.enums.Sex;
-import com.soda.user.domain.enums.UserStatus;
+import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.types.Email;
+import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.RandomString;
+import com.soda.component.domain.types.RawCredential;
+import com.soda.user.domain.event.UserCreatedEvent;
+import com.soda.user.domain.event.UserStatusChangedEvent;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.Avatar;
+import com.soda.user.domain.types.Nickname;
+import com.soda.user.domain.types.Sex;
+import com.soda.user.domain.types.UserId;
+import com.soda.user.domain.types.UserStatus;
+import com.soda.user.domain.types.Username;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -19,6 +25,7 @@ import org.springframework.util.Assert;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -125,16 +132,47 @@ public class User extends Aggregate<UserId> {
         return Optional.ofNullable(mobile);
     }
 
+    /**
+     * 设置手机号。
+     */
+    public void setMobile(@Nullable Mobile mobile) {
+        this.mobile = mobile;
+    }
+
     public Optional<Email> getEmail() {
         return Optional.ofNullable(email);
+    }
+
+    /**
+     * 设置邮箱。
+     */
+    public void setEmail(@Nullable Email email) {
+        this.email = email;
     }
 
     public Optional<Sex> getSex() {
         return Optional.ofNullable(sex);
     }
 
+    // ─── queries ───
+
+    /**
+     * 设置性别。
+     */
+    public void setSex(@Nullable Sex sex) {
+        this.sex = sex;
+    }
+
     public Optional<Avatar> getAvatar() {
         return Optional.ofNullable(avatar);
+    }
+    // ─── commands ───
+
+    /**
+     * 设置头像。
+     */
+    public void setAvatar(@Nullable Avatar avatar) {
+        this.avatar = avatar;
     }
 
     /**
@@ -148,8 +186,6 @@ public class User extends Aggregate<UserId> {
                 .filter(filter)
                 .findFirst();
     }
-
-    // ─── queries ───
 
     /**
      * 认证 — 根据账户类型分发到对应子类验证。
@@ -173,4 +209,43 @@ public class User extends Aggregate<UserId> {
                 })
                 .orElse(false);
     }
+
+    /**
+     * 添加认证账户到用户聚合。
+     */
+    public void addAccount(AuthAccount<?> account) {
+        Objects.requireNonNull(account);
+        if (this.accounts == null) {
+            this.accounts = new LinkedList<>();
+        }
+        this.accounts.add(account);
+    }
+
+    /**
+     * 修改用户名。
+     */
+    public void changeUsername(Username newUsername) {
+        this.username = Objects.requireNonNull(newUsername);
+    }
+
+    /**
+     * 修改状态。注册 {@link UserStatusChangedEvent}。
+     *
+     * @param newStatus 新状态
+     */
+    public void changeStatus(UserStatus newStatus) {
+        Objects.requireNonNull(newStatus);
+        var oldStatus = this.status;
+        this.status = newStatus;
+        registerEvent(new UserStatusChangedEvent(Objects.requireNonNull(getId()), oldStatus, newStatus));
+    }
+
+    /**
+     * 设置昵称。
+     */
+    public void setNickname(Nickname nickname) {
+        this.nickname = Objects.requireNonNull(nickname);
+    }
+
+    // publish AccountBoundEvent / AccountUnboundEvent in addAccount() mutation method
 }

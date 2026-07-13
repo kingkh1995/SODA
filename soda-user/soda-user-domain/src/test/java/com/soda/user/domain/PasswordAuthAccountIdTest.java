@@ -1,6 +1,8 @@
 package com.soda.user.domain;
 
-import com.soda.user.domain.enums.AuthAccountType;
+import com.soda.user.domain.types.AuthAccountType;
+import com.soda.user.domain.types.PasswordAuthAccountId;
+import com.soda.user.domain.types.UserId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -2,6 +2,7 @@ package com.soda.user.start;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+
 /**
  * Spring Modulith 模块依赖关系验证。
  * <ul>
@@ -15,11 +16,13 @@ import org.springframework.modulith.core.ApplicationModules;
  * ├──────────────────┼──────────┼──────────────────────────────────────┤
  * │ api              │ OPEN     │ (none)                               │
  * │ domain           │ OPEN     │ (none)                               │
- * │ app              │ CLOSED   │ api, domain                          │
- * │ adapter          │ CLOSED   │ api                                  │
+ * │ application      │ CLOSED   │ api, domain                          │
+ * │ web              │ CLOSED   │ api                                  │
+ * │ job              │ CLOSED   │ api                                  │
+ * │ consumer         │ CLOSED   │ api                                  │
  * │ infrastructure   │ CLOSED   │ domain                               │
- * │ queryserver      │ CLOSED   │ api, infrastructure                  │
- * │ start            │ CLOSED   │ adapter, infrastructure              │
+ * │ queryserver      │ CLOSED   │ api                          │
+ * │ start            │ CLOSED   │ (none)                       │
  * </pre>
  */
 class ModulithTest {
