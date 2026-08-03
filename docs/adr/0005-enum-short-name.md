@@ -4,7 +4,13 @@
 
 **Context**:
 
-soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、SocialType）。初始设计参考 yudao-cloud 使用 `int code` + `@JsonValue`/`@JsonCreator` 序列化，枚举放在独立 `soda-user-common` 模块中供 domain 和 api 共享。
+soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、SocialType）。初始设计参考 yudao-cloud 使用 `int code` + `@JsonValue`/`@JsonCreator` 序列化，枚举放在独立 `soda-user-common` 模块中供 domain 和 api 共享。
+
+> 现状修订：`Sex` 作为通用枚举已下沉到 `soda-components` 的 `com.soda.component.domain.types`（web 层 `@EnumName` 引用它不越模块边界）；`UserState`/`AuthAccountType`/`SocialType` 仍留在 `soda-user-domain`。
+>
+> 后续修订：`VerificationStatus.X` 已删除（过期是派生判断，不落状态）——见 ADR-0011。
+>
+> 再修订（2026-08-03）：`VerificationChannel` 重新引入为 `soda-components` 的通用枚举（`com.soda.component.domain.types.VerificationChannel`，取值 `S`/`E`）——验证通道既作为 `Verification` 子类型的判别值（与 `@JsonTypeName` 同构，见 ADR-0011），也可被 gateway 查询过滤使用；上一版"已删除"注记作废。
 
 随着 DTO/VO 层确认不直接引用枚举类型（使用 `String` 传递），`soda-user-common` 模块失去存在意义，枚举需要重新设计。
 
@@ -13,7 +19,7 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 ### 枚举设计规则
 
 1. **短名标识**：Java 枚举标识符作为持久化短名字符串，长度 1-4 字符，可含 `_`。由 `name()` 直接提供。
-2. **英文 desc 字段**：每个枚举常量带 `desc` 字段，用于辅助解释含义。通过 `desc()` 访问器读取。
+2. **英文 desc 字段**：每个枚举常量带 `desc` 字段，用于辅助解释含义。通过 `desc()` 访问器读取。**desc 格式为英文 i18n key**（如 `"enabled"`、`"disabled"`），为后续国际化能力保留扩展性。
 3. **不暴露给 DTO/VO**：DTO/VO 使用 `String` 传递枚举值，不直接引用枚举类型。
 4. **DB 存储**：使用 `name()` 值持久化到数据库 `CHAR(4)` 列。
 5. **Lombok**：`@Getter` + `@Accessors(fluent = true)` 生成 `desc()` 访问器；`@RequiredArgsConstructor` 生成构造器。
@@ -25,10 +31,21 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 
 | 枚举 | 常量（短名 → desc） |
 |------|---------------------|
-| `Sex` | `M`(Male), `F`(Female) |
-| `UserStatus` | `E`(Enabled), `D`(Disabled) |
-| `AuthAccountType` | `P`(Password), `S`(Sms), `E`(Email), `O`(OAuth) |
-| `SocialType` | `GE`(Gitee), `DT`(DingTalk), `WENT`(WechatWork), `WMP`(WechatMp), `WOPN`(WechatOpen), `WMIN`(WechatMini), `ALIP`(AlipayMini) |
+| `Sex` | `M`(male), `F`(female) |
+| `UserState` | `E`(enabled), `D`(disabled) |
+| `AuthAccountType` | `P`(password), `S`(sms), `E`(email), `O`(oauth) |
+| `SocialType` | `GE`(gitee), `DT`(ding-talk), `WENT`(wechat-work), `WMP`(wechat-mp), `WOPN`(wechat-open), `WMIN`(wechat-mini), `ALIP`(alipay-mini) |
+| `VerificationScene` | `CC`(credential-change), `PR`(password-reset), `LG`(login), `RG`(register) |
+| `VerificationStatus` | `P`(pending), `V`(verified), `U`(used) |
+
+### state vs status 命名规则
+
+| 术语 | 含义 | 示例 |
+|---|---|---|
+| `state` | 状态集合/状态机，表示实体的生命周期阶段 | `UserState`（用户生命周期：E/D） |
+| `status` | 具体某个状态值，通常是外部可观测的 | HTTP status（200, 404） |
+
+枚举命名时，表示状态机的用 `XxxState`（如 `UserState`），表示具体状态值的用 `XxxStatus`（如 `HttpStatus`）。
 
 ### 模块调整
 
@@ -52,3 +69,39 @@ soda-user 模块需要一组领域枚举（Sex、UserStatus、AuthAccountType、
 | DB 直接看出含义（`"E"` 是 Enabled） | 枚举常量改名破坏 DB 数据（需 migration） |
 | `soda-user-common` 模块移除，模块数从 8 → 7 | |
 | `EnumType extends Type`，枚举统一为 Domain Primitive，复用 DP 校验/异常体系 | |
+
+### API 层使用规范
+
+枚举在 RPC/HTTP 接口中的使用遵循以下规则：
+
+| 层级 | 使用方式 | 说明 |
+|---|---|---|
+| Domain 层 | 枚举类型（`UserState.E`） | 短名存储，高效 |
+| Application 层 | 枚举 → String 转换 | `state.name()` → `"E"` |
+| DTO/Response | String 类型 | 短名（`"E"`/`"D"`） |
+| JSON 序列化 | 短名（`"E"`/`"D"`） | Jackson 默认 `name()` 序列化 |
+| API 响应 | 短名（`"E"`/`"D"`） | 直接返回，无需转换 |
+
+**字段命名**：
+
+| 场景 | 命名 | 说明 |
+|---|---|---|
+| 状态机字段 | `state` | 表示实体生命周期阶段（如 `UserState`） |
+| 独立状态值 | `status` | 表示具体状态值（如 `HttpStatus`） |
+
+**国际化扩展**：
+
+desc 字段为英文 i18n key，后续国际化时可通过以下方式扩展：
+
+```java
+// 扩展方式：增加 i18n 字段
+public enum UserState implements EnumType {
+    E("enabled", "启用"),      // name, desc_en, desc_zh
+    D("disabled", "禁用");
+
+    private final String desc;
+    private final String descZh;  // 新增中文描述
+}
+```
+
+参考 ADR-0012（URL 命名规范）和 ADR-0013（错误响应结构）。

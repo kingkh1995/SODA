@@ -1,15 +1,14 @@
 package com.soda.user.web.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
+import com.soda.component.domain.types.Sex;
+import com.soda.component.web.validation.EnumName;
+import org.hibernate.validator.constraints.URL;
 import org.jspecify.annotations.Nullable;
 
 public record UpdateUserRequest(
-        @NotNull @JsonProperty("userId") Long userId,
         @Nullable @JsonProperty("nickname") String nickname,
-        @Nullable @JsonProperty("mobile") String mobile,
-        @Nullable @JsonProperty("email") String email,
-        @Nullable @JsonProperty("sex") String sex,
-        @Nullable @JsonProperty("avatar") String avatar
+        @Nullable @EnumName(Sex.class) @JsonProperty("sex") String sex,
+        @Nullable @URL @JsonProperty("avatar") String avatar
 ) {
 }

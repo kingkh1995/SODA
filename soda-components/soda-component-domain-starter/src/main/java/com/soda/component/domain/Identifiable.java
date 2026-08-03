@@ -2,6 +2,8 @@ package com.soda.component.domain;
 
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * 可标识的领域对象标记接口。
  * <p>
@@ -19,6 +21,15 @@ public interface Identifiable<ID extends Identifier<?>> {
      * 可能为 {@code null}（DB 自增场景，未持久化前）。
      */
     @Nullable ID getId();
+
+    /**
+     * 内部使用，编程错误防御，获取非空ID。
+     * <p>
+     * 瞬态聚合（未持久化）调用 = null 守卫 → NPE（防御编程，见 ADR-0015）。
+     */
+    default ID requireId() {
+        return Objects.requireNonNull(getId());
+    }
 
     /**
      * 是否已分配标识符。

@@ -12,10 +12,10 @@ import lombok.experimental.Accessors;
 @RequiredArgsConstructor
 public enum AuthAccountType implements EnumType {
 
-    P("Password"),
-    S("Sms"),
-    E("Email"),
-    O("OAuth");
+    P("password"),
+    S("sms"),
+    E("email"),
+    O("oauth");
 
     private final String desc;
 

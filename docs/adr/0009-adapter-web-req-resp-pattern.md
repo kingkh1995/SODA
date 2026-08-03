@@ -41,15 +41,40 @@ soda-xxx-adapter/src/main/java/com/soda/xxx/web/
 | Api Command | 应用层入参 | `XxxCommand` | Structured 写操作入参 |
 | Api DTO | 应用层出参 | `XxxDTO` | 应用层返回数据结构 |
 | Shared Envelope | 统一响应 | `Result<T>` | `{ code, msg, data }` 信封 |
+| Assembler 方法 | `to{Action}Command` / `toResponse` / `toResponseList` | 同参数个数的方法名必须不同 |
+HTTP 方法使用规则（参照 [google-aip-api-design.md](../research/google-aip-api-design.md)）：
+
+| 操作类型 | HTTP 方法 | URL 模式 | 说明 |
+|---|---|---|---|
+| 创建资源 | `POST` | `/users` | 集合路径，不加 `/create` 后缀 |
+| 获取资源 | `GET` | `/users/{id}` | 标准读取 |
+| 部分更新 | `PATCH` | `/users/{id}` | 用 PATCH 不用 PUT，避免全量替换风险 |
+| 删除资源 | `DELETE` | `/users/{id}` | 标准删除 |
+| 自定义方法 | `POST` | `/users/{id}:{action}` | AIP-136 规定自定义方法统一用 POST |
+
+规则：
+1. **URL 不含冗余动词** — `POST /users` 而非 `POST /users/create`，HTTP 方法已表达意图。
+2. **自定义方法统一 POST** — `:disable`、`:enable`、`:password`、`:username` 等均用 POST，不用 PUT。
+3. **资源标识符在路径上** — `userId` 通过 `{id}` 传递，Request body 不含 `userId`。
+4. **所有 Controller 禁止 PUT 更新** — 领域层不支持全量更新数据。PUT 语义是全量替换（AIP-134），新增字段会静默丢数据，且后续加字段变成 breaking change。更新操作一律用 PATCH（字段级部分更新）或 POST `:action`（领域行为）。
+5. **PATCH vs POST 的边界** — PATCH 用于**字段级部分更新**（声明式，如修改 nickname/mobile）；POST `:action` 用于**领域行为**（命令式，如修改密码/切换状态）。判断标准：操作是否触发领域逻辑（密码校验、状态机跃迁等），是则用 POST `:action`，否则用 PATCH。
+
 
 Controller 模式：
 
 ```java
-@PostMapping("/create")
+@PostMapping
 public Result<UserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
-    CreateUserCommand cmd = assembler.toCommand(request);
+    CreateUserCommand cmd = assembler.toCreateCommand(request);
     UserDTO dto = userService.createUser(cmd);
     return Result.success(assembler.toResponse(dto));
+}
+
+@DeleteMapping("/{id}")
+public Result<Void> deleteUser(@PathVariable("id") Long id) {
+    DeleteUserCommand cmd = assembler.toDeleteCommand(id);
+    userService.deleteUser(cmd);
+    return Result.success();
 }
 ```
 Controller 直接调用 `Result.success(data)` / `Result.success()` 构建响应，不需要基类。

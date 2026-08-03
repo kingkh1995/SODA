@@ -17,20 +17,6 @@ class RandomStringTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Test
-    @DisplayName("matches() 匹配相同字符串")
-    void should_match_when_sameValue() {
-        var rs = new RandomString("abc");
-        assertThat(rs.matches("abc")).isTrue();
-    }
-
-    @Test
-    @DisplayName("matches() 不匹配不同字符串")
-    void should_notMatch_when_differentValue() {
-        var rs = new RandomString("abc");
-        assertThat(rs.matches("xyz")).isFalse();
-    }
-
     @Nested
     @DisplayName("构造")
     class Constructor {

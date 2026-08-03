@@ -11,4 +11,5 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record CleanTokenParam(
         @JsonProperty("daysBefore") int daysBefore,
         @JsonProperty("batchSize") int batchSize
-) {}
+) {
+}

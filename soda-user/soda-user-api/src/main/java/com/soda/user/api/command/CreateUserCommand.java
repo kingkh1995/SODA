@@ -1,6 +1,7 @@
 package com.soda.user.api.command;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.soda.component.api.command.Command;
 import org.jspecify.annotations.Nullable;
 
 public record CreateUserCommand(
@@ -11,5 +12,5 @@ public record CreateUserCommand(
         @JsonProperty("email") @Nullable String email,
         @JsonProperty("sex") @Nullable String sex,
         @JsonProperty("avatar") @Nullable String avatar
-) {
+) implements Command {
 }

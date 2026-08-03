@@ -6,9 +6,8 @@ import com.soda.component.domain.types.Active;
 import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import lombok.EqualsAndHashCode;
-import org.springframework.util.Assert;
 
-import java.util.function.Predicate;
+import java.util.Objects;
 
 /**
  * 认证账户抽象基类 — User 聚合下的子实体。
@@ -35,29 +34,34 @@ import java.util.function.Predicate;
 public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entity<ID>
         permits PasswordAuthAccount, SmsAuthAccount, EmailAuthAccount, SocialAuthAccount {
 
-    public static final Predicate<AuthAccount<?>> ACTIVE = AuthAccount::isActive;
     private Active active;
+
+    /**
+     * 服务端生成 ID：构造时无 ID，后续由 Repository 调用 {@link #assignId(Identifier)} 填补。
+     * active 默认 {@link Active#TRUE}。
+     */
+    protected AuthAccount(Active active) {
+        super();
+        this.active = Objects.requireNonNull(active);
+    }
 
     /**
      * 手动设置 / 已有数据恢复。
      */
     protected AuthAccount(ID id, Active active) {
         super(id);
-        Assert.notNull(active, "active must not be null");
-        this.active = active;
+        this.active = Objects.requireNonNull(active);
     }
 
-    // ─── construction ───
-
-    public static Predicate<AuthAccount<?>> ofType(AuthAccountType type) {
-        return a -> a.getAuthAccountType() == type;
-    }
+    // ─── factories ───
 
     /**
-     * 返回该账户的认证类型 — 委托至 {@link #getId()}.{@link AuthAccountId#authAccountType() authAccountType()}。
+     * 返回该账户的认证类型 — 常量来源为各 ID 子类的 {@code ACCOUNT_TYPE}，与 ID 解耦（无 ID 亦可派发）。
      */
-    public final AuthAccountType getAuthAccountType() {
-        return getId().authAccountType();
+    public abstract AuthAccountType getAuthAccountType();
+
+    public boolean typeEquals(AuthAccount<?> other) {
+        return Objects.equals(Objects.requireNonNull(other).getAuthAccountType(), getAuthAccountType());
     }
 
     /**
@@ -66,6 +70,8 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
     public boolean isActive() {
         return active.value();
     }
+
+    // ─── commands ───
 
     /**
      * 激活账户。

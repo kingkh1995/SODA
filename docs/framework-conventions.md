@@ -104,10 +104,47 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()`。业务模块用 `record` 实现，类型参数 `ID` 与 Entity 一致。
 
 ### DomainEventBus
-领域事件总线接口，继承 `Gateway`。提供 `fire(DomainEvent<?>)` 和 `fireAll(Iterable<? extends DomainEvent<?>>)`。
+领域事件总线接口，继承 `Gateway`。提供 `publish(DomainEvent<?>)` 和 `publishAll(Iterable<? extends DomainEvent<?>>)`。
 
 ### EventSource
 领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。`Entity` 实现此接口表明自身可作为领域事件来源。通过 `flushEvents()` 取出已注册事件。
+
+### DomainService
+
+领域服务。承接**单个聚合根无法表达**的领域编排——跨聚合的操作与**用例流程的业务逻辑**（多个聚合的动作序列、外部副作用、维护不变量）。
+
+**位置**：`soda-xxx-domain` 的 `domain/service/` 子包（`@ApplicationModule` 内部，领域层自包含）。
+
+**约束**：
+- 无状态（final 类 + 无字段或仅常量）；流程逻辑集中于此，符合单一职责（SRP）
+- **允许持有 gateway 端口**——仅限副作用/生成类（`SmsSender`、`EmailSender`、`RandomStringGenerator` 等），流程中的发送/生成在此执行
+- **禁止持久化**——不持有任何 Repository / Gateway 的写端口；save 一律由 ApplicationService 执行（保存顺序、失败补偿、事务边界属于应用层职责）
+- **不建议查询加载**——聚合以参数注入，加载留在 ApplicationService；必要时可在方法内调用查询类 gateway，但不作为默认做法
+- 方法签名用领域类型（聚合根 + DP），不用 Command/DTO
+- 标注 `@Service`（Spring 容器管理，构造器注入；domain 模块经传递依赖已含 spring-context）
+- 实现 `DomainService` 标记接口（`com.soda.component.domain.DomainService`，类似 `Gateway` 的定位：供 IOC 扫描 / AOP 识别）
+- 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
+
+**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（生成码、构造 PENDING 聚合、发送）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行。AppService 负责加载与 save 顺序（先 user 后 verification）。
+
+### ApplicationService 编排规范
+
+**AppService 只做编排**：加载主体聚合 → 执行用例流程 → 持久化（save）。多聚合交互（同时更改多个聚合）的流程逻辑封装进 `XxxDomainService`；单聚合创建流程（构造 + 发送副作用）可在 AppService 内展开，不在本层展开跨聚合编排。
+
+**参数契约**：AppService 不校验入参（存在性 / 格式 / 合法性），调用方必须保证参数合法；校验只在协议边界（HTTP `@Valid`）与领域层 DP 构造器执行。方法入参默认非空，仅可为 `null` 时标注 `@Nullable`（JSpecify，api 包已 `@NullMarked`）；Command 对象属性遵循同一约定——未标注 `@Nullable` 的属性默认非空。实现中不得对 Command 及其属性做防御性 null 检查。
+
+**可空性处理（Optional 优先）**：可空返回值一律用 `Optional<T>` 表达——Gateway 查询（`findById`/`findByXxx` 返回 `Optional`，不存在返回 `empty()`）、聚合可空属性的 getter（`Optional.ofNullable(field)`，如 `User.getMobile()`）、查找类方法（如 `findActiveAccount`）；调用方用 `orElseThrow` / `map` / `flatMap` / `filter` 消费，不做 `== null` 判空。**保持 `@Nullable` 而非 Optional 的位置**：方法参数、实体字段、JSON 边界（record 组件 / Request / Response / DTO），以及框架层绑定（`Entity.getId()` 被 ORM / 序列化 / `isIdentified()` 依赖；`MapTypeCache` / `ArrayTypeCache` 内部缓存）。构造可空值（`@Nullable String` → `@Nullable VO`）用 `Optional.ofNullable(...).map(...).orElse(null)`，条件更新（如 `changeNickname`）用 `.map(...).ifPresent(...)`。
+
+每个 AppService 有一个**主体聚合**（该用例主要操作的对象，通常是其同名聚合根）。编排规则：
+
+1. **主体聚合的 action 方法可直接在 AppService 中调用**（加载主体 → 调 action → save）
+2. **外部 domain（其他聚合）的 action 方法禁止在 AppService 中直接调用**（get/读取除外）
+3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的**参数**传入，逻辑封装进主体聚合内部
+4. 若用例**修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
+5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程的副作用在 AppService 内执行（sender 类 gateway 允许注入 AppService）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
+6. 外部聚合的**工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合 → 发送 → save，如 `UserAuthServiceImpl.verifyMobile`）
+
+典型反例：AppService 直接 `verification.verify(code)` 再 `user.changeMobile(...)`——verify 修改外部聚合状态，必须经 `CredentialChangeDomainService`。
 
 ### ApplicationService
 
@@ -126,6 +163,18 @@ public class UserController {
 ```
 
 **Adapter 与 Application 的边界**：`adapter` 的 `build.gradle` 声明 `implementation project(':soda-user-application')`（运行时 classpath），但 ModulithTest 强制 adapter 代码只引用 `api` 模块的类，不得 `import` application 模块的任何类。依赖方向为 `adapter → api (编译) + application (运行时)`。
+
+### 模块依赖与 build.gradle 声明规则
+
+**api → domain（待定）**：`api` 依赖 `domain` 的正式方案未定。当前 `soda-xxx-api` 只临时直接声明 `soda-component-domain-types`（契约使用其枚举，如 Sex），**不**声明 `domain` 模块；`soda-component-api-starter` 也**不**依赖 `domain-starter`（api 层框架与 domain 框架解耦）。
+
+**声明规则**：
+
+1. 能经传递依赖到达的一律不声明（`api` 依赖向下游传播 compile + runtime，`implementation` 只传播 runtime）
+2. 业务模块（api / application / adapter / infrastructure）：不需要传递给下一级的声明为 `implementation`，需要传递的才用 `api`
+3. starter 模块：依赖尽量声明为 `api`（承担为整层提供能力的职责），除非明确不需要传递给依赖方
+4. 各层 Spring 能力由对应 starter 提供（如 application 层的 `spring-tx` 经 application-starter，adapter 层 consumer 的 `@TransactionalEventListener` 经 adapter-starter），业务模块不重复声明
+5. 临时依赖（如 user-api → domain-types）不视为可传递：其他模块按需自声明，以便将来优化时不受影响
 
 **包结构**：
 
@@ -152,9 +201,33 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 
 **Entity 创建**：使用 `XxxEntity.createBuilder()` / `restoreBuilder()` 双 Builder 模式。当构建逻辑涉及跨聚合引用或需要依赖注入时，引入 `factory/*Factory`，但当前 Builder 模式已足够。
 
-**Command 定义**：Java `record` + `@JsonProperty`，无需继承基类。
+**Command 定义**：Java `record` + `@JsonProperty`，无需继承基类。可空属性标注 JSpecify `@Nullable`，未标注则默认非空（见「参数契约」）。
 
 **未来演进**：当 Service 数量增多或需要统一 AOP 切面时，可在 `soda-component-application-starter` 中引入 `CommandExecutor<CMD, RESULT>` 接口供 application 模块内部使用。
+
+### Exception（异常类约定）
+
+写侧（ApplicationService / DomainService / Entity）按「防御（NPE / ISE）与参数校验（IAE）」分类使用异常（详见 ADR-0015）：
+
+| 类别 | 检查形式 | 工具 → 异常 | 消息 |
+|---|---|---|---|
+| 防御编程 | 参数或自身字段为 null（契约违反） | `Objects.requireNonNull` → NPE | 无 |
+| 防御编程 | 非 null 条件不满足（自身状态不允许操作） | `Assert.state(condition, message)` → ISE | 带消息（开发定位） |
+| 参数校验 | 输入值不合法 / 业务规则拒绝（客户端可预期） | `Assert.isTrue` / `Assert.notNull` → IAE | 带消息 |
+
+NPE 与 ISE 本质同类（自身不合法状态的防御），区别只在检查形式：null → NPE，其他条件 → ISE。Spring 7 的 Assert 仅剩带消息重载：防御 ISE 用 `Assert.state`（消息仅开发定位，不承诺客户端语义，ISE 仍映射 500）；null 守卫仍 NPE（`Objects.requireNonNull`）。
+
+防御编程词汇表（JDK 原生，不自定义）：NPE = null 契约违反（`Objects.requireNonNull`，可内联，不写消息——JEP 358 自动帮助消息）；ISE = 状态前置不满足；`NoSuchElementException` = 聚合内部查找为空（`Optional.orElseThrow()` 无参，如 `User.changePassword` 密码账户缺失——不要用 `orElse(null)` + `requireNonNull` 抹掉区分）；`UnsupportedOperationException` / `ClassCastException` 预留无场景（YAGNI）。NoSuchElement 不用于网关加载「未找到」——那是客户端可预期 → IAE（临时方案）。
+
+防御代码最少化（JDK 能力优先）：依赖链后续调用已自动 NPE 时删除冗余守卫（如 `generator.get()`）；JDK 无对应的才手写（带副作用分支，如错码前需 `attempt()`）。值对象校验（`ValidateUtils`）与 appservice 参数校验（`Assert` → IAE）属外部输入校验，临时方案，不在防御优化范围。枚举 / 对象对比不用 `==`：用 `Objects.equals` 或常量优先 `equals`（如 `UserState.E.equals(state)`）；`!= null` 空值判断不受限
+
+规则：
+- 消息策略：防御 NPE 无消息（JEP 358 自动帮助消息）；防御 ISE 带开发消息（`Assert.state` 仅带消息重载，不承诺客户端语义）；校验（IAE）带消息（IAE 消息是客户端唯一反馈通道，wiring 未实现前不可省）
+- 操作语义：set-state（`disable` / `enable`）幂等 no-op、不发事件；transition（`verify` / `use`）前置失败抛 ISE / 错码抛 IAE；`changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015）
+- 手写 `throw` 仅当 Assert 表达不了（多分支 / 带副作用场景），异常类仍须符合分类
+- `Objects.requireNonNullElse` 仅用于默认值模式（如 `User` 构造器 accounts 缺省），不属于守卫
+- AppService 的 `Assert` 只用于网关加载结果的存在性 / 状态前置检查，不做 Command 属性级校验（见「参数契约」）；Adapter 层不做 Assert（协议边界由 `@Valid` 负责）；Infrastructure 用 `Optional` 表达可空，正常流程不抛异常
+- HTTP 映射（接线 deferred，见 issue 17）：IAE → 400 `INVALID_ARGUMENT`，NPE / ISE → 500 `INTERNAL`，`MethodArgumentNotValidException` → 400
 
 ## Code Style
 

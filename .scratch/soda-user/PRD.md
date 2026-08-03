@@ -16,8 +16,8 @@ Yudao 参考实现了完整的 AdminUser 模块（用户 CRUD + 密码/短信/�
 
 - **User** 聚合根：用户身份信息（username, nickname, mobile, email, sex, avatar, status）
 - **Account** 多态子实体体系：四种认证方式（密码/短信/邮箱验证码/社交）通过子类多态表达
-- 认证行为在领域层完成（`PasswordAuthAccount.verify()`、`AuthAccount.replaceCode()`），基础设施依赖通过 Gateway 接口抽象
-- 7 个子模块全建，当前交付范围 A：Domain 层完整，AppService 留桩
+- 认证行为在领域层完成（`PasswordAuthAccount.verify()`、`Verification.verify()`），基础设施依赖通过 Gateway 接口抽象
+- 7 个子模块全建，当前交付范围 A：Domain 层 + ApplicationService 完整，Repository 待 infra 阶段
 
 ## User Stories
 
@@ -70,22 +70,18 @@ Fields:
 - `email: Email` — 邮箱，可选；也是 EmailAuthAccountId 派生源
 - `sex: Sex` — `M`(Male) / `F`(Female)
 - `avatar: Avatar` — 头像 URL
-- `status: UserStatus` — `E`(Enabled) / `D`(Disabled)
-- `accounts: List<AuthAccount>` — 子实体集合
-
-Key domain methods: `authenticate(AuthAccountType, String, CredentialHasher)`, `findAccount(Predicate)`, `getAccounts()` (immutable view). 变更方法（`changeUsername()`, `changePassword()`, `setMobile()`, `setEmail()`, `changeStatus()`, `addSocialAccount()`, `removeAccount()`）**待下一阶段**实现。
+* `status: UserState` — `E`(Enabled) / `D`(Disabled)
 
 **AuthAccount** (abstract Entity, extends `Entity<AuthAccountId>`)  
 
 | Subclass | AccountId | Extra fields | Behavior |
 |---|---|---|---|
 | `PasswordAuthAccount` | `PasswordAuthAccountId(userId)` | `passwordHash` (CredentialHash) | `verify(RawCredential, CredentialHasher)`, `changePassword(RawCredential, CredentialHasher)` |
-| `SmsAuthAccount` | `SmsAuthAccountId(mobile)` | `VerificationCode?`, `VerificationCodePolicy` | `replaceCode(VerificationCode)`, `verifyCode(RandomString)`, `useCode()` |
-| `EmailAuthAccount` | `EmailAuthAccountId(email)` | `VerificationCode?`, `VerificationCodePolicy` | `replaceCode(VerificationCode)`, `verifyCode(RandomString)`, `useCode()` |
+| `SmsAuthAccount` | `SmsAuthAccountId(mobile)` | `VerificationCodePolicy` | `getMobile()` |
+| `EmailAuthAccount` | `EmailAuthAccountId(email)` | `VerificationCodePolicy` | `getEmail()` |
 | `SocialAuthAccount` | `SocialAuthAccountId(socialType, openId)` | none (encoded in ID) | (identity mapping, no credential to verify) |
 
-**VerificationCode** DP: record — `code`, `expireAt` (Instant), `used` (boolean). Methods: `expired()`, `verify(RandomString)`, `use()` (returns new copy with used=true). Created by ApplicationService, injected into SmsAuthAccount/EmailAuthAccount via `replaceCode()`.
-
+已迁移至独立的 `Verification` 聚合（见 ADR-0011）。
 **VerificationCodePolicy** DP: record — `codeLength` (int) + `expiry` (Duration). Named defaults: `DEFAULT_SMS` (6 位/5 分钟), `DEFAULT_EMAIL` (8 位/30 分钟). Resolution order: per-account field → subclass DEFAULT_POLICY reference. (ServiceLoader SPI 暂未实现.)
 
 ### Gateway interfaces (domain layer)
@@ -98,10 +94,10 @@ Key domain methods: `authenticate(AuthAccountType, String, CredentialHasher)`, `
 
 ### Lifecycle rules
 
-- Creating a User automatically creates a `PasswordAuthAccount` (one per User, required) — **TODO: 待实现**
-- Setting `User.mobile` automatically creates or updates the `SmsAuthAccount`; clearing it removes the `SmsAuthAccount` — **TODO: 待实现**
-- Same pattern for `User.email` and `EmailAuthAccount` — **TODO: 待实现**
-- `SocialAuthAccount` is created/destroyed independently via explicit bind/unbind — **TODO: 待实现**
+- Creating a User automatically creates a `PasswordAuthAccount` (one per User, required) — **已实现**（User.create）
+- Setting `User.mobile` automatically creates or updates the `SmsAuthAccount`; clearing it removes the `SmsAuthAccount` — **已实现**（changeMobile）
+- Same pattern for `User.email` and `EmailAuthAccount` — **已实现**（changeEmail）
+- `SocialAuthAccount` is created/destroyed independently via explicit bind/unbind — **TODO: 待实现**（issue-07；User.addAccount 去重需按 socialType 重做）
 
 ### Persistence
 
@@ -118,12 +114,12 @@ The base table supports `UserGateway.findByUserId()` batch loading. Repository u
 ### Domain events
 
 Events defined in `soda-user-domain`:
-- `UserCreatedEvent` — **implemented in current phase**
-- `UserStatusChangedEvent` — **implemented in current phase**
-- `PasswordChangedEvent` — definition only, publish TODO
-- `AccountBoundEvent` — definition only, publish TODO
-- `AccountUnboundEvent` — definition only, publish TODO
-- `UserRemovedEvent` — definition only, publish TODO
+- `UserCreatedEvent` — **implemented**
+- `UserStateChangedEvent` — **implemented**
+- `PasswordChangedEvent` — **implemented**（User.changePassword 注册）
+- `UserRemovedEvent` — **implemented**（UserServiceImpl.deleteUser 直接 publish）
+
+> 修订（2026-08-03）：`AccountBoundEvent` / `AccountUnboundEvent` 已删除——社交绑定功能未实现，事件定义随之下架；社交绑定设计时（issue-07）重新定义所需事件。
 
 ### DTO / VO separation
 
@@ -131,32 +127,39 @@ Events defined in `soda-user-domain`:
 
 ### ApplicationService 粒度与边界
 
-**已重构（2026-07-06）**：从 6 个 `*AppService` 合并为 1 个 `UserService`（接口在 `-api`） + `UserServiceImpl`（实现在 `-application`）。
+**已重构（2026-07-30）**：修改为 2 个 Service 接口 + `UserAuthService`，方法名按 ADR-0010 显式意图。
 
 ```
 soda-user-api:   UserService (interface)
-soda-user-application:   UserServiceImpl (implements UserService)
-soda-user-adapter: controller 通过 UserService 接口调用（不直接依赖 app）
+                  UserAuthService (interface)
+soda-user-application:   UserServiceImpl + UserAuthServiceImpl
 ```
 
-方法：
-
-- `createUser(CreateUserCommand)` → `UserId`
+UserService 方法：
+- `createUser(CreateUserCommand)` → `UserDTO`
 - `updateUser(UpdateUserCommand)`
-- `deleteUser(Long userId)`
-- `updateStatus(UpdateUserStatusCommand)`
-- `changePassword(UpdatePasswordCommand)`
+- `deleteUser(DeleteUserCommand)`
+- `disableUser(DisableUserCommand)`
+- `enableUser(EnableUserCommand)`
 - `changeUsername(ChangeUsernameCommand)`
 
-**Adapter → App 边界**：`build.gradle` 保留 `implementation project(':soda-user-application')`（运行时 classpath），但 ModulithTest 强制 adapter 代码不得 import app 模块的类。
+UserAuthService 方法：
+- `changePassword(ChangePasswordCommand)`
+- `verifyMobile(VerifyMobileCommand)`
+- `changeMobile(ChangeMobileCommand)`
+- `verifyEmail(VerifyEmailCommand)`
+- `changeEmail(ChangeEmailCommand)`
 
-**覆盖范围**：当前 6 个方法。后续扩展（SocialBind、SocialUnbind、SendVerificationCode 等）在此接口上追加，不超过 10 个方法。
+**Adapter → App 边界**：`build.gradle` 用 `runtimeOnly project(':soda-user-application')`（运行时 classpath，编译期不引用 app 类），ModulithTest 强制 adapter 代码不得 import app 模块的类。
+
+**覆盖范围**：当前 11 个方法。后续扩展在此接口上追加，不超过 10 个方法/接口。
 
 **备选**：`CommandExecutor` 接口和 `DomainFactory` 保留为未来复杂场景备用。
 
+
 ### Token / Session
 
-**Deferred to a future module.** Current phase ends at `authenticate()` returning the User aggregate. Token creation, refresh, validation, and logout are out of scope (recorded as TODO).
+**Deferred to a future module.** 登录验证（`authenticate`）与 Token 创建/刷新/校验/登出均不在本次范围（记入待办）。
 
 ### Settings.gradle
 
@@ -189,24 +192,23 @@ include 'soda-user:soda-user-query-server'
 ### Test plan
 
 **Phase 1 — DP unit tests** (infrastructure-free, JUnit 5 only)
-- `UserIdTest`, `UsernameTest`, `NicknameTest`, `MobileTest`, `SexTest`, `AvatarTest`, `UserStatusTest`
+- `UserIdTest`, `UsernameTest`, `NicknameTest`, `MobileTest`, `SexTest`, `AvatarTest`
 - `AuthAccountTypeTest`, `SocialTypeTest`
-- `VerificationCodePolicyTest`, `VerificationCodeTest`
+- `VerificationCodePolicyTest`（验证码聚合测试见 `soda-user-domain` 的 `VerificationTest`）
 - `PasswordAccountIdTest`, `SmsAccountIdTest`, `EmailAuthAccountIdTest`, `SocialAccountIdTest`
 
 Each tests: valid construction, invalid construction (throws), equality, Jackson serialization round-trip, `compareTo()`（枚举 DP 使用 Java 内置比较）。
 
 **Phase 2 — Domain Entity/Aggregate tests** (infrastructure-free, mocked Gateways)
-- `UserTest` — creation (no auto-created accounts), `authenticate()` dispatch to correct AuthAccount subclass by sealed pattern matching, `findAccount()` / `getAccounts()` (immutable view), Jackson round-trip for all 4 account types, `flushEvents()` contains `UserCreatedEvent` (lazy entityId resolution). 变更方法测试**待下一阶段**。
+- `UserTest` — creation (auto-creates `PasswordAuthAccount` when `passwordHash` provided), changeXxx 变更方法（含 changeMobile/changeEmail 拒绝未验证/用户不匹配路径、changeUsername），Jackson round-trip for all 4 account types, `flushEvents()` contains `UserCreatedEvent` (lazy entityId resolution)
 - `PasswordAuthAccountTest` — `verify()` matches/mismatch, `verify()` delegates to `CredentialHasher`, `changePassword()` updates hash
-- `SmsAuthAccountTest` — `replaceCode()` 替换逻辑（新码过期拒绝、当前码无条件替换）、`verifyCode()` success/failure/expired、`useCode()` marks used、Jackson round-trip
+- `SmsAuthAccountTest` — 构造/恢复（策略必传、默认策略）、类型派发、Jackson round-trip
 - `EmailAuthAccountTest` — same pattern as SmsAuthAccount
 - `SocialAuthAccountTest` — identity test (creation, equality, Jackson round-trip)
 
-**Phase 3 — ApplicationService tests** (Spring boot test, mocked Gateways)
-- `UserCreateAppServiceTest` — happy path + uniqueness violation + event published
-- `UserStatusAppServiceTest` — disable/enable + UserStatusChangedEvent
-- Remaining AppServices: basic orchestration verification
+**Phase 3 — ApplicationService tests** (mocked Gateways)
+- `UserServiceImplTest` — create happy path + uniqueness violation + disable/enable + events
+- `UserAuthServiceImplTest` — verifyMobile/verifyEmail 落库 PENDING + 发送；changeMobile/changeEmail 成功路径（user 保存 + verification 落库 USED）；拒绝路径（错码/过期/user 不存在/无 pending verification，不落库）
 
 **Phase 4 — Modulith structural test**
 - `ModulithTest` in each sub-module with `@ApplicationModule` annotation
@@ -238,4 +240,4 @@ Each tests: valid construction, invalid construction (throws), equality, Jackson
 - All Yudao-specific implementation details (SSH, SMS channel adapters, specific social SDKs) are infrastructure-layer concerns. The domain layer references them only through Gateway interfaces.
 - `soda-user-query-server` is intentionally layered differently (traditional 3-layer, no DDD) per CQRS decision in ADR-0001. It reuses Mapper/DAO from `soda-user-infrastructure` but does NOT depend on `soda-user-domain` or `soda-component-support`.
 - Username is mutable. The uniqueness constraint on username is enforced via `UserGateway.existsByUsername()` at the ApplicationService level, with a DB unique index as a safety net.
-- The `replaceCode()` method on SmsAuthAccount/EmailAuthAccount injects an externally-created VerificationCode (with expiry protection). ApplicationService is responsible for generating the code via RandomStringGenerator, creating the VerificationCode DP, calling replaceCode(), and dispatching via SmsSender/EmailSender Gateway.
+- 手机/邮箱换绑验证：验证码由 `Verification` 实体管理（scene=CC）。AppService 通过 `RandomStringGenerator` 生成验证码，创建 Verification 实体落库并发送；确认变更时经 `CredentialChangeService` 编排 verify → change → use，先存 user 再存 verification；失败路径（错码/过期）不落库（实体无变更）。

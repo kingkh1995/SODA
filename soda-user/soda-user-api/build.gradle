@@ -1,3 +1,6 @@
 dependencies {
     api project(':soda-components:soda-component-api-starter')
+    // api 依赖 domain 的正式方案未定：adapter 的 Request 校验（@EnumName(Sex.class) 等）需
+    // domain-types 枚举，经本 api 边传递获得（临时方案）。adapter 不自声明 domain-types。
+    api project(':soda-components:soda-component-domain-types')
 }

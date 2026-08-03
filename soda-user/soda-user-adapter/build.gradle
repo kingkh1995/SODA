@@ -1,5 +1,6 @@
 dependencies {
     implementation project(':soda-components:soda-component-adapter-starter')
     implementation project(':soda-user:soda-user-api')     // compile time — UserService interface, Commands, DTOs
-    implementation project(':soda-user:soda-user-application')    // runtime only — Spring bean injection
+    runtimeOnly project(':soda-user:soda-user-application')    // runtime only — Spring bean injection
+    implementation 'org.springframework:spring-tx'         // consumer 的 @TransactionalEventListener（AFTER_COMMIT）
 }

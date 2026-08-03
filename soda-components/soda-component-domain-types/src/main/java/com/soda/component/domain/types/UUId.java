@@ -1,5 +1,6 @@
 package com.soda.component.domain.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
 import com.soda.component.domain.util.ValidateUtils;
@@ -29,6 +30,7 @@ public record UUId(String value) implements Identifier<String>, Comparable<UUId>
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public UUId {
         ValidateUtils.hasText(value);
         value = value.toLowerCase(Locale.ROOT);

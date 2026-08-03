@@ -1,5 +1,6 @@
 dependencies {
-    api project(':soda-components:soda-component-application-starter')
+    // 唯一消费方是 adapter（运行时 bean 注入，编译期不引用 application 类）→ implementation
+    implementation project(':soda-components:soda-component-application-starter')
     api project(':soda-user:soda-user-api')
     implementation project(':soda-user:soda-user-domain')
 }

@@ -12,13 +12,13 @@ import lombok.experimental.Accessors;
 @RequiredArgsConstructor
 public enum SocialType implements EnumType {
 
-    GE("Gitee"),
-    DT("DingTalk"),
-    WENT("WechatWork"),
-    WMP("WechatMp"),
-    WOPN("WechatOpen"),
-    WMIN("WechatMini"),
-    ALIP("AlipayMini");
+    GE("gitee"),
+    DT("ding-talk"),
+    WENT("wechat-work"),
+    WMP("wechat-mp"),
+    WOPN("wechat-open"),
+    WMIN("wechat-mini"),
+    ALIP("alipay-mini");
 
     private final String desc;
 

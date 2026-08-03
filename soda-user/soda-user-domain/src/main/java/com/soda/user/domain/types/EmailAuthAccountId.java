@@ -47,11 +47,6 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
     }
 
     @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
-    }
-
-    @Override
     public int compareTo(EmailAuthAccountId other) {
         return this.value().compareTo(other.value());
     }

@@ -16,7 +16,7 @@ import com.soda.component.domain.util.ValidateUtils;
  *   <li>使用后尽快丢弃</li>
  * </ul>
  * <p>
- * 序列化保护：构造器私有 + 值访问器命名为 {@link #internalValue()} 而非 {@code value()} 或 {@code getValue()}，
+ * 序列化保护：构造器私有 + 值访问器命名为 {@link #rawValue()} 而非 {@code value()} 或 {@code getValue()}，
  * 避免被 Jackson 等序列化框架自动发现。
  *
  * @see Secret
@@ -37,7 +37,8 @@ public final class RawCredential extends Secret {
      *
      * @return 原始凭证字符串
      */
-    public String internalValue() {
+    @Override
+    public String rawValue() {
         return value;
     }
 }

@@ -1,7 +1,6 @@
 package com.soda.user.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
@@ -43,18 +42,6 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
     public static PasswordAuthAccountId from(UserId userId) {
         ValidateUtils.notNull(userId);
         return new PasswordAuthAccountId(PREFIX + userId.value(), userId);
-    }
-
-    @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
-    }
-
-    /**
-     * 返回底层 {@link UserId} 的 {@link LongId} 表示。
-     */
-    public LongId toLongId() {
-        return new LongId(userId.value());
     }
 
     @Override

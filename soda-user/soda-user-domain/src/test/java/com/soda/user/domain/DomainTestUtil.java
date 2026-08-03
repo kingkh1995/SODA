@@ -8,7 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * 消除各 DP/Entity 测试中重复的 {@code new ObjectMapper()} 样板代码。
  * <br>
- * 需要自定义配置的测试（如 {@link VerificationCodeTest}）请用 {@link #MAPPER}{@code .copy()} 后派生。
+ * 需要自定义配置的测试（如 {@link VerificationCodePolicyTest}）请用 {@link #MAPPER}{@code .copy()} 后派生。
  * <p>
  * 注意：Jackson 3.x 原生支持 JSR310 类型 (Instant, Duration 等)，无需额外注册 JavaTimeModule。
  */

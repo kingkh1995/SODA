@@ -1,15 +1,14 @@
 dependencies {
-    // adapter and infrastructure is runtimeOnly for start
+    // 组件层 start 是纯脚手架：不引入任何组件模块，业务 start 自行注入
     api 'org.springframework.boot:spring-boot-starter-web'
 
-    testImplementation project(':soda-components:soda-component-api-starter')
-    testImplementation project(':soda-components:soda-component-application-starter')
-    testImplementation project(':soda-components:soda-component-adapter-starter')
-    testImplementation project(':soda-components:soda-component-domain-starter')
-    testImplementation project(':soda-components:soda-component-domain-types')
-    testImplementation project(':soda-components:soda-component-infrastructure-starter')
-    testImplementation project(':soda-components:soda-component-query-server-starter')
-    testImplementation project(':soda-components:soda-component-start-starter')
-    testImplementation 'org.springframework.modulith:spring-modulith-starter-core'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // ModulithTest 扫描 com.soda.component 需全部模块，仅测试运行时。
+    // 根模块显式声明：adapter/infrastructure/query-server 的 api 边传递覆盖
+    // api、domain；application 无入边（adapter 只在其 runtime classpath 消费），
+    // domain-types 无入边，两者都必须显式声明。
+    testRuntimeOnly project(':soda-components:soda-component-adapter-starter')
+    testRuntimeOnly project(':soda-components:soda-component-infrastructure-starter')
+    testRuntimeOnly project(':soda-components:soda-component-query-server-starter')
+    testRuntimeOnly project(':soda-components:soda-component-application-starter')
+    testRuntimeOnly project(':soda-components:soda-component-domain-types')
 }

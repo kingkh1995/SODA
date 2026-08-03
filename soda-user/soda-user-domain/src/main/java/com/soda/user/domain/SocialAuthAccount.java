@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.domain.types.Active;
+import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
 import lombok.Builder;
@@ -25,7 +26,7 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
      * 持久化恢复 / JSON 反序列化。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
-    protected SocialAuthAccount(
+    private SocialAuthAccount(
             @JsonProperty("id") SocialAuthAccountId id,
             @JsonProperty("active") Active active) {
         super(id, active);
@@ -38,7 +39,7 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
      */
     @Builder(builderClassName = "SocialAuthAccountCreateBuilder",
             builderMethodName = "createBuilder")
-    public static SocialAuthAccount create(SocialType socialType, String openId) {
+    private static SocialAuthAccount create(SocialType socialType, String openId) {
         return new SocialAuthAccount(
                 SocialAuthAccountId.from(socialType, openId),
                 Active.TRUE
@@ -50,22 +51,32 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
      */
     @Builder(builderClassName = "SocialAuthAccountRestoreBuilder",
             builderMethodName = "restoreBuilder")
-    public static SocialAuthAccount restore(SocialAuthAccountId id, Active active) {
+    private static SocialAuthAccount restore(SocialAuthAccountId id, Active active) {
         return new SocialAuthAccount(id, active);
+    }
+
+    // ─── accessors ───
+
+    /**
+     * 认证类型 — 常量来源为 {@link SocialAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
+     */
+    @Override
+    public AuthAccountType getAuthAccountType() {
+        return SocialAuthAccountId.ACCOUNT_TYPE;
     }
 
     /**
      * 社交平台类型（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。
      */
     public SocialType getSocialType() {
-        return getId().socialType();
+        return requireId().socialType();
     }
 
     /**
      * 社交平台用户开放 ID（数据在 id 字段中，避免 JSON 属性冲突）。
      */
     public String getOpenId() {
-        return getId().openId();
+        return requireId().openId();
     }
 
 }

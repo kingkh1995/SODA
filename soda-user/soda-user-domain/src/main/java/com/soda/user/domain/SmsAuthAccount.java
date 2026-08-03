@@ -5,35 +5,41 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.util.ValidateUtils;
+import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
-import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
 import java.util.Optional;
 
 /**
  * 短信认证账户实体 — 手机号 + 短信验证码方式的认证。
  * <p>
  * 与 User.mobile 联动：设置 User.mobile 时自动创建，清除时自动删除。
+ * <p>
+ * 只保留认证标识（手机号）和策略配置（{@link VerificationCodePolicy}），
+ * 验证码的发送/校验状态已迁移至独立的 {@link Verification} 实体。
  *
  * @see AuthAccount
  */
 @JsonTypeName("S")
 @EqualsAndHashCode(callSuper = true)
+@Getter
 public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     /**
      * 默认短信验证码策略：6 位，5 分钟过期。
      */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_SMS;
-    private @Nullable VerificationCode verificationCode;
 
-    private @Nullable VerificationCodePolicy verificationCodePolicy;
+    /**
+     * 当前生效的策略。
+     */
+    private VerificationCodePolicy verificationCodePolicy;
 
     // ─── construction ───
 
@@ -41,29 +47,26 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
      * 持久化恢复 / JSON 反序列化。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
-    protected SmsAuthAccount(
+    private SmsAuthAccount(
             @JsonProperty("id") SmsAuthAccountId id,
             @JsonProperty("active") Active active,
-            @JsonProperty("verificationCode") @Nullable VerificationCode verificationCode,
-            @JsonProperty("verificationCodePolicy") @Nullable VerificationCodePolicy verificationCodePolicy) {
+            @JsonProperty("verificationCodePolicy") VerificationCodePolicy verificationCodePolicy) {
         super(id, active);
-        this.verificationCode = verificationCode;
-        this.verificationCodePolicy = verificationCodePolicy;
+        this.verificationCodePolicy = Objects.requireNonNull(verificationCodePolicy);
     }
 
     // ─── factories ───
 
     /**
-     * 创建新短信账户 — active 默认 TRUE，ID 从 mobile 派生。验证码通过 replaceCode() 后续注入。
+     * 创建新短信账户 — active 默认 TRUE，ID 从 mobile 派生。
      */
     @Builder(builderClassName = "SmsAuthAccountCreateBuilder",
             builderMethodName = "createBuilder")
-    public static SmsAuthAccount create(Mobile mobile) {
+    private static SmsAuthAccount create(Mobile mobile, @Nullable VerificationCodePolicy verificationCodePolicy) {
         return new SmsAuthAccount(
                 SmsAuthAccountId.from(mobile),
                 Active.TRUE,
-                null,
-                null
+                Optional.ofNullable(verificationCodePolicy).orElse(DEFAULT_POLICY)
         );
     }
 
@@ -72,71 +75,23 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
      */
     @Builder(builderClassName = "SmsAuthAccountRestoreBuilder",
             builderMethodName = "restoreBuilder")
-    public static SmsAuthAccount restore(
+    private static SmsAuthAccount restore(
             SmsAuthAccountId id, Active active,
-            @Nullable VerificationCode verificationCode,
-            @Nullable VerificationCodePolicy verificationCodePolicy) {
-        return new SmsAuthAccount(id, active, verificationCode, verificationCodePolicy);
+            VerificationCodePolicy verificationCodePolicy) {
+        return new SmsAuthAccount(id, active, verificationCodePolicy);
     }
 
-    // ─── policy ───
+    // ─── accessors ───
 
     /**
-     * 当前生效的策略。
+     * 认证类型 — 常量来源为 {@link SmsAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
      */
-    public Optional<VerificationCode> getVerificationCode() {
-        return Optional.ofNullable(verificationCode);
+    @Override
+    public AuthAccountType getAuthAccountType() {
+        return SmsAuthAccountId.ACCOUNT_TYPE;
     }
-
-    /**
-     * 当前生效的策略。
-     */
-    public VerificationCodePolicy getVerificationCodePolicy() {
-        return verificationCodePolicy != null ? verificationCodePolicy : DEFAULT_POLICY;
-    }
-
-    // ─── verification ───
-
-    /**
-     * 校验验证码。
-     *
-     * @param inputCode 待校验的验证码
-     * @return true 若校验通过
-     */
-    public boolean verifyCode(RandomString inputCode) {
-        return verificationCode != null && verificationCode.verify(inputCode);
-    }
-
-    // ─── code lifecycle ───
-
-    /**
-     * 注入验证码（替换已有）。
-     *
-     * @param code 新验证码，非 null
-     * @return true 替换成功；false 新码已过期
-     */
-    public boolean replaceCode(VerificationCode code) {
-        ValidateUtils.notNull(code);
-        if (code.expired()) {
-            return false;
-        }
-        this.verificationCode = code;
-        return true;
-    }
-
-    /**
-     * 使用验证码（标记为已使用）。
-     * 无验证码时无操作。
-     */
-    public void useCode() {
-        if (verificationCode != null) {
-            verificationCode = verificationCode.use();
-        }
-    }
-
-    // ─── mobile ───
 
     public Mobile getMobile() {
-        return getId().mobile();
+        return requireId().mobile();
     }
 }

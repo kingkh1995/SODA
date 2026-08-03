@@ -21,13 +21,13 @@ class SocialTypeTest {
 
     @ParameterizedTest(name = "{0} → desc={1}")
     @CsvSource(textBlock = """
-                GE,    Gitee
-                DT,    DingTalk
-                WENT,  WechatWork
-                WMP,   WechatMp
-                WOPN,  WechatOpen
-                WMIN,  WechatMini
-                ALIP,  AlipayMini
+                GE,    gitee
+                DT,    ding-talk
+                WENT,  wechat-work
+                WMP,   wechat-mp
+                WOPN,  wechat-open
+                WMIN,  wechat-mini
+                ALIP,  alipay-mini
             """)
     @DisplayName("各枚举常量 desc() 正确")
     void should_haveCorrectDesc(String name, String desc) {

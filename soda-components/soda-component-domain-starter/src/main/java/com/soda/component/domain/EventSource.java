@@ -18,7 +18,7 @@ public interface EventSource<ID extends Identifier<?>> {
     /**
      * 取出当前所有未发送的领域事件并清空内部列表。
      * <p>
-     * 取出后由 ApplicationService 通过 {@link DomainEventBus#fireAll} 发送。
+     * 取出后由 ApplicationService 通过 {@link DomainEventBus#publishAll} 发送。
      *
      * @return 未发送的领域事件列表；无事件时返回空列表
      */

@@ -21,10 +21,10 @@ class AuthAccountTypeTest {
 
     @ParameterizedTest(name = "{0} → desc={1}")
     @CsvSource(textBlock = """
-                P,     Password
-                S,     Sms
-                E,     Email
-                O,     OAuth
+                P,     password
+                S,     sms
+                E,     email
+                O,     oauth
             """)
     @DisplayName("各枚举常量 desc() 正确")
     void should_haveCorrectDesc(String name, String desc) {

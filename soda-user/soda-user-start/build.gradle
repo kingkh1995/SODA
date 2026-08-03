@@ -5,6 +5,6 @@ apply plugin: 'org.springframework.boot'
 // (query-server may have its own DAO layer in future).
 dependencies {
     implementation project(':soda-components:soda-component-start-starter')
-    implementation project(':soda-user:soda-user-adapter')
-    implementation project(':soda-user:soda-user-infrastructure')
+    runtimeOnly project(':soda-user:soda-user-adapter')
+    runtimeOnly project(':soda-user:soda-user-infrastructure')
 }

@@ -36,7 +36,7 @@
 - `deleteUser` — 加载 → remove → fire UserRemovedEvent
 - `updateStatus` — 加载 → changeStatus → save → fireAll
 - `changeUsername` — 唯一性校验 → changeUsername → save → fireAll
-- `changePassword` — 加载 → find PasswordAccount → changePassword → save → fireAll（PasswordChangedEvent 通过 domainEventBus.fire() 发布）
+- `changePassword` — 加载 → find PasswordAccount → changePassword → save → publishAll（PasswordChangedEvent 通过 domainEventBus.publish() 发布）
 
 **旧**：6 个 `*AppService`（已删除）
 

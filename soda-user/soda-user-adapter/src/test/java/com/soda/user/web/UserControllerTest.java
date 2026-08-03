@@ -1,14 +1,18 @@
 package com.soda.user.web;
 
+import com.soda.user.api.UserAuthService;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.CreateUserCommand;
+import com.soda.user.api.dto.UserDTO;
 import com.soda.user.web.assembler.UserWebAssembler;
+import com.soda.user.web.request.ChangeEmailRequest;
+import com.soda.user.web.request.ChangeMobileRequest;
+import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
-import com.soda.user.web.request.DeleteUserRequest;
-import com.soda.user.web.request.UpdatePasswordRequest;
 import com.soda.user.web.request.UpdateUserRequest;
-import com.soda.user.web.request.UpdateUserStatusRequest;
+import com.soda.user.web.request.VerifyEmailRequest;
+import com.soda.user.web.request.VerifyMobileRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,52 +29,52 @@ import static org.mockito.Mockito.when;
 class UserControllerTest {
 
     private UserService userService;
+    private UserAuthService userAuthService;
     private UserController controller;
 
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        controller = new UserController(userService, Mappers.getMapper(UserWebAssembler.class));
+        userAuthService = mock(UserAuthService.class);
+        var assembler = Mappers.getMapper(UserWebAssembler.class);
+        controller = new UserController(assembler, userService, userAuthService);
     }
 
     @Nested
-    @DisplayName("POST /create")
+    @DisplayName("POST /")
     class CreateUser {
 
         @Test
-        @DisplayName("创建成功返回 userId")
-        void should_returnUserId_when_createUser() {
-            var request = new CreateUserRequest("admin", "123456", "管理员", null, null, null, null);
-            when(userService.createUser(any(CreateUserCommand.class))).thenReturn(42L);
+        @DisplayName("创建用户成功返回用户对象")
+        void should_returnUser_when_createUser() {
+            var request = new CreateUserRequest("testuser", "test1234", "测试用户", "13800138000", "test@example.com", "1", null);
+            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "M", null, "E");
+            when(userService.createUser(any(CreateUserCommand.class))).thenReturn(dto);
 
             var response = controller.createUser(request);
 
             assertThat(response.code()).isZero();
-            assertThat(response.data()).isEqualTo(42L);
-            assertThat(response.message()).isEqualTo("success");
-        }
-
-        @Test
-        @DisplayName("委托 UserService.createUser 执行")
-        void should_delegateToUserService_when_createUser() {
-            var request = new CreateUserRequest("admin", "123456", "管理员", null, null, null, null);
-
-            controller.createUser(request);
-
-            verify(userService).createUser(any(CreateUserCommand.class));
+            assertThat(response.data()).isNotNull();
+            assertThat(response.data().id()).isEqualTo(1L);
+            assertThat(response.data().username()).isEqualTo("testuser");
+            assertThat(response.data().nickname()).isEqualTo("测试用户");
+            assertThat(response.data().mobile()).isEqualTo("13800138000");
+            assertThat(response.data().email()).isEqualTo("test@example.com");
+            assertThat(response.data().sex()).isEqualTo("M");
+            assertThat(response.data().state()).isEqualTo("E");
         }
     }
 
     @Nested
-    @DisplayName("PUT /update")
+    @DisplayName("PATCH /{id}")
     class UpdateUser {
 
         @Test
-        @DisplayName("更新成功返回空 data")
+        @DisplayName("更新用户成功返回空 data")
         void should_returnSuccess_when_updateUser() {
-            var request = new UpdateUserRequest(1L, "新昵称", null, null, null, null);
+            var request = new UpdateUserRequest("新昵称", "2", null);
 
-            var response = controller.updateUser(request);
+            var response = controller.updateUser(1L, request);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
@@ -78,15 +82,13 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("DELETE /delete")
+    @DisplayName("DELETE /{id}")
     class DeleteUser {
 
         @Test
         @DisplayName("删除成功返回空 data")
         void should_returnSuccess_when_deleteUser() {
-            var request = new DeleteUserRequest(1L);
-
-            var response = controller.deleteUser(request);
+            var response = controller.deleteUser(1L);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
@@ -94,47 +96,84 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /update-status")
-    class UpdateStatus {
+    @DisplayName("POST /{id}:disable")
+    class DisableUser {
 
         @Test
-        @DisplayName("更新状态成功返回空 data")
-        void should_returnSuccess_when_updateStatus() {
-            var request = new UpdateUserStatusRequest(1L, "D");
-
-            var response = controller.updateStatus(request);
+        @DisplayName("禁用用户成功返回空 data")
+        void should_returnSuccess_when_disableUser() {
+            var response = controller.disableUser(1L);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
         }
+
+        @Test
+        @DisplayName("委托 UserService.disableUser 执行")
+        void should_delegateToUserService_when_disableUser() {
+            controller.disableUser(42L);
+
+            verify(userService).disableUser(any());
+        }
     }
 
     @Nested
-    @DisplayName("PUT /update-password")
+    @DisplayName("POST /{id}:enable")
+    class EnableUser {
+
+        @Test
+        @DisplayName("启用用户成功返回空 data")
+        void should_returnSuccess_when_enableUser() {
+            var response = controller.enableUser(1L);
+
+            assertThat(response.code()).isZero();
+            assertThat(response.data()).isNull();
+        }
+
+        @Test
+        @DisplayName("委托 UserService.enableUser 执行")
+        void should_delegateToUserService_when_enableUser() {
+            controller.enableUser(42L);
+
+            verify(userService).enableUser(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /{id}:changePassword")
     class ChangePassword {
 
         @Test
         @DisplayName("修改密码成功返回空 data")
         void should_returnSuccess_when_changePassword() {
-            var request = new UpdatePasswordRequest(1L, "newPass123");
-
-            var response = controller.changePassword(request);
+            var request = new ChangePasswordRequest("newPass123");
+            var response = controller.changePassword(1L, request);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
         }
+
+        @Test
+        @DisplayName("委托 UserAuthService.changePassword 执行")
+        void should_delegateToUserAuthService_when_changePassword() {
+            var request = new ChangePasswordRequest("newPass123");
+
+            controller.changePassword(42L, request);
+
+            verify(userAuthService).changePassword(any());
+        }
     }
 
     @Nested
-    @DisplayName("PUT /change-username")
+    @DisplayName("POST /{id}:changeUsername")
     class ChangeUsername {
 
         @Test
         @DisplayName("修改用户名成功返回空 data")
         void should_returnSuccess_when_changeUsername() {
-            var request = new ChangeUsernameRequest(1L, "newAdmin");
+            var request = new ChangeUsernameRequest("newAdmin");
 
-            var response = controller.changeUsername(request);
+            var response = controller.changeUsername(1L, request);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
@@ -143,11 +182,113 @@ class UserControllerTest {
         @Test
         @DisplayName("委托 UserService.changeUsername 执行")
         void should_delegateToUserService_when_changeUsername() {
-            var request = new ChangeUsernameRequest(42L, "newAdmin");
+            var request = new ChangeUsernameRequest("newAdmin");
 
-            controller.changeUsername(request);
+            controller.changeUsername(42L, request);
 
             verify(userService).changeUsername(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /{id}:verifyMobile")
+    class VerifyMobile {
+
+        @Test
+        @DisplayName("发送验证码成功返回空 data")
+        void should_returnSuccess_when_verifyMobile() {
+            var request = new VerifyMobileRequest("13900139000");
+            var response = controller.verifyMobile(1L, request);
+
+            assertThat(response.code()).isZero();
+            assertThat(response.data()).isNull();
+        }
+
+        @Test
+        @DisplayName("委托 UserAuthService.verifyMobile 执行")
+        void should_delegateToUserAuthService_when_verifyMobile() {
+            var request = new VerifyMobileRequest("13900139000");
+
+            controller.verifyMobile(42L, request);
+
+            verify(userAuthService).verifyMobile(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /{id}:changeMobile")
+    class ChangeMobile {
+
+        @Test
+        @DisplayName("变更手机号成功返回空 data")
+        void should_returnSuccess_when_changeMobile() {
+            var request = new ChangeMobileRequest("123456");
+
+            var response = controller.changeMobile(1L, request);
+
+            assertThat(response.code()).isZero();
+            assertThat(response.data()).isNull();
+        }
+
+        @Test
+        @DisplayName("委托 UserAuthService.changeMobile 执行")
+        void should_delegateToUserAuthService_when_changeMobile() {
+            var request = new ChangeMobileRequest("123456");
+
+            controller.changeMobile(42L, request);
+
+            verify(userAuthService).changeMobile(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /{id}:verifyEmail")
+    class VerifyEmail {
+
+        @Test
+        @DisplayName("发送验证码成功返回空 data")
+        void should_returnSuccess_when_verifyEmail() {
+            var request = new VerifyEmailRequest("new@test.com");
+            var response = controller.verifyEmail(1L, request);
+
+            assertThat(response.code()).isZero();
+            assertThat(response.data()).isNull();
+        }
+
+        @Test
+        @DisplayName("委托 UserAuthService.verifyEmail 执行")
+        void should_delegateToUserAuthService_when_verifyEmail() {
+            var request = new VerifyEmailRequest("new@test.com");
+
+            controller.verifyEmail(42L, request);
+
+            verify(userAuthService).verifyEmail(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /{id}:changeEmail")
+    class ChangeEmail {
+
+        @Test
+        @DisplayName("变更邮箱成功返回空 data")
+        void should_returnSuccess_when_changeEmail() {
+            var request = new ChangeEmailRequest("123456");
+
+            var response = controller.changeEmail(1L, request);
+
+            assertThat(response.code()).isZero();
+            assertThat(response.data()).isNull();
+        }
+
+        @Test
+        @DisplayName("委托 UserAuthService.changeEmail 执行")
+        void should_delegateToUserAuthService_when_changeEmail() {
+            var request = new ChangeEmailRequest("123456");
+
+            controller.changeEmail(42L, request);
+
+            verify(userAuthService).changeEmail(any());
         }
     }
 }

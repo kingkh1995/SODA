@@ -1,18 +1,25 @@
 package com.soda.user.web.assembler;
 
+import com.soda.user.api.command.ChangeEmailCommand;
+import com.soda.user.api.command.ChangeMobileCommand;
+import com.soda.user.api.command.ChangePasswordCommand;
 import com.soda.user.api.command.ChangeUsernameCommand;
 import com.soda.user.api.command.CreateUserCommand;
 import com.soda.user.api.command.DeleteUserCommand;
-import com.soda.user.api.command.UpdatePasswordCommand;
+import com.soda.user.api.command.DisableUserCommand;
+import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.api.command.UpdateUserCommand;
-import com.soda.user.api.command.UpdateUserStatusCommand;
+import com.soda.user.api.command.VerifyEmailCommand;
+import com.soda.user.api.command.VerifyMobileCommand;
 import com.soda.user.api.dto.UserDTO;
+import com.soda.user.web.request.ChangeEmailRequest;
+import com.soda.user.web.request.ChangeMobileRequest;
+import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
-import com.soda.user.web.request.DeleteUserRequest;
-import com.soda.user.web.request.UpdatePasswordRequest;
 import com.soda.user.web.request.UpdateUserRequest;
-import com.soda.user.web.request.UpdateUserStatusRequest;
+import com.soda.user.web.request.VerifyEmailRequest;
+import com.soda.user.web.request.VerifyMobileRequest;
 import com.soda.user.web.response.UserResponse;
 import org.mapstruct.Mapper;
 
@@ -32,21 +39,31 @@ public interface UserWebAssembler {
 
     // ========== Request → Command ==========
 
-    CreateUserCommand toCommand(CreateUserRequest request);
+    CreateUserCommand toCreateCommand(CreateUserRequest request);
 
-    UpdateUserCommand toCommand(UpdateUserRequest request);
+    UpdateUserCommand toUpdateCommand(Long userId, UpdateUserRequest request);
 
-    UpdatePasswordCommand toCommand(UpdatePasswordRequest request);
+    DeleteUserCommand toDeleteCommand(Long userId);
 
-    UpdateUserStatusCommand toCommand(UpdateUserStatusRequest request);
+    DisableUserCommand toDisableCommand(Long userId);
 
-    ChangeUsernameCommand toCommand(ChangeUsernameRequest request);
+    EnableUserCommand toEnableCommand(Long userId);
 
-    DeleteUserCommand toCommand(DeleteUserRequest request);
+    ChangeUsernameCommand toChangeUsernameCommand(Long userId, ChangeUsernameRequest request);
+
+    ChangePasswordCommand toChangePasswordCommand(Long userId, ChangePasswordRequest request);
+
+    VerifyMobileCommand toVerifyMobileCommand(Long userId, VerifyMobileRequest request);
+
+    ChangeMobileCommand toChangeMobileCommand(Long userId, ChangeMobileRequest request);
+
+    VerifyEmailCommand toVerifyEmailCommand(Long userId, VerifyEmailRequest request);
+
+    ChangeEmailCommand toChangeEmailCommand(Long userId, ChangeEmailRequest request);
 
     // ========== DTO → Response ==========
 
     UserResponse toResponse(UserDTO dto);
 
-    List<UserResponse> toResponse(List<UserDTO> dtos);
+    List<UserResponse> toResponseList(List<UserDTO> dtos);
 }

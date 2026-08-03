@@ -46,11 +46,6 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
     }
 
     @Override
-    public AuthAccountType authAccountType() {
-        return ACCOUNT_TYPE;
-    }
-
-    @Override
     public int compareTo(SmsAuthAccountId other) {
         return this.value().compareTo(other.value());
     }

@@ -1,182 +1,137 @@
 package com.soda.user.application.service;
 
+import com.soda.component.application.AbstractAppService;
 import com.soda.component.domain.DomainEventBus;
 import com.soda.component.domain.gateway.CredentialHasher;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.Sex;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.ChangeUsernameCommand;
 import com.soda.user.api.command.CreateUserCommand;
 import com.soda.user.api.command.DeleteUserCommand;
-import com.soda.user.api.command.UpdatePasswordCommand;
+import com.soda.user.api.command.DisableUserCommand;
+import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.api.command.UpdateUserCommand;
-import com.soda.user.api.command.UpdateUserStatusCommand;
-import com.soda.user.domain.AuthAccount;
-import com.soda.user.domain.PasswordAuthAccount;
+import com.soda.user.api.dto.UserDTO;
+import com.soda.user.application.convertor.UserDTOConvertor;
 import com.soda.user.domain.User;
-import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserRemovedEvent;
 import com.soda.user.domain.gateway.UserGateway;
-import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.Nickname;
-import com.soda.user.domain.types.Sex;
 import com.soda.user.domain.types.UserId;
-import com.soda.user.domain.types.UserStatus;
 import com.soda.user.domain.types.Username;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
-import java.util.Objects;
+import java.util.Optional;
 
 /**
  * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link CredentialHasher}。
  * <p>
- * 合并原 6 个 *AppService 的逻辑，实现 {@link UserService} 定义的 6 个方法。
+ * 凭证/验证码相关操作迁至 {@link UserAuthServiceImpl}。
  */
+@Slf4j
 @Service
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserService {
 
-    private final UserGateway userGateway;
+    private final UserDTOConvertor userConvertor;
     private final DomainEventBus domainEventBus;
     private final CredentialHasher credentialHasher;
 
-    public UserServiceImpl(UserGateway userGateway, DomainEventBus domainEventBus,
-                           CredentialHasher credentialHasher) {
-        this.userGateway = Objects.requireNonNull(userGateway);
-        this.domainEventBus = Objects.requireNonNull(domainEventBus);
-        this.credentialHasher = Objects.requireNonNull(credentialHasher);
+    public UserServiceImpl(UserGateway userGateway, UserDTOConvertor userConvertor,
+                           DomainEventBus domainEventBus, CredentialHasher credentialHasher) {
+        super(User.class, userGateway);
+        this.userConvertor = userConvertor;
+        this.domainEventBus = domainEventBus;
+        this.credentialHasher = credentialHasher;
     }
 
     @Override
-    public Long createUser(CreateUserCommand command) {
-        Objects.requireNonNull(command);
-
-        // 校验用户名唯一性
+    public UserDTO createUser(CreateUserCommand command) {
+        log.info("createUser: command={}", command);
         var username = new Username(command.username());
-        if (userGateway.existsByUsername(username)) {
-            throw new IllegalArgumentException("Username already exists: " + command.username());
+        var mobile = Optional.ofNullable(command.mobile()).map(Mobile::new).orElse(null);
+        var email = Optional.ofNullable(command.email()).map(Email::new).orElse(null);
+        Assert.isTrue(!gateway.existsByUsername(username),
+                "Username already exists: " + command.username());
+        if (mobile != null) {
+            Assert.isTrue(!gateway.existsByMobile(mobile),
+                    "Mobile already exists: " + command.mobile());
         }
-
-        // 构建 User（不含 Account）
+        if (email != null) {
+            Assert.isTrue(!gateway.existsByEmail(email),
+                    "Email already exists: " + command.email());
+        }
         var user = User.createBuilder()
                 .username(username)
                 .nickname(new Nickname(command.nickname()))
-                .mobile(command.mobile() != null ? new Mobile(command.mobile()) : null)
-                .email(command.email() != null ? new Email(command.email()) : null)
-                .sex(command.sex() != null ? Sex.of(command.sex()) : null)
-                .avatar(command.avatar() != null ? new Avatar(command.avatar()) : null)
+                .mobile(mobile)
+                .email(email)
+                .sex(Optional.ofNullable(command.sex()).map(Sex::of).orElse(null))
+                .avatar(Optional.ofNullable(command.avatar()).map(Avatar::new).orElse(null))
+                .passwordHash(credentialHasher.hash(new RawCredential(command.password())))
                 .build();
-        // 首次持久化获取 UserId
-        var userId = userGateway.save(user);
-        Objects.requireNonNull(command.password(), "password must not be null");
-
-        // 创建并添加 PasswordAuthAccount
-        var passwordHash = credentialHasher.hash(new RawCredential(command.password()));
-        var passwordAccount = PasswordAuthAccount.createBuilder()
-                .userId(userId)
-                .passwordHash(passwordHash)
-                .build();
-        user.addAccount(passwordAccount);
-
-        // 再次持久化（含 Account）
-        userGateway.save(user);
-
-        // 发布领域事件
-        domainEventBus.fireAll(user.flushEvents());
-
-        return userId.value();
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
+        return userConvertor.convert(user);
     }
 
     @Override
     public void updateUser(UpdateUserCommand command) {
-        Objects.requireNonNull(command);
-
+        log.info("updateUser: command={}", command);
         var userId = new UserId(command.userId());
-        var user = userGateway.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + command.userId()));
-
-        if (command.nickname() != null) {
-            user.setNickname(new Nickname(command.nickname()));
-        }
-        if (command.mobile() != null) {
-            user.setMobile(new Mobile(command.mobile()));
-        }
-        if (command.email() != null) {
-            user.setEmail(new Email(command.email()));
-        }
-        if (command.sex() != null) {
-            user.setSex(Sex.of(command.sex()));
-        }
-        if (command.avatar() != null) {
-            user.setAvatar(new Avatar(command.avatar()));
-        }
-
-        userGateway.save(user);
-        domainEventBus.fireAll(user.flushEvents());
+        var user = require(userId);
+        Optional.ofNullable(command.nickname()).map(Nickname::new).ifPresent(user::changeNickname);
+        Optional.ofNullable(command.sex()).map(Sex::of).ifPresent(user::changeSex);
+        Optional.ofNullable(command.avatar()).map(Avatar::new).ifPresent(user::changeAvatar);
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
     }
 
     @Override
     public void deleteUser(DeleteUserCommand command) {
-        Objects.requireNonNull(command);
-
+        log.info("deleteUser: command={}", command);
         var userId = new UserId(command.userId());
-        var user = userGateway.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + command.userId()));
-
-        userGateway.remove(user);
-        domainEventBus.fire(new UserRemovedEvent(userId));
+        gateway.findById(userId).ifPresent(user -> {
+            gateway.remove(user);
+            domainEventBus.publish(new UserRemovedEvent(userId));
+        });
     }
 
     @Override
-    public void updateStatus(UpdateUserStatusCommand command) {
-        Objects.requireNonNull(command);
-
+    public void disableUser(DisableUserCommand command) {
+        log.info("disableUser: command={}", command);
         var userId = new UserId(command.userId());
-        var user = userGateway.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + command.userId()));
-
-        user.changeStatus(UserStatus.of(command.status()));
-
-        userGateway.save(user);
-        domainEventBus.fireAll(user.flushEvents());
+        var user = require(userId);
+        user.disable();
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
     }
 
     @Override
-    public void changePassword(UpdatePasswordCommand command) {
-        Objects.requireNonNull(command);
-
+    public void enableUser(EnableUserCommand command) {
+        log.info("enableUser: command={}", command);
         var userId = new UserId(command.userId());
-        var user = userGateway.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + command.userId()));
-
-        var passwordAccount = user.findAccount(AuthAccount.ofType(AuthAccountType.P))
-                .map(PasswordAuthAccount.class::cast)
-                .orElseThrow(() -> new IllegalStateException("Password account not found for user: " + command.userId()));
-
-        passwordAccount.changePassword(new RawCredential(command.newPassword()), credentialHasher);
-        domainEventBus.fire(new PasswordChangedEvent(userId));
-
-        userGateway.save(user);
-        domainEventBus.fireAll(user.flushEvents());
+        var user = require(userId);
+        user.enable();
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
     }
 
     @Override
     public void changeUsername(ChangeUsernameCommand command) {
-        Objects.requireNonNull(command);
-
+        log.info("changeUsername: command={}", command);
         var userId = new UserId(command.userId());
-        var user = userGateway.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + command.userId()));
-
+        var user = require(userId);
         var newUsername = new Username(command.newUsername());
-        if (userGateway.existsByUsername(newUsername)) {
-            throw new IllegalArgumentException("Username already exists: " + command.newUsername());
-        }
-
+        Assert.isTrue(!gateway.existsByUsername(newUsername),
+                "Username already exists: " + command.newUsername());
         user.changeUsername(newUsername);
-
-        userGateway.save(user);
-        domainEventBus.fireAll(user.flushEvents());
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
     }
 }

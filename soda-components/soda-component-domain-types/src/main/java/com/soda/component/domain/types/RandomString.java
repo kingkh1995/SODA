@@ -23,14 +23,4 @@ public record RandomString(String value) implements Type {
     public String value() {
         return this.value;
     }
-
-    /**
-     * 校验原始值是否与给定字符串匹配。
-     *
-     * @param rawValue 待匹配的字符串
-     * @return true 若匹配
-     */
-    public boolean matches(String rawValue) {
-        return value.equals(rawValue);
-    }
 }

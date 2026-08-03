@@ -10,17 +10,23 @@
 - `CreateUserVO` / `UpdateUserVO` / `UserDetailVO` 等— Controller 专属展现模型
 - `UserAssembler` — DTO ↔ VO 互转
 
-**Controller 端点：**
+**Controller 端点**（统一前缀 `/api/users`，命名遵循 ADR-0012 AIP camelCase）：
 
-| 端点 | 方法 | AppService |
-|------|------|------------|
-| `POST /api/system/user/create` | `UserController.createUser(CreateUserVO)` → `UserCreateAppService` | 返回 `UserId` |
-| `PUT /api/system/user/update` | `UserController.updateUser(UpdateUserVO)` → `UserUpdateAppService` | |
-| `DELETE /api/system/user/delete` | `UserController.deleteUser(id)` → `UserDeleteAppService` | |
-| `PUT /api/system/user/update-status` | `UserController.updateStatus(UpdateStatusVO)` → `UserStatusAppService` | |
-| `PUT /api/system/user/update-password` | `UserController.updatePassword(UpdatePasswordVO)` → `UserPasswordAppService` | |
-| `PUT /api/system/user/update-profile` | `UserController.updateProfile(UpdateProfileVO)` → `UserProfileAppService` | |
-| `PUT /api/system/user/change-username` | `UserController.changeUsername(ChangeUsernameVO)` → `UsernameChangeAppService` | |
+| 端点 | 方法 | Service |
+|------|------|---------|
+| `POST /api/users` | `UserController.createUser(CreateUserRequest)` → `UserService.createUser` | 返回 `UserId` |
+| `PATCH /api/users/{id}` | `UserController.updateUser(UpdateUserRequest)` → `UserService.updateUser` | |
+| `DELETE /api/users/{id}` | `UserController.deleteUser(id)` → `UserService.deleteUser` | |
+| `POST /api/users/{id}:disable` | `UserController.disableUser(id)` → `UserService.disableUser` | |
+| `POST /api/users/{id}:enable` | `UserController.enableUser(id)` → `UserService.enableUser` | |
+| `POST /api/users/{id}:changePassword` | `UserController.changePassword(ChangePasswordRequest)` → `UserAuthService.changePassword` | |
+| `POST /api/users/{id}:changeUsername` | `UserController.changeUsername(ChangeUsernameRequest)` → `UserService.changeUsername` | |
+| `POST /api/users/{id}:verifyMobile` | `UserController.verifyMobile(VerifyMobileRequest)` → `UserAuthService.verifyMobile` | |
+| `POST /api/users/{id}:changeMobile` | `UserController.changeMobile(ChangeMobileRequest)` → `UserAuthService.changeMobile` | |
+| `POST /api/users/{id}:verifyEmail` | `UserController.verifyEmail(VerifyEmailRequest)` → `UserAuthService.verifyEmail` | |
+| `POST /api/users/{id}:changeEmail` | `UserController.changeEmail(ChangeEmailRequest)` → `UserAuthService.changeEmail` | |
+
+> 历史端点（`/api/system/user/create` 等）已被 AIP 风格替换（ADR-0012），不再实现。
 
 Controller 层职责：
 1. 接收 VO → Assembler 转 Command → 调 AppService

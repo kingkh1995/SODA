@@ -1,6 +1,5 @@
 dependencies {
-    // app is runtimeOnly for adaptor
+    // web/consumer/job 编译期仅引用 api 层（CLOSED {api}）；application 层仅运行时装配
     api project(':soda-components:soda-component-api-starter')
-    api 'org.springframework:spring-webmvc'
-    api 'jakarta.validation:jakarta.validation-api'
+    api 'org.springframework.boot:spring-boot-starter-validation'
 }

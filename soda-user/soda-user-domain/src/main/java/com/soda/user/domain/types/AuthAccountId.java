@@ -64,8 +64,6 @@ public abstract sealed class AuthAccountId implements Identifier<String>
         return value;
     }
 
-    public abstract AuthAccountType authAccountType();
-
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[value=" + value + "]";

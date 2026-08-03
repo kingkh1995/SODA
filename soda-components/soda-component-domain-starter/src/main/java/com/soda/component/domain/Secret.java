@@ -11,13 +11,15 @@ package com.soda.component.domain;
  * </ul>
  * <p>
  * 子类必须遵守：字段 {@code private final}，构造器私有，对外暴露静态 {@code of(...)} 工厂。
- * 值访问器不命名为 {@code getXxx()} 或直接的 {@code value()}，而是 {@code internalXxx()}，
+ * 值访问器统一命名为 {@link #rawValue()}（非 {@code getXxx()} 或 {@code value()}），
  * 避免被 Jackson 等序列化框架自动发现。
  *
  * @see Type
  * @see com.soda.component.domain.types.RawCredential
  */
 public abstract class Secret implements Type {
+
+    public abstract String rawValue();
 
     /**
      * 脱敏字符串表示，不暴露实际值。

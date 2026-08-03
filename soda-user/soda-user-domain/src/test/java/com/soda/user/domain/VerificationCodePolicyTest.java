@@ -27,6 +27,14 @@ class VerificationCodePolicyTest {
         }
 
         @Test
+        @DisplayName("of 工厂创建自定义策略")
+        void should_createViaFactory_when_customPolicy() {
+            var policy = new VerificationCodePolicy(4, Duration.ofMinutes(10));
+            assertThat(policy.codeLength()).isEqualTo(4);
+            assertThat(policy.expiry()).isEqualTo(Duration.ofMinutes(10));
+        }
+
+        @Test
         @DisplayName("默认短信策略常量值正确")
         void should_haveCorrectDefaults_when_defaultSms() {
             assertThat(VerificationCodePolicy.DEFAULT_SMS.codeLength()).isEqualTo(6);

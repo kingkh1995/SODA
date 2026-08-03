@@ -1,6 +1,14 @@
 package com.soda.user.web.assembler;
 
 import com.soda.user.api.dto.UserDTO;
+import com.soda.user.web.request.ChangeEmailRequest;
+import com.soda.user.web.request.ChangeMobileRequest;
+import com.soda.user.web.request.ChangePasswordRequest;
+import com.soda.user.web.request.ChangeUsernameRequest;
+import com.soda.user.web.request.CreateUserRequest;
+import com.soda.user.web.request.UpdateUserRequest;
+import com.soda.user.web.request.VerifyEmailRequest;
+import com.soda.user.web.request.VerifyMobileRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,28 +35,30 @@ class UserWebAssemblerTest {
 
         @Test
         @DisplayName("CreateUserRequest 映射到 CreateUserCommand")
-        void should_mapCreateUserRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.CreateUserRequest(
-                    "admin", "123456", "管理员", "13800138000", "admin@test.com", "M", "http://avatar");
-            var cmd = assembler.toCommand(request);
+        void should_mapCreateUserRequest_when_toCreateCommand() {
+            var request = new CreateUserRequest("testuser", "test1234", "测试用户", "13800138000", "test@example.com", "1", null);
 
-            assertThat(cmd.username()).isEqualTo("admin");
-            assertThat(cmd.password()).isEqualTo("123456");
-            assertThat(cmd.nickname()).isEqualTo("管理员");
+            var cmd = assembler.toCreateCommand(request);
+
+            assertThat(cmd.username()).isEqualTo("testuser");
+            assertThat(cmd.password()).isEqualTo("test1234");
+            assertThat(cmd.nickname()).isEqualTo("测试用户");
             assertThat(cmd.mobile()).isEqualTo("13800138000");
-            assertThat(cmd.email()).isEqualTo("admin@test.com");
-            assertThat(cmd.sex()).isEqualTo("M");
-            assertThat(cmd.avatar()).isEqualTo("http://avatar");
+            assertThat(cmd.email()).isEqualTo("test@example.com");
+            assertThat(cmd.sex()).isEqualTo("1");
+            assertThat(cmd.avatar()).isNull();
         }
 
         @Test
         @DisplayName("CreateUserRequest 可空字段为 null 时正常映射")
         void should_mapCreateUserRequest_when_nullableFieldsAreNull() {
-            var request = new com.soda.user.web.request.CreateUserRequest(
-                    "guest", "123456", "访客", null, null, null, null);
-            var cmd = assembler.toCommand(request);
+            var request = new CreateUserRequest("testuser", "test1234", "测试用户", null, null, null, null);
 
-            assertThat(cmd.username()).isEqualTo("guest");
+            var cmd = assembler.toCreateCommand(request);
+
+            assertThat(cmd.username()).isEqualTo("testuser");
+            assertThat(cmd.password()).isEqualTo("test1234");
+            assertThat(cmd.nickname()).isEqualTo("测试用户");
             assertThat(cmd.mobile()).isNull();
             assertThat(cmd.email()).isNull();
             assertThat(cmd.sex()).isNull();
@@ -56,55 +66,102 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("UpdateUserRequest 映射到 UpdateUserCommand")
-        void should_mapUpdateUserRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.UpdateUserRequest(
-                    1L, "新昵称", "13900139000", null, null, null);
-            var cmd = assembler.toCommand(request);
+        @DisplayName("UpdateUserRequest 映射到 UpdateUserCommand（userId 来自额外参数）")
+        void should_mapUpdateUserRequest_when_toUpdateCommand() {
+            var request = new UpdateUserRequest("新昵称", "2", null);
+
+            var cmd = assembler.toUpdateCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
             assertThat(cmd.nickname()).isEqualTo("新昵称");
-            assertThat(cmd.mobile()).isEqualTo("13900139000");
-            assertThat(cmd.email()).isNull();
+            assertThat(cmd.sex()).isEqualTo("2");
+            assertThat(cmd.avatar()).isNull();
         }
 
         @Test
-        @DisplayName("UpdatePasswordRequest 映射到 UpdatePasswordCommand")
-        void should_mapUpdatePasswordRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.UpdatePasswordRequest(1L, "newPass123");
-            var cmd = assembler.toCommand(request);
+        @DisplayName("ChangePasswordRequest 映射到 ChangePasswordCommand（userId 来自额外参数）")
+        void should_mapChangePasswordRequest_when_toChangePasswordCommand() {
+            var request = new ChangePasswordRequest("newPass123");
+
+            var cmd = assembler.toChangePasswordCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
             assertThat(cmd.newPassword()).isEqualTo("newPass123");
         }
 
         @Test
-        @DisplayName("UpdateUserStatusRequest 映射到 UpdateUserStatusCommand")
-        void should_mapUpdateUserStatusRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.UpdateUserStatusRequest(1L, "D");
-            var cmd = assembler.toCommand(request);
+        @DisplayName("DisableUserCommand 由用户 ID 构建")
+        void should_mapDisableUser_when_toDisableCommand() {
+            var cmd = assembler.toDisableCommand(42L);
 
-            assertThat(cmd.userId()).isEqualTo(1L);
-            assertThat(cmd.status()).isEqualTo("D");
+            assertThat(cmd.userId()).isEqualTo(42L);
         }
 
         @Test
-        @DisplayName("ChangeUsernameRequest 映射到 ChangeUsernameCommand")
-        void should_mapChangeUsernameRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.ChangeUsernameRequest(1L, "newAdmin");
-            var cmd = assembler.toCommand(request);
+        @DisplayName("EnableUserCommand 由用户 ID 构建")
+        void should_mapEnableUser_when_toEnableCommand() {
+            var cmd = assembler.toEnableCommand(42L);
+
+            assertThat(cmd.userId()).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("ChangeUsernameRequest 映射到 ChangeUsernameCommand（userId 来自额外参数）")
+        void should_mapChangeUsernameRequest_when_toChangeUsernameCommand() {
+            var request = new ChangeUsernameRequest("newAdmin");
+
+            var cmd = assembler.toChangeUsernameCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
             assertThat(cmd.newUsername()).isEqualTo("newAdmin");
         }
 
         @Test
-        @DisplayName("DeleteUserRequest 映射到 DeleteUserCommand")
-        void should_mapDeleteUserRequest_when_toCommand() {
-            var request = new com.soda.user.web.request.DeleteUserRequest(42L);
-            var cmd = assembler.toCommand(request);
+        @DisplayName("DeleteUserCommand 由用户 ID 构建")
+        void should_mapDeleteUser_when_toDeleteCommand() {
+            var cmd = assembler.toDeleteCommand(42L);
 
             assertThat(cmd.userId()).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("VerifyMobileRequest 映射到 VerifyMobileCommand（userId 来自额外参数）")
+        void should_mapVerifyMobileRequest_when_toVerifyMobileCommand() {
+            var request = new VerifyMobileRequest("13900139000");
+            var cmd = assembler.toVerifyMobileCommand(1L, request);
+
+            assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.newMobile()).isEqualTo("13900139000");
+        }
+
+        @Test
+        @DisplayName("ChangeMobileRequest 映射到 ChangeMobileCommand（userId 来自额外参数）")
+        void should_mapChangeMobileRequest_when_toChangeMobileCommand() {
+            var request = new ChangeMobileRequest("123456");
+            var cmd = assembler.toChangeMobileCommand(1L, request);
+
+            assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.code()).isEqualTo("123456");
+        }
+
+        @Test
+        @DisplayName("VerifyEmailRequest 映射到 VerifyEmailCommand（userId 来自额外参数）")
+        void should_mapVerifyEmailRequest_when_toVerifyEmailCommand() {
+            var request = new VerifyEmailRequest("new@test.com");
+            var cmd = assembler.toVerifyEmailCommand(1L, request);
+
+            assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.newEmail()).isEqualTo("new@test.com");
+        }
+
+        @Test
+        @DisplayName("ChangeEmailRequest 映射到 ChangeEmailCommand（userId 来自额外参数）")
+        void should_mapChangeEmailRequest_when_toChangeEmailCommand() {
+            var request = new ChangeEmailRequest("123456");
+            var cmd = assembler.toChangeEmailCommand(1L, request);
+
+            assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.code()).isEqualTo("123456");
         }
     }
 
@@ -115,47 +172,37 @@ class UserWebAssemblerTest {
     class DtoToResponse {
 
         @Test
-        @DisplayName("UserDTO 映射到 UserResponse（全字段）")
+        @DisplayName("UserDTO 映射到 UserResponse")
         void should_mapUserDto_when_toResponse() {
-            var dto = new UserDTO(1L, "admin", "管理员", "13800138000",
-                    "admin@test.com", "M", "http://avatar", "E");
-            var resp = assembler.toResponse(dto);
+            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "1", null, "E");
 
-            assertThat(resp.id()).isEqualTo(1L);
-            assertThat(resp.username()).isEqualTo("admin");
-            assertThat(resp.nickname()).isEqualTo("管理员");
-            assertThat(resp.mobile()).isEqualTo("13800138000");
-            assertThat(resp.email()).isEqualTo("admin@test.com");
-            assertThat(resp.sex()).isEqualTo("M");
-            assertThat(resp.avatar()).isEqualTo("http://avatar");
-            assertThat(resp.status()).isEqualTo("E");
-        }
+            var response = assembler.toResponse(dto);
 
-        @Test
-        @DisplayName("UserDTO 映射到 UserResponse（可空字段为 null）")
-        void should_mapUserDto_when_nullableFieldsAreNull() {
-            var dto = new UserDTO(1L, "guest", "访客", null, null, null, null, "E");
-            var resp = assembler.toResponse(dto);
-
-            assertThat(resp.id()).isEqualTo(1L);
-            assertThat(resp.mobile()).isNull();
-            assertThat(resp.email()).isNull();
-            assertThat(resp.sex()).isNull();
-            assertThat(resp.avatar()).isNull();
+            assertThat(response.id()).isEqualTo(1L);
+            assertThat(response.username()).isEqualTo("testuser");
+            assertThat(response.nickname()).isEqualTo("测试用户");
+            assertThat(response.mobile()).isEqualTo("13800138000");
+            assertThat(response.email()).isEqualTo("test@example.com");
+            assertThat(response.sex()).isEqualTo("1");
+            assertThat(response.avatar()).isNull();
+            assertThat(response.state()).isEqualTo("E");
         }
 
         @Test
         @DisplayName("UserDTO 列表映射到 UserResponse 列表")
         void should_mapUserDtoList_when_toResponseList() {
             var dtos = List.of(
-                    new UserDTO(1L, "admin", "管理员", null, null, null, null, "E"),
-                    new UserDTO(2L, "guest", "访客", null, null, null, null, "E")
+                    new UserDTO(1L, "user1", "用户1", "13800138000", "u1@test.com", "1", null, "E"),
+                    new UserDTO(2L, "user2", "用户2", "13900139000", "u2@test.com", "2", "avatar.png", "D")
             );
-            var resps = assembler.toResponse(dtos);
+
+            var resps = assembler.toResponseList(dtos);
 
             assertThat(resps).hasSize(2);
             assertThat(resps.get(0).id()).isEqualTo(1L);
+            assertThat(resps.get(0).username()).isEqualTo("user1");
             assertThat(resps.get(1).id()).isEqualTo(2L);
+            assertThat(resps.get(1).username()).isEqualTo("user2");
         }
     }
 }

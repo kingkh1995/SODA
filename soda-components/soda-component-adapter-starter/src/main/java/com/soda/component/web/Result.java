@@ -1,6 +1,7 @@
 package com.soda.component.web;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
@@ -14,14 +15,22 @@ import java.io.Serializable;
  * { "code": 0, "msg": "success", "data": {…} }
  * </pre>
  * <p>
+ * null 省略策略：{@code data} / {@code error} 为 null 时对应键整体省略（{@code @JsonInclude(NON_NULL)}），
+ * 成功响应（{@link #success()}）与错误响应（{@link #error}）因此可能只含 {@code code} + {@code msg}。
  * 参照 Yudao {@code CommonResult} 设计。
  *
- * @param <T> data 段类型
+ * @param <T>     data 段类型
+ * @param code    业务码（0 为成功）
+ * @param message 消息
+ * @param data    数据段，可为 null（省略）
+ * @param error   错误详情（AIP-193），成功时为 null（省略）
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record Result<T>(
         @JsonProperty("code") int code,
         @JsonProperty("msg") String message,
-        @JsonProperty("data") @Nullable T data
+        @JsonProperty("data") @Nullable T data,
+        @JsonProperty("error") @Nullable ErrorInfo error
 ) implements Serializable {
 
     private static final int SUCCESS_CODE = 0;
@@ -33,7 +42,7 @@ public record Result<T>(
      * 成功响应，含数据体。
      */
     public static <T> Result<T> success(@Nullable T data) {
-        return new Result<>(SUCCESS_CODE, SUCCESS_MSG, data);
+        return new Result<>(SUCCESS_CODE, SUCCESS_MSG, data, null);
     }
 
     /**
@@ -47,7 +56,14 @@ public record Result<T>(
      * 错误响应。
      */
     public static <T> Result<T> error(int code, String message) {
-        return new Result<>(code, message, null);
+        return new Result<>(code, message, null, null);
+    }
+
+    /**
+     * 错误响应，含 ErrorInfo（遵循 AIP-193）。
+     */
+    public static <T> Result<T> error(int code, String message, ErrorInfo errorInfo) {
+        return new Result<>(code, message, null, errorInfo);
     }
 
     // ========== Query ==========

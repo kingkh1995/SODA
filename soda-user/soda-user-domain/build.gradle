@@ -1,4 +1,6 @@
 dependencies {
-    // soda-component-domain-types is optional
+    // 业务 domain 的基础 starter：Entity/Aggregate/DomainEvent 等编译期直接引用
+    api project(':soda-components:soda-component-domain-starter')
+    // 共享领域类型（Sex、Mobile、UUID 等）
     api project(':soda-components:soda-component-domain-types')
 }

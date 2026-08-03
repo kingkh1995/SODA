@@ -20,7 +20,7 @@ class RawCredentialTest {
         @DisplayName("合法值创建实例")
         void should_create_when_validValue() {
             var cred = new RawCredential("mySecret123");
-            assertThat(cred.internalValue()).isEqualTo("mySecret123");
+            assertThat(cred.rawValue()).isEqualTo("mySecret123");
         }
     }
 
@@ -77,7 +77,7 @@ class RawCredentialTest {
         @DisplayName("反序列化可恢复内部值")
         void should_preserveValue_when_deserialize() throws Exception {
             var restored = MAPPER.readValue("\"secret\"", RawCredential.class);
-            assertThat(restored.internalValue()).isEqualTo("secret");
+            assertThat(restored.rawValue()).isEqualTo("secret");
         }
     }
 }

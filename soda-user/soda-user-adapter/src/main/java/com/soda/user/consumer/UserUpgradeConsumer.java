@@ -18,8 +18,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class UserUpgradeConsumer {
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onFirstOrder(UserFirstOrderMessage message) {
         log.info("[onFirstOrder][userId={}, orderId={}]", message.userId(), message.orderId());
     }
@@ -28,5 +28,6 @@ public class UserUpgradeConsumer {
      * 此处仅为演示消费者结构。正式接入时，此消息类型由订单模块的 api 提供：
      * {@code com.soda.order.api.message.UserFirstOrderMessage}
      */
-    public record UserFirstOrderMessage(Long userId, Long orderId) {}
+    public record UserFirstOrderMessage(Long userId, Long orderId) {
+    }
 }

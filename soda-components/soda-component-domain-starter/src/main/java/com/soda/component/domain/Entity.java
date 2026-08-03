@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
-import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -44,18 +44,15 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * 手动设置 / 已有数据恢复（reconstitution）。
      */
     protected Entity(ID id) {
-        Assert.notNull(id, "id must not be null");
-        this.id = id;
+        this.id = Objects.requireNonNull(id);
     }
 
     /**
      * 客户端生成：构造时由 {@code generator} 产生 ID，发生在构造器内部。
      */
     protected Entity(Supplier<ID> generator) {
-        Assert.notNull(generator, "generator must not be null");
-        var id = generator.get();
-        Assert.notNull(id, "id must not be null");
-        this.id = id;
+        // generator 为 null 时 get() 自动抛 NPE（JEP 358 帮助消息），无需前置守卫
+        this.id = Objects.requireNonNull(Objects.requireNonNull(generator).get());
     }
 
     /**
@@ -80,8 +77,7 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
         if (this.isIdentified()) {
             return;
         }
-        Assert.notNull(id, "id must not be null");
-        this.id = id;
+        this.id = Objects.requireNonNull(id);
     }
 
     /**
@@ -92,14 +88,13 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * @param event 领域事件，非 null
      */
     protected void registerEvent(DomainEvent<ID> event) {
-        Assert.notNull(event, "event must not be null");
-        domainEvents.add(event);
+        domainEvents.add(Objects.requireNonNull(event));
     }
 
     /**
      * 取出当前所有未发送的领域事件并清空内部列表。
      * <p>
-     * 供 ApplicationService 在持久化后取出事件并通过 {@link DomainEventBus#fireAll} 发送。
+     * 供 ApplicationService 在持久化后取出事件并通过 {@link DomainEventBus#publishAll} 发送。
      *
      * @return 未发送的领域事件列表；无事件时返回空列表
      */

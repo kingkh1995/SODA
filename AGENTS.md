@@ -46,7 +46,3 @@ soda-xxx/
 ### Domain docs
 
 单上下文模式 — 根目录 `CONTEXT.md` 包含完整领域词汇。详见 `docs/agents/domain.md`。
-
-## Ponytail
-
-Default ponytail level: lite. Full reasoning, minimal code.
