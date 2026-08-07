@@ -57,12 +57,12 @@ public final class PositiveInt implements Type, Comparable<PositiveInt> {
 
     @JsonValue
     public int value() {
-        return this.value;
+        return value;
     }
 
     @Override
     public int compareTo(PositiveInt other) {
-        return Integer.compare(this.value, other.value);
+        return Integer.compare(value, other.value);
     }
 
     @Override

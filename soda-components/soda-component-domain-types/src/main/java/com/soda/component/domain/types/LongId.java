@@ -31,7 +31,7 @@ public record LongId(long value) implements Identifier<Long>, Comparable<LongId>
      */
     @JsonValue
     public long value() {
-        return this.value;
+        return value;
     }
 
     @Override
@@ -41,6 +41,6 @@ public record LongId(long value) implements Identifier<Long>, Comparable<LongId>
 
     @Override
     public int compareTo(LongId other) {
-        return Long.compare(this.value, other.value);
+        return Long.compare(value, other.value);
     }
 }

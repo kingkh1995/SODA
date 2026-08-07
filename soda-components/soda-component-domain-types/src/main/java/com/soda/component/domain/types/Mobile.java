@@ -24,7 +24,7 @@ public record Mobile(String value) implements Type {
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 
 }

@@ -21,7 +21,7 @@ public class UserDTOConvertor {
 
     public UserDTO convert(User user) {
         return new UserDTO(
-                user.requireId().value(),
+                user.getId().value(),
                 user.getUsername().value(),
                 user.getNickname().value(),
                 user.getMobile().map(Mobile::value).orElse(null),

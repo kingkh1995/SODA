@@ -13,7 +13,17 @@
 
 ### Entity
 具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。使用 Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)` 继承父类字段。
-**双 Builder 模式**：业务模块 Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化 ID，由服务端 `assignId()` 填补），`restoreBuilder()` 暴露全部持久化字段（含 ID）。两种路径共享同一个 `@JsonCreator(mode = Mode.PROPERTIES)` + `@JsonProperty` 构造器，确保 JSON 反序列化与手动恢复路径一致。
+**双 Builder 模式**：业务模块 Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化 ID，由服务端 `assignId()` 填补），`builder()`（Lombok 默认命名，挂全参数恢复构造器）暴露全部持久化字段（含 ID）。
+**JSON 序列化契约**：序列化走 `Entity` 基类字段可见性（`@JsonAutoDetect(fieldVisibility = ANY)`），属性名即字段名；反序列化唯一入口为**全参数恢复构造器**——`@JsonCreator(mode = PROPERTIES)` + `@JsonProperty` + `@Builder`（restoreBuilder）统一挂在全参数构造器上，确保 JSON 反序列化与手动恢复路径一致。创建路径使用独立的无 id 构造器（`User` 拆双构造器；其余实体 id 非空由 `Entity` 构造器链路保证）。`id` 参数标 `@JsonProperty(required = true)`，缺 id 由 Jackson `required` + `Entity.assignId` 非空校验双重拦截（双构造器实体的恢复构造器委托后经 `assignId` 补 id；单构造器实体由 `Entity` 构造器链路保证），JSON 缺 `id` 视为非法输入（实体 JSON 只表达已持久化状态）。新增字段必须同步补充构造器参数，round-trip 全等断言测试（`assertEquals(restored, original)` + 非法 JSON 拒绝）兜底防字段/参数漂移。
+**多态实体分派（type↔class 规则，见 ADR-0016）**：子类层次用 sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句自动发现，无需 `@JsonSubTypes`）。完整规则：
+- **何时用类**：种类间有行为或字段差异（含前瞻差异）→ sealed class 层次。调用方逻辑（构造、按类型查询、分派、领域方法传参）一律用 class。
+- **何时用枚举**：纯标签/状态/元数据（无行为差异）→ 枚举（数据枚举，如 `VerificationStatus`/`VerificationScene`）；判别值作为边界合同（DB 列、JSON 判别串、ID 前缀）→ 短名判别枚举（`AuthAccountType`/`VerificationChannel`）。枚举是"数据形态"词汇，**不参与行为决策**——在 domain/app 逻辑中按判别枚举判断分支即反模式（用模式匹配拿具体子类）。
+- **实例侧编码**：判别值由子类覆写抽象方法提供（`getChannel()` / `getAccountType()`），编译器强制每个子类实现。
+- **枚举不持 Class 引用**：禁止 Type Object 注册表式反查（`of(Class)`）——`types` 包不反向依赖 `domain` 包。
+- **反查归基础设施**：`class→判别值` 推导只存在于 gateway 实现（infra 解析类，如 `VerificationChannels`）；domain/app 零反查。
+- **类型化查询**：gateway 查询用 `Class<T>` 参数 + 泛型返回 `Optional<T>`（JPA `find(Class, id)` 同款），查询对象不含判别枚举；调用方直接得具体类型。
+- **强转禁令**：domain/app 禁止显式强转（`(Xxx) x`、`type::cast`）——类型收敛靠泛型返回、方法签名（`changeMobile(SmsVerification)`）、模式匹配；类型擦除的桥接强转只允许在 gateway 实现内部一处。
+- **测试锁定**：permits 完备 / 判别值唯一 / 与枚举 name 一致 / 基础设施推导三方一致，反射测试兜底（`@JsonTypeName` 无法编译期绑定枚举 name，JLS §9.7.1）。
 **字段规则**：Entity 的全部属性必须是 Domain Primitive（含 Identifier），不允许持有基础数据类型作为 Entity 字段。Entity 通过组装 DP 表达业务含义和约束，而非在字段上直接做参数校验。
 
 ### Aggregate
@@ -103,6 +113,8 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 ### DomainEvent
 领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()`。业务模块用 `record` 实现，类型参数 `ID` 与 Entity 一致。
 
+**事件载荷约定**（2026-08-07）：事件携带**值数据**（`entityId` + `occurredAt` + 业务事实），构造参数不携带聚合引用——不可变快照、可序列化（outbox）、可测试。`UserCreatedEvent` 是唯一例外：创建时 id 尚未分配，持 `user` 引用延迟求值 `entityId()`（assignId 前返回 null，契约要求持久化后取，见 ADR-0015）。
+
 ### DomainEventBus
 领域事件总线接口，继承 `Gateway`。提供 `publish(DomainEvent<?>)` 和 `publishAll(Iterable<? extends DomainEvent<?>>)`。
 
@@ -125,7 +137,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 - 实现 `DomainService` 标记接口（`com.soda.component.domain.DomainService`，类似 `Gateway` 的定位：供 IOC 扫描 / AOP 识别）
 - 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
 
-**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（生成码、构造 PENDING 聚合、发送）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行。AppService 负责加载与 save 顺序（先 user 后 verification）。
+**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（生成码、构造 INITIALIZED 聚合、经聚合 `send(sender)` 发送）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行。AppService 负责加载与 save 顺序（先 user 后 verification）。
 
 ### ApplicationService 编排规范
 
@@ -141,8 +153,8 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 2. **外部 domain（其他聚合）的 action 方法禁止在 AppService 中直接调用**（get/读取除外）
 3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的**参数**传入，逻辑封装进主体聚合内部
 4. 若用例**修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
-5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程的副作用在 AppService 内执行（sender 类 gateway 允许注入 AppService）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
-6. 外部聚合的**工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合 → 发送 → save，如 `UserAuthServiceImpl.verifyMobile`）
+5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程中，发送类副作用封装为聚合行为方法（`SmsVerification.send(SmsSender)` / `EmailVerification.send(EmailSender)`），sender 类 gateway 注入 AppService 后以**参数**传入聚合方法（领域层不持有 gateway 端口）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
+6. 外部聚合的**工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合（INITIALIZED）→ `verification.send(sender)`（发送 + 转 PENDING）→ save，如 `UserAuthServiceImpl.verifyMobile`）
 
 典型反例：AppService 直接 `verification.verify(code)` 再 `user.changeMobile(...)`——verify 修改外部聚合状态，必须经 `CredentialChangeDomainService`。
 
@@ -199,7 +211,7 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 
 **分拆/合并规则**：一个聚合根一个 Service，方法数不超过 10 个。当方法超过 10 个或出现复杂编排时，从 `service/` 的 ServiceImpl 按 Command 拆出 `command/*Processor`（COLA 风格），但对外接口保持一个。
 
-**Entity 创建**：使用 `XxxEntity.createBuilder()` / `restoreBuilder()` 双 Builder 模式。当构建逻辑涉及跨聚合引用或需要依赖注入时，引入 `factory/*Factory`，但当前 Builder 模式已足够。
+**Entity 创建**：使用 `XxxEntity.createBuilder()` / `builder()` 双 Builder 模式。当构建逻辑涉及跨聚合引用或需要依赖注入时，引入 `factory/*Factory`，但当前 Builder 模式已足够。
 
 **Command 定义**：Java `record` + `@JsonProperty`，无需继承基类。可空属性标注 JSpecify `@Nullable`，未标注则默认非空（见「参数契约」）。
 
@@ -207,27 +219,33 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 
 ### Exception（异常类约定）
 
-写侧（ApplicationService / DomainService / Entity）按「防御（NPE / ISE）与参数校验（IAE）」分类使用异常（详见 ADR-0015）：
+写侧（ApplicationService / DomainService / Entity）异常约定：**构造器校验（DP 式）+ 方法零守卫**（详见 ADR-0015）：
 
-| 类别 | 检查形式 | 工具 → 异常 | 消息 |
-|---|---|---|---|
-| 防御编程 | 参数或自身字段为 null（契约违反） | `Objects.requireNonNull` → NPE | 无 |
-| 防御编程 | 非 null 条件不满足（自身状态不允许操作） | `Assert.state(condition, message)` → ISE | 带消息（开发定位） |
-| 参数校验 | 输入值不合法 / 业务规则拒绝（客户端可预期） | `Assert.isTrue` / `Assert.notNull` → IAE | 带消息 |
+| 类别 | 机制 | 异常 |
+|---|---|---|
+| 业务参数校验（输入值不合法 / 业务规则拒绝 / 状态机前置，客户端可预期） | `Assert.isTrue` / `Assert.notNull` | IAE（带消息） |
+| 构造器参数校验（创建与恢复路径统一） | `ValidateUtils.notNull`（固定标准消息，与 DP 一致） | IAE |
+| 方法参数 null 契约违反 | 无守卫 — jspecify `@NullMarked` 契约 + 调用方遵守；未来编译期 checker（NullAway）enforce | NPE（预留） |
+| 聚合内部结构不变量 | 类型化（构造器必填字段，如 `User.passwordAccount`）+ JSON schema（全部非空字段 `required = true`，可空字段 `@Nullable`） | 不可表示 / 边界拒绝 |
 
-NPE 与 ISE 本质同类（自身不合法状态的防御），区别只在检查形式：null → NPE，其他条件 → ISE。Spring 7 的 Assert 仅剩带消息重载：防御 ISE 用 `Assert.state`（消息仅开发定位，不承诺客户端语义，ISE 仍映射 500）；null 守卫仍 NPE（`Objects.requireNonNull`）。
-
-防御编程词汇表（JDK 原生，不自定义）：NPE = null 契约违反（`Objects.requireNonNull`，可内联，不写消息——JEP 358 自动帮助消息）；ISE = 状态前置不满足；`NoSuchElementException` = 聚合内部查找为空（`Optional.orElseThrow()` 无参，如 `User.changePassword` 密码账户缺失——不要用 `orElse(null)` + `requireNonNull` 抹掉区分）；`UnsupportedOperationException` / `ClassCastException` 预留无场景（YAGNI）。NoSuchElement 不用于网关加载「未找到」——那是客户端可预期 → IAE（临时方案）。
-
-防御代码最少化（JDK 能力优先）：依赖链后续调用已自动 NPE 时删除冗余守卫（如 `generator.get()`）；JDK 无对应的才手写（带副作用分支，如错码前需 `attempt()`）。值对象校验（`ValidateUtils`）与 appservice 参数校验（`Assert` → IAE）属外部输入校验，临时方案，不在防御优化范围。枚举 / 对象对比不用 `==`：用 `Objects.equals` 或常量优先 `equals`（如 `UserState.E.equals(state)`）；`!= null` 空值判断不受限
+判定原则（检查对象）：检查「参数值 / 业务状态是否允许操作」→ IAE 校验（客户端可预期的一切：错码、过期、重复用户名、未请求验证码、状态前置）；「值是否为 null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
 
 规则：
-- 消息策略：防御 NPE 无消息（JEP 358 自动帮助消息）；防御 ISE 带开发消息（`Assert.state` 仅带消息重载，不承诺客户端语义）；校验（IAE）带消息（IAE 消息是客户端唯一反馈通道，wiring 未实现前不可省）
-- 操作语义：set-state（`disable` / `enable`）幂等 no-op、不发事件；transition（`verify` / `use`）前置失败抛 ISE / 错码抛 IAE；`changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015）
-- 手写 `throw` 仅当 Assert 表达不了（多分支 / 带副作用场景），异常类仍须符合分类
+- 消息策略：IAE 带消息（客户端唯一反馈通道，wiring 未实现前不可省）；构造器校验用 `ValidateUtils` 固定消息，不自定义
+- 操作语义：set-state（`disable` / `enable`）幂等 no-op、不发事件；transition（`verify` / `use`）业务状态前置失败抛带消息 IAE；`changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015）
+- requireXXX 模式只在 appservice：网关加载后 null 校验 → IAE（User not found / No pending）；可空查找返回 `Optional`
 - `Objects.requireNonNullElse` 仅用于默认值模式（如 `User` 构造器 accounts 缺省），不属于守卫
 - AppService 的 `Assert` 只用于网关加载结果的存在性 / 状态前置检查，不做 Command 属性级校验（见「参数契约」）；Adapter 层不做 Assert（协议边界由 `@Valid` 负责）；Infrastructure 用 `Optional` 表达可空，正常流程不抛异常
-- HTTP 映射（接线 deferred，见 issue 17）：IAE → 400 `INVALID_ARGUMENT`，NPE / ISE → 500 `INTERNAL`，`MethodArgumentNotValidException` → 400
+- HTTP 映射（接线 deferred，见 issue 17）：IAE → 400 `INVALID_ARGUMENT`，NPE / NoSuchElementException → 500 `INTERNAL`（预留），`MethodArgumentNotValidException` → 400
+
+### JSpecify（nullness 注解规范）
+
+按 Spring 生态最佳实践（Spring 7 自身即 `@NullMarked`）：
+- 包级 `@NullMarked`（package-info.java）声明默认非空；**只标 `@Nullable`，不标 `@NonNull`**（噪音）
+- 标注位置：字段类型、参数、返回、类型参数（`List<@Nullable T>`）、record 组件
+- 不返回 `Optional<@Nullable T>`——Optional 本身表达可空返回
+- 瞬态字段（如 `Entity.id`）标 `@Nullable`，使用点由调用方保证非空（方法路径无运行时窄化守卫）
+- **构造器校验 + 方法零守卫**（2026-08-07 三次修订）：null 契约在构造器由 `ValidateUtils.notNull` 拦截（与 DP 一致），方法路径由注解声明 + 调用方遵守；恢复路径 JSON 非空字段 `@JsonProperty(required = true)`；编译期 checker（NullAway + Error Prone）未来引入，路线见 ADR-0015
 
 ## Code Style
 

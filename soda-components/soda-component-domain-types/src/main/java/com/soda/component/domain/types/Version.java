@@ -58,7 +58,7 @@ public final class Version implements Type, Comparable<Version> {
 
     @JsonValue
     public int value() {
-        return this.value;
+        return value;
     }
 
     /**
@@ -70,7 +70,7 @@ public final class Version implements Type, Comparable<Version> {
 
     @Override
     public int compareTo(Version other) {
-        return Integer.compare(this.value, other.value);
+        return Integer.compare(value, other.value);
     }
 
     @Override

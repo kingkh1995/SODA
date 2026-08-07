@@ -2,6 +2,7 @@ package com.soda.user.application;
 
 import com.soda.component.domain.DomainEventBus;
 import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.RawCredential;
 import com.soda.user.api.command.CreateUserCommand;
@@ -54,17 +55,18 @@ class UserServiceImplTest {
     private UserDTOConvertor userDTOConvertor;
 
     private static User createEnabledUser() {
-        var passwordAccount = PasswordAuthAccount.restoreBuilder()
+        var passwordAccount = PasswordAuthAccount.builder()
                 .id(PasswordAuthAccountId.from(USER_ID))
                 .active(com.soda.component.domain.types.Active.TRUE)
                 .passwordHash(STUB_HASH)
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
-                .accounts(List.of(passwordAccount))
+                .passwordAccount(passwordAccount)
+                .accounts(List.of())
                 .build();
     }
 
@@ -183,11 +185,16 @@ class UserServiceImplTest {
         @Test
         @DisplayName("启用用户并发布事件")
         void should_enableUserAndFireEvent_when_enable() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(USER_ID)
                     .username(new Username("test"))
                     .nickname(new Nickname("Test"))
                     .state(UserState.D)
+                    .passwordAccount(PasswordAuthAccount.builder()
+                            .id(PasswordAuthAccountId.from(USER_ID))
+                            .active(Active.TRUE)
+                            .passwordHash(STUB_HASH)
+                            .build())
                     .accounts(List.of())
                     .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));

@@ -7,13 +7,12 @@ import com.soda.component.domain.gateway.CredentialHasher;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-
-import java.util.Objects;
 
 /**
  * 密码认证账户实体 — 用户名 + 密码方式的认证。
@@ -32,23 +31,31 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     // ─── construction ───
 
     /**
-     * 持久化恢复 / JSON 反序列化。
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * 委托无 id 创建构造器完成字段初始化后补充 id（构造器参数校验见该构造器）。
+     * 恢复路径非空字段（id、active、passwordHash）由 JSON schema 声明（{@code required = true}），
+     * 缺字段由 Jackson 在协议边界拒绝（框架能力，非领域守卫）。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
     private PasswordAuthAccount(
-            @JsonProperty("id") PasswordAuthAccountId id,
-            @JsonProperty("active") Active active,
-            @JsonProperty("passwordHash") CredentialHash passwordHash) {
-        super(id, active);
-        this.passwordHash = Objects.requireNonNull(passwordHash);
+            @JsonProperty(value = "id", required = true) PasswordAuthAccountId id,
+            @JsonProperty(value = "active", required = true) Active active,
+            @JsonProperty(value = "passwordHash", required = true) CredentialHash passwordHash) {
+        this(active, passwordHash);
+        assignId(id);
     }
 
     /**
-     * 创建新密码账户（无 ID，由 Gateway 后续填补）。
+     * 无 id 创建构造器 — 仅创建路径使用，active 由调用方传入，id 由 Gateway 在持久化后通过 {@link #assignId} 填补。
+     * <p>
+     * 字段初始化唯一存在处，全参数恢复构造器委托本构造器。
      */
-    private PasswordAuthAccount(CredentialHash passwordHash) {
-        super(Active.TRUE);
-        this.passwordHash = Objects.requireNonNull(passwordHash);
+    private PasswordAuthAccount(Active active, CredentialHash passwordHash) {
+        super(active);
+        ValidateUtils.notNull(passwordHash);
+        this.passwordHash = passwordHash;
     }
 
     // ─── factories ───
@@ -56,19 +63,9 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     /**
      * 创建新密码账户 — active 默认 TRUE，ID 由 Gateway 在持久化后通过 {@link #assignId} 补充。
      */
-    @Builder(builderClassName = "PasswordAuthAccountCreateBuilder",
-            builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static PasswordAuthAccount create(CredentialHash passwordHash) {
-        return new PasswordAuthAccount(passwordHash);
-    }
-
-    /**
-     * 从持久化恢复密码账户 — 全部字段显式传入。
-     */
-    @Builder(builderClassName = "PasswordAuthAccountRestoreBuilder",
-            builderMethodName = "restoreBuilder")
-    private static PasswordAuthAccount restore(PasswordAuthAccountId id, Active active, CredentialHash passwordHash) {
-        return new PasswordAuthAccount(id, active, passwordHash);
+        return new PasswordAuthAccount(Active.TRUE, passwordHash);
     }
 
     // ─── accessors ───
@@ -77,7 +74,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * 认证类型 — 常量来源为 {@link PasswordAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
      */
     @Override
-    public AuthAccountType getAuthAccountType() {
+    public AuthAccountType getAccountType() {
         return PasswordAuthAccountId.ACCOUNT_TYPE;
     }
 
@@ -91,8 +88,6 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * @return true 若匹配
      */
     public boolean verify(RawCredential credential, CredentialHasher hasher) {
-        Objects.requireNonNull(credential);
-        Objects.requireNonNull(hasher);
         return hasher.matches(credential, passwordHash);
     }
 
@@ -107,8 +102,6 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * 事件由 {@code User.changePassword} 在调用本方法后注册。
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
-        Objects.requireNonNull(credential);
-        Objects.requireNonNull(hasher);
         this.passwordHash = hasher.hash(credential);
     }
 

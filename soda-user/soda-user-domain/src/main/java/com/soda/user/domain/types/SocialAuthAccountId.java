@@ -55,6 +55,6 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
 
     @Override
     public int compareTo(SocialAuthAccountId other) {
-        return this.value().compareTo(other.value());
+        return value().compareTo(other.value());
     }
 }

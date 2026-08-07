@@ -6,6 +6,7 @@ import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
 import java.time.Duration;
 
@@ -22,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 验证：
  * <ul>
  *   <li>默认策略和类型</li>
- *   <li>createBuilder / restoreBuilder 工厂方法</li>
+ *   <li>createBuilder / builder 工厂方法</li>
  *   <li>Jackson 序列化 / 反序列化</li>
  * </ul>
  */
@@ -33,14 +34,14 @@ class EmailAuthAccountTest {
 
     @Test
     void constructor_setsId() {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertEquals(ID, account.getId());
     }
 
     @Test
-    void getAuthAccountType_returnsE() {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
-        assertEquals(AuthAccountType.E, account.getAuthAccountType());
+    void getAccountType_returnsE() {
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        assertEquals(AuthAccountType.E, account.getAccountType());
     }
 
     @Test
@@ -50,34 +51,34 @@ class EmailAuthAccountTest {
 
     @Test
     void email_returnsFromId() {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertEquals(EMAIL, account.getEmail());
     }
 
     @Test
     void activeTrue_isActive() {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertTrue(account.isActive());
     }
 
     @Test
     void activeFalse_isInactive() {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.FALSE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.FALSE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertFalse(account.isActive());
     }
 
     @Test
     void policy_customViaConstructor() {
         var customPolicy = new VerificationCodePolicy(4, Duration.ofMinutes(1));
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(customPolicy).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(customPolicy).build();
         assertEquals(customPolicy, account.getVerificationCodePolicy());
     }
 
     @Test
     void constructor_rejectsNullPolicy() {
-        // 恢复 / 反序列化路径策略必传（create 路径才允许 null → 默认策略）
-        assertThrows(NullPointerException.class,
-                () -> EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(null).build());
+        // 恢复 / 反序列化路径策略必传（create 路径才允许 null → 默认策略）；构造器校验与 DP 一致（ValidateUtils → IAE）
+        assertThrows(IllegalArgumentException.class,
+                () -> EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(null).build());
     }
 
     // ——— factories ———
@@ -93,9 +94,9 @@ class EmailAuthAccountTest {
     }
 
     @Test
-    void restoreBuilder_restoresAllFields() {
+    void builder_restoresAllFields() {
         var policy = new VerificationCodePolicy(4, Duration.ofMinutes(1));
-        var account = EmailAuthAccount.restoreBuilder()
+        var account = EmailAuthAccount.builder()
                 .id(ID)
                 .active(Active.FALSE)
                 .verificationCodePolicy(policy)
@@ -109,28 +110,36 @@ class EmailAuthAccountTest {
 
     @Test
     void jackson_serializeDeserialize() throws Exception {
-        var account = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var account = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         var json = MAPPER.writeValueAsString(account);
         var deserialized = MAPPER.readValue(json, EmailAuthAccount.class);
         assertEquals(account, deserialized);
         assertEquals(EmailAuthAccount.DEFAULT_POLICY, deserialized.getVerificationCodePolicy());
     }
 
+    @Test
+    void jackson_rejectsMissingId() {
+        var json = """
+                {"active":true,"verificationCodePolicy":{"codeLength":8,"expiry":"PT30M"}}
+                """;
+        assertThrows(JacksonException.class, () -> MAPPER.readValue(json, EmailAuthAccount.class));
+    }
+
     // ——— identity ———
 
     @Test
     void equals_byFields() {
-        var same = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
-        var equal = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var same = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var equal = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         var diffEmail = EmailAuthAccountId.from(new Email("other@example.com"));
-        var diffId = EmailAuthAccount.restoreBuilder().id(diffEmail).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var diffId = EmailAuthAccount.builder().id(diffEmail).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertEquals(same, equal, "相同字段应相等");
         assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test
     void toString_containsClassName() {
-        var a = EmailAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
+        var a = EmailAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY).build();
         assertTrue(a.toString().contains("EmailAuthAccount@"));
     }
 }

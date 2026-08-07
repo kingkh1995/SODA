@@ -13,8 +13,20 @@
 > 同日再修订：`VerificationGateway` 查询收敛为通用方法 `findLatestByUserId(userId, VerificationQuery)`——仅 userId 必传，scene / status / channel / validUntil 均为可选过滤（`VerificationQuery` 嵌套 record）；原 `findLatestUnexpiredByUserAndScene` 改名并参数化，类型收敛变体保留 `Class<T>` 参数。
 >
 > 再修订（2026-08-03）：`findLatestByUserId` 的「最新」定义为按 `VerificationCode.expireAt()` 倒序（expireAt 最晚者优先）——聚合无创建时间戳，策略差异（DEFAULT_SMS 5 分钟 vs DEFAULT_EMAIL 30 分钟）下创建顺序与过期顺序可能不一致；唯一性校验保证 (userId, scene) 至多一条未过期 PENDING，调用方只需「未过期的待验证聚合」语义，排序键不影响判定。
+>
+> 再修订（2026-08-05）：gateway 查询收敛为 `Class<T>` 单轨——`VerificationQuery` 移除 `channel` 字段（保留 scene / status / validUntil）；`VerificationChannel` 删除 `Class` 字段与 `of(Class)` 反查（class→判别值映射归基础设施，见 ADR-0016）；应用层 `requireLatestUnexpiredPending` 随之消除 `VerificationChannel.of(type)` 与 `type::cast`。类层次保留理由明确化：编译期 target 契约（`changeMobile(SmsVerification)`）+ 前瞻 `AuthenticatorVerification` 行为差异 + 与 `AuthAccount` 对称（ADR-0016 决策 8）。
+>
+> 同日再修订：`Verification` 移除 `policy` 字段——策略仅在创建时作为输入（决定码长与过期时间），效果已物化进 `VerificationCode`（code + expireAt），后续状态机（verify 守卫、过期派生）、查询排序、应用层编排均不读取；`VerificationCodePolicy` 仅保留账号配置字段角色。`create` 工厂仍要求 policy 参数。
+>
+> 再修订（2026-08-07）：`VerificationStatus` 增加 `I`(Initialized)——工厂创建即为 INITIALIZED（未发送）；发送从 AppService 直接调用 sender 改为聚合行为方法 `send(SmsSender)` / `send(EmailSender)`（sender 以参数注入，领域层不持有 gateway 端口），发送成功后 `I → P`，发送失败（异常）时状态保持 `I`、不落库——「PENDING 蕴含已送达」不变量成立。状态机 `I → P → V → U`；`isPending` / 唯一性校验（status=P 查询）语义不变。
+>
+> 同日再修订：`Verification` 的 `create` 工厂 policy 参数**可空化**并置于末位——缺省取子类静态 `DEFAULT_POLICY`（`SmsVerification.DEFAULT_POLICY` = `VerificationCodePolicy.DEFAULT_SMS`，`EmailVerification.DEFAULT_POLICY` = `DEFAULT_EMAIL`），与 `SmsAuthAccount`/`EmailAuthAccount` 的 `create` 模式一致（per-account 覆盖 → 子类静态 `DEFAULT_POLICY` 解析链）；调用方（`UserAuthServiceImpl.verifyMobile`/`verifyEmail`）不再传 policy。
+>
+> 同日再修订：`User.changeMobile` / `changeEmail` 增加**场景校验**——验证聚合 `scene` 必须为 `CC`（credential change），其他场景（PR/LG/RG）的验证码不可用于换绑凭证；带消息 IAE（"verification scene must be credential change"）。应用层查询本就按 CC 过滤（`requireLatestUnexpiredPending`），本守卫在聚合边界防御性收口（ADR-0015 状态前置）。
+>
+> 同日再修订：`UserAuthServiceImpl.verifyMobile` / `verifyEmail` 增加**发码前置校验**（fail-fast，避免浪费发送）——(1) target 与用户当前 mobile/email 相同 → 带消息 IAE（"cannot change to the same mobile/email"，与 `User.changeXxx` 领域守卫同消息，先于发码拦截）；(2) target 全局唯一——`UserGateway.existsByMobile` / `existsByEmail`（对齐 `createUser` 的重复手机号/邮箱校验）。领域层 `changeXxx` 守卫保留（纵深防御，换绑同值/场景仍由聚合收口）。
 
-`Verification` 作为独立聚合根放在 `soda-components/soda-component-domain-types`，支持多种验证方式（SMS、Email、Authenticator），与 `AuthAccount` 对称设计。User 的 `changeMobile` / `changeEmail` 接收对应 Verification 子类型作为参数，验证通过后执行领域行为。
+`Verification` 作为独立验证实体放在 `com.soda.user.domain`（soda-user-domain，2026-08-01 修订），支持多种验证方式（SMS、Email、Authenticator），与 `AuthAccount` 对称设计。User 的 `changeMobile` / `changeEmail` 接收对应 Verification 子类型作为参数，验证通过后执行领域行为。
 
 ## 问题
 
@@ -37,14 +49,14 @@
 `Verification` 是密封类层次结构，与 `AuthAccount` 对称：
 
 ```java
-// 聚合根（sealed class）
-public abstract sealed class Verification extends Aggregate<UUId>
+// 独立验证实体（sealed class，extends Entity）
+public abstract sealed class Verification extends Entity<UUId>
     permits SmsVerification, EmailVerification {
     VerificationScene scene;   // 区分不同用途，防止多调用方冲突
-    VerificationStatus status; // P → V → U（过期是派生判断，不落状态）
-    VerificationCode code;     // 含 expireAt + attempts（单一事实源；used 不落字段，生命周期完全由 status 表达）
+    VerificationStatus status; // I → P → V → U（I=已初始化未发送，send 后转 P；过期是派生判断，不落状态）
+    VerificationCode code;     // code + expireAt（单一事实源；used 不落字段，生命周期完全由 status 表达）
     LongId userId;
-    VerificationPolicy policy; // codeLength + expiry + maxAttempts
+    // 策略不落实体——创建时作为输入（码长 + 过期时间），效果物化进 VerificationCode
     // ...
 }
 
@@ -73,53 +85,49 @@ public final class EmailVerification extends Verification {
 }
 ```
 
-状态机：`P → V → U`。`verify(RandomString)` 依次守卫：待验证状态 → 未过期（基于 `code.expireAt()`）→ 尝试次数未超限（`policy.maxAttempts()`）→ 码匹配；错码 `attempts+1` 并抛异常。`use()` 仅允许 V→U。
+状态机：`I → P → V → U`（`I` 为工厂创建后的初始态；`send(SmsSender)` / `send(EmailSender)` 发送成功后转 `P`，发送失败保持 `I`）。`verify(Instant at, RandomString)`（时钟注入）依次前置：待验证状态 → 未过期（`code.expiredAt(at)`）→ 码匹配；前置失败抛带消息 IAE（业务参数校验，ADR-0015）；失败路径（错码/过期）不落库——实体无变更（无 attempts 可累计）。`use()` 仅允许 V→U。
 
 ### 验证 DP 归属
 
-`VerificationPolicy`（codeLength + expiry + maxAttempts）与 `VerificationCode`、`VerificationScene`、`VerificationStatus` 一并位于 `soda-user-domain` 的 `com.soda.user.domain.types`——验证概念不是通用业务类型，随 `Verification` 实体同域。命名默认值：`DEFAULT_SMS`（6位/5分钟/3次）、`DEFAULT_EMAIL`（8位/30分钟/5次）。`SmsAuthAccount` 保留 `VerificationCodePolicy`（codeLength + expiry）字段作为认证方式的配置。
+`VerificationCodePolicy`（codeLength + expiry；`maxAttempts` 已移除——不再跟踪尝试次数）与 `VerificationCode`、`VerificationScene`、`VerificationStatus` 一并位于 `soda-user-domain` 的 `com.soda.user.domain.types`——验证概念不是通用业务类型，随 `Verification` 实体同域。命名默认值：`DEFAULT_SMS`（6位/5分钟）、`DEFAULT_EMAIL`（8位/30分钟）。`SmsAuthAccount` 保留 `VerificationCodePolicy`（codeLength + expiry）字段作为认证方式的配置。
 
 ### User 的 changeMobile / changeEmail
 
 Verification 作为外部聚合，User 不主动修改它，而是接收它作为参数：
 
 ```java
-public void changeMobile(MobileVerification verification) {
-    if (verification.status() != VerificationStatus.V) {
-        throw new DomainException("手机修改需要 VERIFIED 状态的验证码"); // USED 是终态，不可重放
-    }
-    Mobile newMobile = verification.target();
-    if (this.mobile != null && this.mobile.equals(newMobile)) {
-        throw new DomainException("不能修改为相同的手机号");
-    }
+public void changeMobile(SmsVerification verification) {
+    Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
+    Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change"); // 非 CC 场景的验证码不可用于换绑
+    Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified"); // USED 是终态，不可重放
+    Mobile newMobile = verification.getTarget();
+    Assert.isTrue(!Objects.equals(this.mobile, newMobile), "cannot change to the same mobile");
     this.mobile = newMobile;
     // 联动替换 SmsAuthAccount...
 }
 
 public void changeEmail(EmailVerification verification) {
-    if (verification.status() != VerificationStatus.V) {
-        throw new DomainException("邮箱修改需要 VERIFIED 状态的验证码"); // USED 是终态，不可重放
-    }
-    Email newEmail = verification.target();
-    if (this.email != null && this.email.equals(newEmail)) {
-        throw new DomainException("不能修改为相同的邮箱");
-    }
+    Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
+    Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change"); // 非 CC 场景的验证码不可用于换绑
+    Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified"); // USED 是终态，不可重放
+    Email newEmail = verification.getTarget();
+    Assert.isTrue(!Objects.equals(this.email, newEmail), "cannot change to the same email");
     this.email = newEmail;
     // 联动替换 EmailAuthAccount...
 }
 ```
 
-Application Service 编排（`UserAuthServiceImpl`）——按「ApplicationService 编排规范」：AppService 只做加载/委托/保存，流程逻辑全部在 `CredentialChangeDomainService`（持 generator + sender）：
+Application Service 编排（`UserAuthServiceImpl`）——按「ApplicationService 编排规范」：AppService 只做加载/委托/保存；验证码发起（生成码、构造 INITIALIZED 验证聚合、经聚合 `send(sender)` 发送）在 AppService 内展开（generator + sender 注入 AppService，2026-08-03 修订；发送封装为聚合行为方法并以 sender 参数注入，2026-08-07 修订），跨聚合消费流程在 `CredentialChangeDomainService`：
 ```java
 // verifyMobile — AppService：加载 User（存在性校验）
 //   → 唯一性校验：同一 (userId, scene=CC) 已存在未过期 PENDING（无论 target）→ 抛 IllegalArgumentException（不重发、不新建）
-//   → 验证码发起（AppService 内展开）：生成码 → 构造 SmsVerification（scene=CC, PENDING）→ smsSender.send
-//   → verificationGateway.save（落库 PENDING）
+//   → 验证码发起（AppService 内展开）：生成码 → 构造 SmsVerification（scene=CC, INITIALIZED）→ verification.send(smsSender)（发送 + 转 PENDING）
+//   → verificationGateway.save（落库 PENDING；发送失败时异常上抛、零落库）
 // changeMobile — AppService：加载 User + 待验证聚合（CC + SmsVerification）
 //   → CredentialChangeDomainService.changeMobile(user, verification, code)
 //       内部：verification.verify(code) → user.changeMobile(verification) → verification.use()
 //   → 保存顺序：先 userGateway.save(user)，再 verificationGateway.save(verification)（USED 终态）
-//   → 失败路径（verify 抛异常）：仍 verificationGateway.save —— attempts 跨请求累计，锁定才生效
+//   → 失败路径（verify 抛异常）：不落库——实体无变更（无 attempts 可累计）
 // 邮箱同理（验证码发起 / changeEmail）
 ```
 

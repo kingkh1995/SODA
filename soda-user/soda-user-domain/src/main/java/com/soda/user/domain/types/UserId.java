@@ -30,7 +30,7 @@ public record UserId(long value) implements Identifier<Long>, Comparable<UserId>
      */
     @JsonValue
     public long value() {
-        return this.value;
+        return value;
     }
 
     @Override
@@ -40,7 +40,7 @@ public record UserId(long value) implements Identifier<Long>, Comparable<UserId>
 
     @Override
     public int compareTo(UserId other) {
-        return Long.compare(this.value, other.value);
+        return Long.compare(value, other.value);
     }
 
     /**

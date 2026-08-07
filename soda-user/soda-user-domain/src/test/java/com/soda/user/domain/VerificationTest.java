@@ -1,20 +1,21 @@
 package com.soda.user.domain;
 
+import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
+import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.UUId;
 import com.soda.user.domain.types.VerificationCode;
-import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
-import java.time.Duration;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>
  * 测试场景：
  * <ul>
- *   <li>create -> status=P</li>
+ *   <li>create -> status=I</li>
+ *   <li>send(sender) -> status=P（目标与内容正确；重复 send / 非 I 状态 send -> exception）</li>
  *   <li>verify(correct code) -> status=V</li>
  *   <li>use() after verify -> status=U</li>
  *   <li>verify(wrong code) -> exception</li>
@@ -40,12 +42,15 @@ class VerificationTest {
     private static final LongId USER_ID = new LongId(1L);
     private static final Mobile MOBILE = new Mobile("13800138000");
     private static final Email EMAIL = new Email("test@example.com");
-    private static final VerificationCodePolicy POLICY = new VerificationCodePolicy(6, Duration.ofMinutes(5));
     private static final String VALID_CODE = "123456";
 
     // 测试用的验证码生成器
     private static final RandomStringGenerator CODE_GENERATOR =
             length -> new RandomString(VALID_CODE);
+
+    // 测试用的发送桩（不真正外发）
+    private static final SmsSender SMS_SENDER = (to, content) -> { };
+    private static final EmailSender EMAIL_SENDER = (to, content) -> { };
 
     // ─── factories ───
 
@@ -54,39 +59,119 @@ class VerificationTest {
     class FactoryTests {
 
         @Test
-        @DisplayName("createBuilder SmsVerification -> status=PENDING")
-        void createSmsVerification_pendingStatus() {
+        @DisplayName("createBuilder SmsVerification -> status=INITIALIZED")
+        void createSmsVerification_initializedStatus() {
             var verification = SmsVerification.createBuilder()
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
             assertThat(verification.getScene()).isEqualTo(VerificationScene.LG);
-            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.I);
+            assertThat(verification.isInitialized()).isTrue();
             assertThat(verification.getCode().code()).isEqualTo(VALID_CODE);
             assertThat(verification.getTarget()).isEqualTo(MOBILE);
             assertThat(verification.getUserId()).isEqualTo(USER_ID);
         }
 
         @Test
-        @DisplayName("createBuilder EmailVerification -> status=PENDING")
-        void createEmailVerification_pendingStatus() {
+        @DisplayName("createBuilder EmailVerification -> status=INITIALIZED")
+        void createEmailVerification_initializedStatus() {
             var verification = EmailVerification.createBuilder()
                     .userId(USER_ID)
                     .scene(VerificationScene.RG)
                     .target(EMAIL)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
             assertThat(verification.getScene()).isEqualTo(VerificationScene.RG);
-            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.I);
+            assertThat(verification.isInitialized()).isTrue();
             assertThat(verification.getCode().code()).isEqualTo(VALID_CODE);
             assertThat(verification.getTarget()).isEqualTo(EMAIL);
             assertThat(verification.getUserId()).isEqualTo(USER_ID);
+        }
+    }
+
+    // ─── send ───
+
+    @Nested
+    @DisplayName("发送验证码")
+    class SendTests {
+
+        @Test
+        @DisplayName("sms send -> 状态变为 PENDING，发送目标与内容含验证码")
+        void sendSms_transitionsToPending() {
+            var verification = SmsVerification.createBuilder()
+                    .userId(USER_ID)
+                    .scene(VerificationScene.LG)
+                    .target(MOBILE)
+                    .generator(CODE_GENERATOR)
+                    .build();
+
+            verification.send((to, content) -> {
+                assertThat(to).isEqualTo(MOBILE);
+                assertThat(content.value()).contains(VALID_CODE);
+            });
+
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(verification.isPending()).isTrue();
+            assertThat(verification.isInitialized()).isFalse();
+        }
+
+        @Test
+        @DisplayName("email send -> 状态变为 PENDING，主题与正文含验证码")
+        void sendEmail_transitionsToPending() {
+            var verification = EmailVerification.createBuilder()
+                    .userId(USER_ID)
+                    .scene(VerificationScene.LG)
+                    .target(EMAIL)
+                    .generator(CODE_GENERATOR)
+                    .build();
+
+            verification.send((to, content) -> {
+                assertThat(to).isEqualTo(EMAIL);
+                assertThat(content.subject()).isEqualTo("验证码");
+                assertThat(content.body()).contains(VALID_CODE);
+            });
+
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(verification.isPending()).isTrue();
+        }
+
+        @Test
+        @DisplayName("send from non-initialized state -> exception（不触发发送）")
+        void send_fromNonInitialized_throwsException() {
+            var verification = SmsVerification.builder()
+                    .id(UUId.random())
+                    .scene(VerificationScene.LG)
+                    .status(VerificationStatus.P)
+                    .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
+                    .target(MOBILE)
+                    .userId(USER_ID)
+                    .build();
+
+            assertThatThrownBy(() -> verification.send((to, content) -> { }))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("verification must be initialized before sending");
+        }
+
+        @Test
+        @DisplayName("send twice -> exception")
+        void send_twice_throwsException() {
+            var verification = SmsVerification.createBuilder()
+                    .userId(USER_ID)
+                    .scene(VerificationScene.LG)
+                    .target(MOBILE)
+                    .generator(CODE_GENERATOR)
+                    .build();
+            verification.send(SMS_SENDER);
+
+            assertThatThrownBy(() -> verification.send(SMS_SENDER))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("verification must be initialized before sending");
         }
     }
 
@@ -103,10 +188,10 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
 
             assertThat(verification.getStatus()).isEqualTo(VerificationStatus.V);
@@ -120,9 +205,9 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString("wrong")))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -136,21 +221,19 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
-            var verification = SmsVerification.restoreBuilder()
+            var verification = SmsVerification.builder()
                     .id(created.getId())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
                     .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
-                    .policy(POLICY)
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -160,29 +243,14 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
             verification.use();
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
-                    .isInstanceOf(IllegalStateException.class);
-        }
-
-        @Test
-        @DisplayName("verify(null) -> NPE（契约违反，ADR-0015）")
-        void verify_nullInput_throwsNullPointerException() {
-            var verification = SmsVerification.createBuilder()
-                    .userId(USER_ID)
-                    .scene(VerificationScene.LG)
-                    .target(MOBILE)
-                    .policy(POLICY)
-                    .generator(CODE_GENERATOR)
-                    .build();
-
-            assertThatThrownBy(() -> verification.verify(Instant.now(), null))
-                    .isInstanceOf(NullPointerException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -192,13 +260,13 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -215,9 +283,9 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
 
             verification.use();
@@ -232,12 +300,11 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
             assertThatThrownBy(() -> verification.use())
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -247,14 +314,14 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
             verification.use();
 
             assertThatThrownBy(() -> verification.use())
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -271,7 +338,6 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
@@ -285,15 +351,13 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
-            var verification = SmsVerification.restoreBuilder()
+            var verification = SmsVerification.builder()
                     .id(created.getId())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
                     .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
-                    .policy(POLICY)
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
@@ -305,12 +369,11 @@ class VerificationTest {
         @DisplayName("isExpiredAt 在 expireAt 精确时刻仍为 false（含端点）")
         void isExpired_atExactExpiry_false() {
             var createdAt = Instant.now();
-            var verification = SmsVerification.restoreBuilder()
+            var verification = SmsVerification.builder()
                     .id(UUId.random())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
                     .code(new VerificationCode(VALID_CODE, createdAt))
-                    .policy(POLICY)
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
@@ -334,9 +397,9 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
             verification.use();
 
@@ -356,7 +419,6 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.CC)
                     .target(EMAIL)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
 
@@ -366,6 +428,26 @@ class VerificationTest {
             var restored = DomainTestUtil.MAPPER.readValue(json, Verification.class);
             assertThat(restored).isInstanceOf(EmailVerification.class);
             assertThat(restored).isEqualTo(verification);
+        }
+
+        @Test
+        @DisplayName("缺少 id 的 JSON 拒绝")
+        void roundTrip_rejectsMissingId() {
+            var json = """
+                    {"channel":"S","scene":"CC","status":"P"}
+                    """;
+            assertThatThrownBy(() -> DomainTestUtil.MAPPER.readValue(json, Verification.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+
+        @Test
+        @DisplayName("未知渠道判别符拒绝")
+        void roundTrip_rejectsUnknownChannel() {
+            var json = """
+                    {"channel":"X"}
+                    """;
+            assertThatThrownBy(() -> DomainTestUtil.MAPPER.readValue(json, Verification.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 
@@ -382,15 +464,13 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
-            var v2 = SmsVerification.restoreBuilder()
+            var v2 = SmsVerification.builder()
                     .id(v1.getId())
                     .scene(v1.getScene())
                     .status(v1.getStatus())
                     .code(v1.getCode())
-                    .policy(v1.getPolicy())
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
@@ -406,15 +486,13 @@ class VerificationTest {
                     .userId(USER_ID)
                     .scene(VerificationScene.LG)
                     .target(MOBILE)
-                    .policy(POLICY)
                     .generator(CODE_GENERATOR)
                     .build();
-            var v2 = SmsVerification.restoreBuilder()
+            var v2 = SmsVerification.builder()
                     .id(UUId.random())
                     .scene(v1.getScene())
                     .status(v1.getStatus())
                     .code(v1.getCode())
-                    .policy(v1.getPolicy())
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();

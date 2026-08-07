@@ -10,7 +10,9 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 >
 > 后续修订：`VerificationStatus.X` 已删除（过期是派生判断，不落状态）——见 ADR-0011。
 >
-> 再修订（2026-08-03）：`VerificationChannel` 重新引入为 `soda-components` 的通用枚举（`com.soda.component.domain.types.VerificationChannel`，取值 `S`/`E`）——验证通道既作为 `Verification` 子类型的判别值（与 `@JsonTypeName` 同构，见 ADR-0011），也可被 gateway 查询过滤使用；上一版"已删除"注记作废。
+> 再修订（2026-08-03）：`VerificationChannel` 归属 `soda-user-domain`（`com.soda.user.domain.types.VerificationChannel`，取值 `S`/`E`）——验证通道作为 `Verification` 子类型的判别值（与 `@JsonTypeName` 同构，见 ADR-0011），也被 gateway 查询过滤使用；因与 `Verification` 子类型一一对应、映射需业务侧维护，故不放 `soda-components`（`Sex` 因 web 层跨模块引用才下沉组件层）；上一版"已删除"注记作废。
+>
+> 再修订（2026-08-05）：「映射需业务侧维护」作废——`class→VerificationChannel` 反查下沉基础设施（ADR-0016）；枚举仅作为领域词汇与判别值锚点保留在 user-domain（取值与短名规则不变）。
 
 随着 DTO/VO 层确认不直接引用枚举类型（使用 `String` 传递），`soda-user-common` 模块失去存在意义，枚举需要重新设计。
 
@@ -36,7 +38,7 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 | `AuthAccountType` | `P`(password), `S`(sms), `E`(email), `O`(oauth) |
 | `SocialType` | `GE`(gitee), `DT`(ding-talk), `WENT`(wechat-work), `WMP`(wechat-mp), `WOPN`(wechat-open), `WMIN`(wechat-mini), `ALIP`(alipay-mini) |
 | `VerificationScene` | `CC`(credential-change), `PR`(password-reset), `LG`(login), `RG`(register) |
-| `VerificationStatus` | `P`(pending), `V`(verified), `U`(used) |
+| `VerificationStatus` | `I`(initialized), `P`(pending), `V`(verified), `U`(used) |
 
 ### state vs status 命名规则
 

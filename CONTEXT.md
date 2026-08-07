@@ -114,7 +114,7 @@ class ModulithTest {
 - `changeEmail(Email)` — 修改邮箱
 - `changeSex(Sex)` — 修改性别
 - `changeAvatar(Avatar)` — 修改头像
-- `changePassword(CredentialHash)` — 修改密码（委托到 PasswordAuthAccount）
+- `changePassword(RawCredential, CredentialHasher)` — 修改密码（委托到 PasswordAuthAccount；密码账户为构造期必填字段，无查找无守卫）
 - `disable()` — 禁用用户。E→D 发 UserStateChangedEvent；已是 D 则 no-op
 - `enable()` — 启用用户。D→E 发 UserStateChangedEvent；已是 E 则 no-op
 
@@ -178,23 +178,28 @@ _Avoid_: 认证信息、登录方式、Account
 认证方式枚举。取值：`P`（Password）、`S`（Sms）、`E`（Email）、`O`（OAuth）。
 
 ### VerificationCodePolicy
-验证码策略 DP（`com.soda.user.domain.types.VerificationCodePolicy`，位于 soda-user-domain）。封装 `codeLength` 和 `expiry`。提供 `DEFAULT_SMS`（6位/5分钟）和 `DEFAULT_EMAIL`（8位/30分钟）。验证码的唯一策略类型：既作为 `Verification` 实体的 `policy` 字段，也作为认证方式的账号配置字段（原 `VerificationPolicy` 已并入本类，见 ADR-0011）。解析链：per-account 覆盖 → 子类静态 `DEFAULT_POLICY`。（ServiceLoader SPI 暂未实现）
+验证码策略 DP（`com.soda.user.domain.types.VerificationCodePolicy`，位于 soda-user-domain）。封装 `codeLength` 和 `expiry`。提供 `DEFAULT_SMS`（6位/5分钟）和 `DEFAULT_EMAIL`（8位/30分钟）。验证码的唯一策略类型：作为认证方式的账号配置字段，并在创建 `Verification` 时作为 create 构造末位可空参数（缺省取子类静态 `DEFAULT_POLICY`——`SmsVerification.DEFAULT_POLICY`/`EmailVerification.DEFAULT_POLICY`；决定码长与过期时间，效果物化进 `VerificationCode`，不落验证实体，见 ADR-0011）。解析链：per-account 覆盖 → 子类静态 `DEFAULT_POLICY`。（ServiceLoader SPI 暂未实现）
 
 ### VerificationCode
-验证码 DP（`com.soda.user.domain.types.VerificationCode`，位于 soda-user-domain）。封装 `code`、`expireAt`。`verify(RandomString)` 校验匹配与过期（输入为 null 抛 NPE，见 ADR-0015）。使用状态不落 DP——生命周期由 `Verification` 的 `status` 表达（单一事实源，见 ADR-0011）。
+验证码 DP（`com.soda.user.domain.types.VerificationCode`，位于 soda-user-domain）。封装 `code`、`expireAt`。`matches(RandomString)` 纯匹配；`expiredAt(Instant)` 纯过期判断——时钟由调用方注入，过期 / 匹配的组合校验由 `Verification` 聚合负责（jspecify 契约：参数默认非空，见 ADR-0015）。使用状态不落 DP——生命周期由 `Verification` 的 `status` 表达（单一事实源，见 ADR-0011）。
 
 ### Verification
 独立验证实体（`com.soda.user.domain.Verification`，位于 soda-user-domain）。无子实体，按 Entity 分类（非聚合根）。密封类层次结构，与 `AuthAccount` 对称设计；`target` 类型参数化到基类（`Verification<T extends Type>`），子类仅保留 target 类型与 `@JsonTypeName` 差异。
-状态机：`P`(Pending) → `V`(Verified) → `U`(Used)。过期是派生判断（基于 `code().expireAt()`，不落状态）。
-行为：`verify(RandomString)`、`use()`、`isPending()`、`isVerified()`、`isExpired()`；`verify` 守卫顺序：待验证状态 → 未过期 → 码匹配，输入为 null 抛 NPE。
+状态机：`I`(Initialized) → `P`(Pending) → `V`(Verified) → `U`(Used)。过期是派生判断（基于 `code().expireAt()`，不落状态）。
+策略不落实体——创建时以子类静态 `DEFAULT_POLICY` 为默认（`policy` 为 create 末位可空参数），决定码长与过期时间，效果物化进 `code`，不作为属性持久化。
+行为：`verify(Instant at, RandomString)`（时钟注入）、`use()`、`isInitialized()`、`isPending()`、`isVerified()`、`isExpiredAt(at)`；子类 `send(SmsSender)` / `send(EmailSender)`（sender 参数注入，发送成功后 `I` → `P`，发送失败状态保持 `I`）；`verify` 前置：待验证状态 → 未过期 → 码匹配（业务前置，带消息 IAE）；构造器非空参数用 `ValidateUtils` 校验（与 DP 一致，见 ADR-0015）。
 两种子类型：`SmsVerification`（target=Mobile）、`EmailVerification`（target=Email）。（AuthenticatorVerification 暂不实现）
-User 的 `changeMobile(SmsVerification)` / `changeEmail(EmailVerification)` 接收对应子类型作为参数，验证通过后执行领域行为。
+User 的 `changeMobile(SmsVerification)` / `changeEmail(EmailVerification)` 接收对应子类型作为参数，验证通过后执行领域行为（守卫：userId 匹配 → scene 必须为 CC → VERIFIED → 目标不同）。
 Verification 不被 User 聚合修改，通过 `userId` 引用 User。
+
+### VerificationChannel
+验证通道枚举（`com.soda.user.domain.types.VerificationChannel`，位于 soda-user-domain）。取值：`S`（SMS，短信）、`E`（Email，邮箱）。与 `Verification` 子类型一一对应，是验证方式的判别值——构成 JSON `channel` 属性与持久化判别列。是领域概念（对领域专家有意义），但**不用于代码逻辑分派**：行为分派一律走子类型模式匹配或子类方法。
+_Avoid_: 在业务逻辑中按 channel 判断分支（用模式匹配拿具体子类）；给枚举挂 Class 引用（映射归基础设施，见 ADR-0016）
 
 ### CredentialChangeDomainService
 领域服务（`com.soda.user.domain.service.CredentialChangeDomainService`，`@Service` 容器管理），无字段无 gateway 依赖。仅承载跨聚合编排（同时更改 User 与验证聚合）：
 - `changeMobile(User, SmsVerification, RandomString)` / `changeEmail(User, EmailVerification, RandomString)` — verify → change → use
-验证码发起（生成码、构造 PENDING 验证实体（scene=CC）、发送）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行（AppService 内展开）。
+验证码发起（前置：target ≠ 当前值、全局唯一、无未过期 PENDING；生成码、构造 INITIALIZED 验证实体（scene=CC）、经聚合 `send(sender)` 发送后转 PENDING）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行（AppService 内展开）。
 持久化（保存顺序：先 user 后 verification）由 ApplicationService 保证；失败路径（错码/过期）不落库——实体无变更（无 attempts 可累计）。
 
 ### VerificationScene
@@ -203,13 +208,17 @@ Verification 不被 User 聚合修改，通过 `userId` 引用 User。
 手机/邮箱换绑共用 `CC`，通道差异由 Verification subtype（SmsVerification / EmailVerification）区分。
 
 ### VerificationStatus
-验证状态枚举（`com.soda.user.domain.types.VerificationStatus`，位于 soda-user-domain）。取值：`P`（Pending，待验证）、`V`（Verified，已验证）、`U`（Used，已使用，终态）。过期是派生判断，不落状态（见 ADR-0011）。
+验证状态枚举（`com.soda.user.domain.types.VerificationStatus`，位于 soda-user-domain）。取值：`I`（Initialized，已初始化未发送）、`P`（Pending，待验证）、`V`（Verified，已验证）、`U`（Used，已使用，终态）。过期是派生判断，不落状态（见 ADR-0011）。
 
 _Avoid_: 将验证码（临时状态）存入 SmsAuthAccount 或 User 聚合
 
 
 ### Percentage
 百分比 DP（`com.soda.component.domain.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
+
+
+### Fen
+分 DP（`com.soda.component.domain.types.Fen`）。通用金额值对象，以分记，int 存储（1 元 = 100 分）。值域覆盖整个 int 范围（约 ±2147 万元），负值合法，用于退款、冲正等负向金额；超出范围请用 `WanYuan`。提供 `fromYuan(BigDecimal[, RoundingMode])`（元转分）、`toYuan()`（分转元，精确）、`toDisplayString()`（输出 "15.00元"）。
 
 
 ### Result

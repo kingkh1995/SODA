@@ -77,7 +77,7 @@ public final class WanYuan implements Type {
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 
     /**

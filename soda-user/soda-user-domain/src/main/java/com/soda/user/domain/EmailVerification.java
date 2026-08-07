@@ -3,18 +3,22 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Email;
+import com.soda.component.domain.types.EmailContent;
 import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.PositiveInt;
 import com.soda.component.domain.types.UUId;
-import com.soda.component.domain.types.VerificationChannel;
+import com.soda.user.domain.types.VerificationChannel;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import org.jspecify.annotations.Nullable;
+import org.springframework.util.Assert;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -32,54 +36,63 @@ import java.util.Objects;
 @EqualsAndHashCode(callSuper = true)
 public final class EmailVerification extends Verification<Email> {
 
+    /**
+     * 默认邮箱验证码策略：8 位，30 分钟过期。
+     */
+    public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_EMAIL;
+
     // ─── construction ───
 
     /**
-     * 持久化恢复 / JSON 反序列化。
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * id 必填由 JSON schema 声明（{@code required = true}），缺 id 由 Jackson 在协议边界拒绝。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
     private EmailVerification(
-            @JsonProperty("id") UUId id,
-            @JsonProperty("scene") VerificationScene scene,
-            @JsonProperty("status") VerificationStatus status,
-            @JsonProperty("code") VerificationCode code,
-            @JsonProperty("policy") VerificationCodePolicy policy,
-            @JsonProperty("target") Email target,
-            @JsonProperty("userId") LongId userId) {
-        super(id, scene, status, code, policy, target, userId);
+            @JsonProperty(value = "id", required = true) UUId id,
+            @JsonProperty(value = "scene", required = true) VerificationScene scene,
+            @JsonProperty(value = "status", required = true) VerificationStatus status,
+            @JsonProperty(value = "code", required = true) VerificationCode code,
+            @JsonProperty(value = "target", required = true) Email target,
+            @JsonProperty(value = "userId", required = true) LongId userId) {
+        super(id, scene, status, code, target, userId);
     }
 
     // ─── factories ───
 
     /**
      * 创建邮箱验证实体（创建路径，ID 创建时生成）。
+     * <p>
+     * {@code policy} 可不传（默认 {@link #DEFAULT_POLICY}），决定码长与过期时间，
+     * 效果物化进 {@link VerificationCode}，不落验证实体。
      */
-    @Builder(builderClassName = "EmailVerificationCreateBuilder",
-            builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static EmailVerification create(
             LongId userId,
             VerificationScene scene,
             Email target,
-            VerificationCodePolicy policy,
-            RandomStringGenerator generator) {
-        var verificationCode = VerificationCode.from(Objects.requireNonNull(generator).generate(PositiveInt.of(Objects.requireNonNull(policy).codeLength())), Instant.now().plus(policy.expiry()));
-        return new EmailVerification(UUId.random(), scene, VerificationStatus.P, verificationCode, policy, target, userId);
+            RandomStringGenerator generator,
+            @Nullable VerificationCodePolicy policy) {
+        var effectivePolicy = Objects.requireNonNullElse(policy, DEFAULT_POLICY);
+        var verificationCode = VerificationCode.from(generator.generate(PositiveInt.of(effectivePolicy.codeLength())), Instant.now().plus(effectivePolicy.expiry()));
+        return new EmailVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
     }
 
+    // ─── commands ───
+
     /**
-     * 从持久化恢复邮箱验证实体 — 全部字段显式传入。
+     * 通过 {@link EmailSender} 发送验证码邮件；发送成功后状态从 INITIALIZED 变为 PENDING。
+     * <p>
+     * sender 以参数注入（领域层不持有 gateway 端口）；发送失败（异常）时状态保持 INITIALIZED。
+     *
+     * @throws IllegalArgumentException 状态非 INITIALIZED（业务状态前置）
      */
-    @Builder(builderClassName = "EmailVerificationRestoreBuilder",
-            builderMethodName = "restoreBuilder")
-    private static EmailVerification restore(
-            UUId id,
-            VerificationScene scene,
-            VerificationStatus status,
-            VerificationCode code,
-            VerificationCodePolicy policy,
-            Email target,
-            LongId userId) {
-        return new EmailVerification(id, scene, status, code, policy, target, userId);
+    public void send(EmailSender sender) {
+        Assert.isTrue(isInitialized(), "verification must be initialized before sending");
+        sender.send(getTarget(), new EmailContent("验证码", "您的验证码: " + getCode().code()));
+        markPending();
     }
 
     // ─── accessors ───

@@ -5,12 +5,14 @@ import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -24,44 +26,44 @@ class SocialAuthAccountTest {
 
     @Test
     void constructor_setsId() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals(ID, account.getId());
     }
 
     @Test
-    void getAuthAccountType_returnsO() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
-        assertEquals(AuthAccountType.O, account.getAuthAccountType());
+    void getAccountType_returnsO() {
+        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
+        assertEquals(AuthAccountType.O, account.getAccountType());
     }
 
     @Test
     void socialType_returnsFromId() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals(SocialType.GE, account.getSocialType());
     }
 
     @Test
     void openId_returnsFromId() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals("open123", account.getOpenId());
     }
 
     @Test
     void activeTrue_isActive() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertTrue(account.isActive());
     }
 
     @Test
     void activeFalse_isInactive() {
-        var account = SocialAuthAccount.restoreBuilder().id(ID).active(Active.FALSE).build();
+        var account = SocialAuthAccount.builder().id(ID).active(Active.FALSE).build();
         assertFalse(account.isActive());
     }
 
     @Test
     void equal_whenSameId() {
-        var a = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
-        var b = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var a = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
+        var b = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertNotSame(a, b);
         assertEquals(ID, a.getId());
         assertEquals(ID, b.getId());
@@ -96,8 +98,8 @@ class SocialAuthAccountTest {
     }
 
     @Test
-    void restoreBuilder_restoresAllFields() {
-        var account = SocialAuthAccount.restoreBuilder()
+    void builder_restoresAllFields() {
+        var account = SocialAuthAccount.builder()
                 .id(ID)
                 .active(Active.FALSE)
                 .build();
@@ -116,9 +118,15 @@ class SocialAuthAccountTest {
                 .build();
         var json = MAPPER.writeValueAsString(original);
         var restored = MAPPER.readValue(json, SocialAuthAccount.class);
-        assertEquals(original.getId(), restored.getId());
-        assertEquals(original.getAuthAccountType(), restored.getAuthAccountType());
-        assertEquals(original.isActive(), restored.isActive());
+        assertEquals(original, restored);
+    }
+
+    @Test
+    void jackson_rejectsMissingId() {
+        var json = """
+                {"active":true}
+                """;
+        assertThrows(JacksonException.class, () -> MAPPER.readValue(json, SocialAuthAccount.class));
     }
 
     // ——— identity ———
@@ -126,16 +134,16 @@ class SocialAuthAccountTest {
     @Test
     void equals_byFields() {
         // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
-        var same = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
-        var equal = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
-        var diffId = SocialAuthAccount.restoreBuilder().id(SocialAuthAccountId.from(SocialType.GE, "otherOpen")).active(Active.TRUE).build();
+        var same = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
+        var equal = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
+        var diffId = SocialAuthAccount.builder().id(SocialAuthAccountId.from(SocialType.GE, "otherOpen")).active(Active.TRUE).build();
         assertEquals(same, equal, "相同字段应相等");
         assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test
     void toString_containsClassName() {
-        var a = SocialAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).build();
+        var a = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertTrue(a.toString().contains("SocialAuthAccount@"));
     }
 }

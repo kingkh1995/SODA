@@ -1,5 +1,7 @@
 # 0004 — AuthAccount 多态设计与持久化策略
 
+> 修订（2026-08-07）：`PasswordAuthAccount` 在 `User` 聚合内的表达改为**独立必填字段**（`User.passwordAccount`，构造器强制——ADR「一个 User 一个密码账户」不变量类型化，无密码账户的 User 不可表示）；`accounts` 仅存可选账户（Sms / Email / Social），`addAccount` 以 IAE 拒绝密码账户。持久化策略不变：仍按 `account_type` 鉴别分发，PasswordAuthAccount 行仍在 system_user_account 基表 + password 扩展表。
+
 **Status**: accepted
 
 **Context**:

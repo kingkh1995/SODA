@@ -19,7 +19,7 @@ public class EnumValidator implements ConstraintValidator<EnumName, String> {
 
     @Override
     public void initialize(EnumName constraintAnnotation) {
-        validNames = Stream.of(constraintAnnotation.value().getEnumConstants())
+        this.validNames = Stream.of(constraintAnnotation.value().getEnumConstants())
                 .map(Enum::name)
                 .collect(Collectors.toSet());
     }

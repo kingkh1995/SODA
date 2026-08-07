@@ -25,11 +25,11 @@ public record Nickname(String value) implements Type, Comparable<Nickname> {
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 
     @Override
     public int compareTo(Nickname other) {
-        return this.value.compareTo(other.value);
+        return value.compareTo(other.value);
     }
 }

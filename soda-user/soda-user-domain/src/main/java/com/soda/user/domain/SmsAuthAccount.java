@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
@@ -44,15 +45,19 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
     // ─── construction ───
 
     /**
-     * 持久化恢复 / JSON 反序列化。
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * id 非空由 {@link AuthAccount}/{@link Entity} 构造器链路保证。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
     private SmsAuthAccount(
-            @JsonProperty("id") SmsAuthAccountId id,
-            @JsonProperty("active") Active active,
-            @JsonProperty("verificationCodePolicy") VerificationCodePolicy verificationCodePolicy) {
+            @JsonProperty(value = "id", required = true) SmsAuthAccountId id,
+            @JsonProperty(value = "active", required = true) Active active,
+            @JsonProperty(value = "verificationCodePolicy", required = true) VerificationCodePolicy verificationCodePolicy) {
         super(id, active);
-        this.verificationCodePolicy = Objects.requireNonNull(verificationCodePolicy);
+        ValidateUtils.notNull(verificationCodePolicy);
+        this.verificationCodePolicy = verificationCodePolicy;
     }
 
     // ─── factories ───
@@ -60,25 +65,13 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
     /**
      * 创建新短信账户 — active 默认 TRUE，ID 从 mobile 派生。
      */
-    @Builder(builderClassName = "SmsAuthAccountCreateBuilder",
-            builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static SmsAuthAccount create(Mobile mobile, @Nullable VerificationCodePolicy verificationCodePolicy) {
         return new SmsAuthAccount(
                 SmsAuthAccountId.from(mobile),
                 Active.TRUE,
-                Optional.ofNullable(verificationCodePolicy).orElse(DEFAULT_POLICY)
+                Objects.requireNonNullElse(verificationCodePolicy, DEFAULT_POLICY)
         );
-    }
-
-    /**
-     * 从持久化恢复短信账户 — 全部字段显式传入。
-     */
-    @Builder(builderClassName = "SmsAuthAccountRestoreBuilder",
-            builderMethodName = "restoreBuilder")
-    private static SmsAuthAccount restore(
-            SmsAuthAccountId id, Active active,
-            VerificationCodePolicy verificationCodePolicy) {
-        return new SmsAuthAccount(id, active, verificationCodePolicy);
     }
 
     // ─── accessors ───
@@ -87,11 +80,11 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
      * 认证类型 — 常量来源为 {@link SmsAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
      */
     @Override
-    public AuthAccountType getAuthAccountType() {
+    public AuthAccountType getAccountType() {
         return SmsAuthAccountId.ACCOUNT_TYPE;
     }
 
     public Mobile getMobile() {
-        return requireId().mobile();
+        return getId().mobile();
     }
 }

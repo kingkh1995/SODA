@@ -46,6 +46,6 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
 
     @Override
     public int compareTo(PasswordAuthAccountId other) {
-        return this.value().compareTo(other.value());
+        return value().compareTo(other.value());
     }
 }

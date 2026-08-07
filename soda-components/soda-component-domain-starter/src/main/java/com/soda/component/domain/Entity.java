@@ -7,7 +7,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -44,15 +43,14 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * 手动设置 / 已有数据恢复（reconstitution）。
      */
     protected Entity(ID id) {
-        this.id = Objects.requireNonNull(id);
+        this.id = id;
     }
 
     /**
      * 客户端生成：构造时由 {@code generator} 产生 ID，发生在构造器内部。
      */
     protected Entity(Supplier<ID> generator) {
-        // generator 为 null 时 get() 自动抛 NPE（JEP 358 帮助消息），无需前置守卫
-        this.id = Objects.requireNonNull(Objects.requireNonNull(generator).get());
+        this.id = generator.get();
     }
 
     /**
@@ -70,14 +68,12 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * 持久化后由 Repository 填补 ID。
      * <p>
      * 仅限服务端生成场景调用（{@link #Entity()} 构造），已有 ID 时忽略。
-     *
-     * @throws NullPointerException id 为 null
      */
     public final void assignId(ID id) {
-        if (this.isIdentified()) {
+        if (isIdentified()) {
             return;
         }
-        this.id = Objects.requireNonNull(id);
+        this.id = id;
     }
 
     /**
@@ -85,10 +81,10 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * <p>
      * 在业务方法中调用，一个业务方法可注册多个事件。
      *
-     * @param event 领域事件，非 null
+     * @param event 领域事件
      */
     protected void registerEvent(DomainEvent<ID> event) {
-        domainEvents.add(Objects.requireNonNull(event));
+        this.domainEvents.add(event);
     }
 
     /**
@@ -101,7 +97,7 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     @Override
     public List<DomainEvent<ID>> flushEvents() {
         var events = List.copyOf(domainEvents);
-        domainEvents = new ArrayList<>();
+        this.domainEvents = new ArrayList<>();
         return events;
     }
 }

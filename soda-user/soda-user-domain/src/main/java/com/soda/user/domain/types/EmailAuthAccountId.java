@@ -48,6 +48,6 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
 
     @Override
     public int compareTo(EmailAuthAccountId other) {
-        return this.value().compareTo(other.value());
+        return value().compareTo(other.value());
     }
 }

@@ -45,7 +45,7 @@ public final class Active implements Type {
 
     @JsonValue
     public boolean value() {
-        return this.value;
+        return value;
     }
 
     /**

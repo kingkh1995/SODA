@@ -9,6 +9,8 @@ import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RawCredential;
 import com.soda.component.domain.types.Sex;
+import com.soda.component.domain.util.ValidateUtils;
+import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserCreatedEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
@@ -20,6 +22,7 @@ import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
+import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -29,7 +32,6 @@ import org.springframework.util.Assert;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -38,7 +40,7 @@ import java.util.function.Predicate;
  * 用户聚合根 — 核心业务实体，管理用户身份信息和认证账户集合。
  * <p>
  * 创建时通过 {@link #createBuilder()} 构建，不含 ID（服务端生成）；
- * 持久化恢复通过 {@link #restoreBuilder()}。
+ * 持久化恢复通过 {@link #builder()}。
  *
  * @see Aggregate
  */
@@ -53,26 +55,58 @@ public class User extends Aggregate<UserId> {
     private @Nullable Email email;
     private @Nullable Sex sex;
     private @Nullable Avatar avatar;
+    private final PasswordAuthAccount passwordAccount;
     private List<AuthAccount<?>> accounts;
 
-    // ─── 唯一构造器（@JsonCreator + 创建/恢复共用）───
+    // ─── 构造器 ───
 
     /**
-     * @param id 服务端分配后的 ID；null 表示尚未持久化（创建路径）
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * 委托无 id 创建构造器完成字段初始化后补充 id（构造器参数校验见该构造器）。
+     * 序列化走 {@code Entity} 基类字段可见性；恢复路径非空字段（id、username、nickname、
+     * state、passwordAccount）由 JSON schema 声明（{@code required = true}），缺字段由 Jackson
+     * 在协议边界拒绝（框架能力，非领域守卫）；可空字段（mobile / email / sex / avatar）标
+     * {@code @Nullable}，accounts 缺省为空列表。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
-    private User(@JsonProperty("id") @Nullable UserId id, @JsonProperty("username") Username username, @JsonProperty("nickname") Nickname nickname, @JsonProperty("state") UserState state, @JsonProperty("mobile") @Nullable Mobile mobile, @JsonProperty("email") @Nullable Email email, @JsonProperty("sex") @Nullable Sex sex, @JsonProperty("avatar") @Nullable Avatar avatar, @JsonProperty("accounts") @Nullable List<AuthAccount<?>> accounts) {
-        super();
-        if (id != null) {
-            assignId(id);
-        }
-        this.username = Objects.requireNonNull(username);
-        this.nickname = Objects.requireNonNull(nickname);
-        this.state = Objects.requireNonNull(state);
+    @Builder
+    private User(
+            @JsonProperty(value = "id", required = true) UserId id,
+            @JsonProperty(value = "username", required = true) Username username,
+            @JsonProperty(value = "nickname", required = true) Nickname nickname,
+            @JsonProperty(value = "state", required = true) UserState state,
+            @JsonProperty("mobile") @Nullable Mobile mobile,
+            @JsonProperty("email") @Nullable Email email,
+            @JsonProperty("sex") @Nullable Sex sex,
+            @JsonProperty("avatar") @Nullable Avatar avatar,
+            @JsonProperty(value = "passwordAccount", required = true) PasswordAuthAccount passwordAccount,
+            @JsonProperty("accounts") @Nullable List<AuthAccount<?>> accounts) {
+        this(username, nickname, state, mobile, email, sex, avatar, passwordAccount, accounts);
+        assignId(id);
+    }
+
+    /**
+     * 无 id 创建构造器 — 仅创建路径使用，id 由 Repository 在持久化后通过 {@link #assignId} 填补。
+     * <p>
+     * 字段初始化唯一存在处，全参数恢复构造器委托本构造器。
+     * <p>
+     * {@code passwordAccount} 为必填字段（ADR-0004：User 必有密码账户，类型化保证，无守卫）；
+     * {@code accounts} 仅存放可选账户（Sms / Email / Social），不允许包含密码账户。
+     */
+    private User(Username username, Nickname nickname, UserState state, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, PasswordAuthAccount passwordAccount, @Nullable List<AuthAccount<?>> accounts) {
+        ValidateUtils.notNull(username);
+        ValidateUtils.notNull(nickname);
+        ValidateUtils.notNull(state);
+        ValidateUtils.notNull(passwordAccount);
+        this.username = username;
+        this.nickname = nickname;
+        this.state = state;
         this.mobile = mobile;
         this.email = email;
         this.sex = sex;
         this.avatar = avatar;
+        this.passwordAccount = passwordAccount;
         this.accounts = new LinkedList<>(Objects.requireNonNullElse(accounts, List.of()));
     }
 
@@ -82,16 +116,16 @@ public class User extends Aggregate<UserId> {
      * 创建新用户。
      * <p>
      * 生成的 User 不含 ID（由 Repository save 后 {@link #assignId} 填补），
-     * 必传密码创建 {@link PasswordAuthAccount}；传入 mobile / email 时分别追加
-     * {@link SmsAuthAccount} / {@link EmailAuthAccount} 到账户列表。
+     * 必传密码哈希构造 {@link PasswordAuthAccount} 作为独立字段（ADR-0004 类型化）；
+     * 传入 mobile / email 时分别追加 {@link SmsAuthAccount} / {@link EmailAuthAccount} 到账户列表。
      * 注册 {@link UserCreatedEvent}（entityId 在 flush 时延迟求值）。
      *
      * @param passwordHash 必传密码哈希，自动创建 {@link PasswordAuthAccount}
      */
-    @Builder(builderClassName = "UserCreationBuilder", builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static User create(Username username, Nickname nickname, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, CredentialHash passwordHash) {
-        var user = new User(null, username, nickname, UserState.E, mobile, email, sex, avatar, null);
-        user.addAccount(PasswordAuthAccount.createBuilder().passwordHash(passwordHash).build());
+        var user = new User(username, nickname, UserState.E, mobile, email, sex, avatar,
+                PasswordAuthAccount.createBuilder().passwordHash(passwordHash).build(), null);
         if (mobile != null) {
             user.addAccount(SmsAuthAccount.createBuilder().mobile(mobile).build());
         }
@@ -102,21 +136,10 @@ public class User extends Aggregate<UserId> {
         return user;
     }
 
-    // ─── 恢复 builder（public，暴露全部持久化字段）───
-
-    /**
-     * 从持久化数据恢复 User，不触发事件。
-     */
-    @Builder(builderClassName = "UserRestoreBuilder", builderMethodName = "restoreBuilder")
-    private static User restore(UserId id, Username username, Nickname nickname, UserState state, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, @Nullable List<AuthAccount<?>> accounts) {
-        Objects.requireNonNull(id);
-        return new User(id, username, nickname, state, mobile, email, sex, avatar, accounts);
-    }
-
     // ─── accessors ───
 
     /**
-     * 返回账户列表的不可修改视图。
+     * 返回可选账户列表的不可修改视图（不包含密码账户，密码账户见 {@link #getPasswordAccount()}）。
      */
     public List<AuthAccount<?>> getAccounts() {
         return List.copyOf(accounts);
@@ -148,10 +171,10 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 添加认证账户到用户聚合。
+     * 添加可选认证账户到用户聚合（密码账户为独立字段，不允许放入 accounts）。
      */
     protected void addAccount(AuthAccount<?> account) {
-        Objects.requireNonNull(account);
+        Assert.isTrue(!(account instanceof PasswordAuthAccount), "Password account must be set separately.");
         if (accounts.contains(account)) {
             return;
         }
@@ -161,8 +184,7 @@ public class User extends Aggregate<UserId> {
     }
 
     protected void removeAccount(AuthAccountType accountType) {
-        Objects.requireNonNull(accountType);
-        this.accounts.removeIf(account -> Objects.equals(account.getAuthAccountType(), accountType));
+        this.accounts.removeIf(account -> Objects.equals(account.getAccountType(), accountType));
     }
 
     // ─── 属性修改 ───
@@ -171,14 +193,14 @@ public class User extends Aggregate<UserId> {
      * 修改用户名。
      */
     public void changeUsername(Username newUsername) {
-        this.username = Objects.requireNonNull(newUsername);
+        this.username = newUsername;
     }
 
     /**
      * 修改昵称。
      */
     public void changeNickname(Nickname nickname) {
-        this.nickname = Objects.requireNonNull(nickname);
+        this.nickname = nickname;
     }
 
     /**
@@ -197,15 +219,15 @@ public class User extends Aggregate<UserId> {
 
     /**
      * 修改密码 — 委托到 {@link PasswordAuthAccount#changePassword}，注册 {@link PasswordChangedEvent}。
+     * <p>
+     * 密码账户为构造期必填字段（ADR-0004 类型化），此处直接委托，无查找无守卫。
      *
      * @param credential 原始密码
      * @param hasher     凭证哈希器
-     * @throws NoSuchElementException 当用户没有激活的密码账户时
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
-        var account = findAccount(existed -> AuthAccountType.P.equals(existed.getAuthAccountType()) && existed.isActive()).map(PasswordAuthAccount.class::cast).orElseThrow();
-        account.changePassword(credential, hasher);
-        registerEvent(new PasswordChangedEvent(requireId()));
+        passwordAccount.changePassword(credential, hasher);
+        registerEvent(new PasswordChangedEvent(getId()));
     }
 
     /**
@@ -213,24 +235,25 @@ public class User extends Aggregate<UserId> {
      * <p>
      * 业务规则：
      * <ul>
+     *   <li>验证场景必须为 CC（credential change）——其他场景的验证码不可用于换绑</li>
      *   <li>验证必须处于 VERIFIED 状态（USED 为终态，不可重放）</li>
      *   <li>不能修改为相同的手机号</li>
      *   <li>更新 User.mobile 字段</li>
      *   <li>替换旧 SmsAuthAccount 为新账户</li>
      * </ul>
      *
-     * @param verification 已通过的短信验证聚合（外部聚合，只读守卫）
+     * @param verification 已通过的短信验证聚合
      */
     public void changeMobile(SmsVerification verification) {
-        Objects.requireNonNull(verification);
-        Assert.isTrue(Objects.equals(verification.getUserId(), requireId().toLongId()), "verification userId must match this user");
+        Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
+        Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
         Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
         var newMobile = verification.getTarget();
-        Assert.isTrue(!Objects.equals(this.mobile, newMobile), "cannot change to the same mobile");
+        Assert.isTrue(!Objects.equals(mobile, newMobile), "cannot change to the same mobile");
         this.mobile = newMobile;
         // 替换 SmsAuthAccount：移除旧账户，添加新账户
-        this.removeAccount(SmsAuthAccountId.ACCOUNT_TYPE);
-        this.addAccount(SmsAuthAccount.createBuilder().mobile(newMobile).build());
+        removeAccount(SmsAuthAccountId.ACCOUNT_TYPE);
+        addAccount(SmsAuthAccount.createBuilder().mobile(newMobile).build());
     }
 
     /**
@@ -238,24 +261,25 @@ public class User extends Aggregate<UserId> {
      * <p>
      * 业务规则：
      * <ul>
+     *   <li>验证场景必须为 CC（credential change）——其他场景的验证码不可用于换绑</li>
      *   <li>验证必须处于 VERIFIED 状态（USED 为终态，不可重放）</li>
      *   <li>不能修改为相同的邮箱</li>
      *   <li>更新 User.email 字段</li>
      *   <li>替换旧 EmailAuthAccount 为新账户</li>
      * </ul>
      *
-     * @param verification 已通过的邮箱验证聚合（外部聚合，只读守卫）
+     * @param verification 已通过的邮箱验证聚合
      */
     public void changeEmail(EmailVerification verification) {
-        Objects.requireNonNull(verification);
-        Assert.isTrue(Objects.equals(verification.getUserId(), requireId().toLongId()), "verification userId must match this user");
+        Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
+        Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
         Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
         var newEmail = verification.getTarget();
-        Assert.isTrue(!Objects.equals(this.email, newEmail), "cannot change to the same email");
+        Assert.isTrue(!Objects.equals(email, newEmail), "cannot change to the same email");
         this.email = newEmail;
         // 替换 EmailAuthAccount：移除旧账户，添加新账户
-        this.removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);
-        this.addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
+        removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);
+        addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
     }
 
     // ─── 状态切换 ───
@@ -264,23 +288,23 @@ public class User extends Aggregate<UserId> {
      * 禁用用户。E→D 时注册 {@link UserStateChangedEvent}；已是 D 则 no-op。
      */
     public void disable() {
-        if (UserState.D.equals(this.state)) {
+        if (UserState.D.equals(state)) {
             return;
         }
-        var oldState = this.state;
+        var oldState = state;
         this.state = UserState.D;
-        registerEvent(new UserStateChangedEvent(requireId(), oldState, UserState.D));
+        registerEvent(new UserStateChangedEvent(getId(), oldState, UserState.D));
     }
 
     /**
      * 启用用户。D→E 时注册 {@link UserStateChangedEvent}；已是 E 则 no-op。
      */
     public void enable() {
-        if (UserState.E.equals(this.state)) {
+        if (UserState.E.equals(state)) {
             return;
         }
-        var oldState = this.state;
+        var oldState = state;
         this.state = UserState.E;
-        registerEvent(new UserStateChangedEvent(requireId(), oldState, UserState.E));
+        registerEvent(new UserStateChangedEvent(getId(), oldState, UserState.E));
     }
 }

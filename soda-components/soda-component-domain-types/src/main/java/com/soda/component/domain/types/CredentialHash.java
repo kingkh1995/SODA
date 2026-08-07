@@ -27,6 +27,6 @@ public record CredentialHash(String value) implements Type {
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 }

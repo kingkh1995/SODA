@@ -3,9 +3,6 @@ package com.soda.user.domain.gateway;
 import com.soda.component.domain.EntityGateway;
 import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.UUId;
-import com.soda.component.domain.types.VerificationChannel;
-import com.soda.user.domain.EmailVerification;
-import com.soda.user.domain.SmsVerification;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationScene;
@@ -30,7 +27,7 @@ import java.util.Optional;
 public interface VerificationGateway extends EntityGateway<Verification<?>, UUId> {
 
     /**
-     * 按用户查找最新一条验证，结果按 {@link VerificationQuery} 过滤。
+     * 按用户查找最新一条验证（不限通道），结果按 {@link VerificationQuery} 过滤。
      * <p>
      * 「最新」定义为按 {@link VerificationCode#expireAt()} 倒序（expireAt 最晚者优先）——
      * 聚合无创建时间戳，策略差异（如 DEFAULT_SMS 5 分钟 vs DEFAULT_EMAIL 30 分钟）下
@@ -49,12 +46,12 @@ public interface VerificationGateway extends EntityGateway<Verification<?>, UUId
 
     /**
      * {@link #findLatestByUserId(LongId, VerificationQuery)} 的类型收敛变体：
-     * 结果不是 {@code type} 所表示的验证类型时返回空（如 {@link SmsVerification} 查询命中
-     * {@link EmailVerification}）。
+     * 结果类型由 {@code type} 决定——实现内部按 type 推导判别值过滤（ADR-0016），
+     * 调用方无需知晓 channel↔class 映射、无需强转；无该类型的匹配时返回空。
      *
      * @param userId 用户 ID（与实体属性同类型，{@code LongId}）
      * @param query  查询条件，可传 {@link VerificationQuery#all()} 仅按用户查询
-     * @param type   期望的验证类型
+     * @param type   期望的验证类型（须为 {@link Verification} 的 permits 子类）
      * @return 匹配的最新且类型相符的验证实体（如有）
      */
     <T extends Verification<?>> Optional<T> findLatestByUserId(
@@ -73,7 +70,7 @@ public interface VerificationGateway extends EntityGateway<Verification<?>, UUId
      */
     default boolean hasUnexpiredPending(LongId userId, VerificationScene scene) {
         return findLatestByUserId(userId,
-                new VerificationQuery(scene, VerificationStatus.P, null, Instant.now()))
+                new VerificationQuery(scene, VerificationStatus.P, Instant.now()))
                 .isPresent();
     }
 
@@ -82,20 +79,20 @@ public interface VerificationGateway extends EntityGateway<Verification<?>, UUId
      * <ul>
      *   <li>{@code scene} — 验证场景过滤</li>
      *   <li>{@code status} — 验证状态过滤</li>
-     *   <li>{@code channel} — 验证渠道过滤（SMS / Email）</li>
      *   <li>{@code validUntil} — 有效性判定时刻；非空时仅返回在此刻未过期的验证</li>
      * </ul>
+     * <p>
+     * 不含判别枚举（channel）——按通道过滤用类型收敛变体（ADR-0016 决策 4）。
      */
     record VerificationQuery(@Nullable VerificationScene scene,
                              @Nullable VerificationStatus status,
-                             @Nullable VerificationChannel channel,
                              @Nullable Instant validUntil) {
 
         /**
          * 无任何过滤条件 — 仅按用户查询最新一条验证。
          */
         public static VerificationQuery all() {
-            return new VerificationQuery(null, null, null, null);
+            return new VerificationQuery(null, null, null);
         }
     }
 }

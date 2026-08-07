@@ -5,6 +5,7 @@ import com.soda.component.domain.gateway.CredentialHasher;
 import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.gateway.SmsSender;
+import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.EmailContent;
@@ -35,7 +36,6 @@ import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
 import com.soda.user.domain.types.VerificationCode;
-import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +48,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -65,7 +66,7 @@ import static org.mockito.Mockito.when;
  * <p>
  * 验证手机号 / 邮箱变更的两步流程：
  * <ul>
- *   <li>verifyXxx：生成并落库 PENDING 验证聚合，发送验证码</li>
+ *   <li>verifyXxx：构造 INITIALIZED 验证聚合 → send(sender) 发送 → 落库 PENDING</li>
  *   <li>changeXxx：verify → change → use 编排；失败路径（错码/过期）不落库（实体无变更）</li>
  * </ul>
  */
@@ -99,59 +100,91 @@ class UserAuthServiceImplTest {
     private UserAuthServiceImpl service;
 
     private static User createUser() {
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
+                .passwordAccount(PasswordAuthAccount.builder()
+                        .id(PasswordAuthAccountId.from(USER_ID))
+                        .active(Active.TRUE)
+                        .passwordHash(STUB_HASH)
+                        .build())
+                .accounts(List.of())
+                .build();
+    }
+
+    private static User createUserWithMobile() {
+        return createUserWith(NEW_MOBILE, null);
+    }
+
+    private static User createUserWithEmail() {
+        return createUserWith(null, NEW_EMAIL);
+    }
+
+    private static User createUserWith(Mobile mobile, Email email) {
+        return User.builder()
+                .id(USER_ID)
+                .username(new Username("testuser"))
+                .nickname(new Nickname("Test_User"))
+                .state(UserState.E)
+                .mobile(mobile)
+                .email(email)
+                .passwordAccount(PasswordAuthAccount.builder()
+                        .id(PasswordAuthAccountId.from(USER_ID))
+                        .active(Active.TRUE)
+                        .passwordHash(STUB_HASH)
+                        .build())
                 .accounts(List.of())
                 .build();
     }
 
     private static User createUserWithPassword() {
-        var passwordAccount = PasswordAuthAccount.restoreBuilder()
+        var passwordAccount = PasswordAuthAccount.builder()
                 .id(PasswordAuthAccountId.from(USER_ID))
                 .active(com.soda.component.domain.types.Active.TRUE)
                 .passwordHash(STUB_HASH)
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
-                .accounts(List.of(passwordAccount))
+                .passwordAccount(passwordAccount)
+                .accounts(List.of())
                 .build();
     }
 
     private static SmsVerification pendingSmsVerification(String code) {
-        return SmsVerification.createBuilder()
-                .userId(USER_ID.toLongId())
-                .scene(VerificationScene.CC)
-                .target(NEW_MOBILE)
-                .policy(VerificationCodePolicy.DEFAULT_SMS)
-                .generator(length -> new RandomString(code))
-                .build();
-    }
-
-    private static SmsVerification expiredSmsVerification() {
-        return SmsVerification.restoreBuilder()
+        return SmsVerification.builder()
                 .id(UUId.random())
                 .userId(USER_ID.toLongId())
                 .scene(VerificationScene.CC)
                 .status(VerificationStatus.P)
                 .target(NEW_MOBILE)
-                .policy(VerificationCodePolicy.DEFAULT_SMS)
+                .code(new VerificationCode(code, Instant.now().plus(Duration.ofMinutes(5))))
+                .build();
+    }
+
+    private static SmsVerification expiredSmsVerification() {
+        return SmsVerification.builder()
+                .id(UUId.random())
+                .userId(USER_ID.toLongId())
+                .scene(VerificationScene.CC)
+                .status(VerificationStatus.P)
+                .target(NEW_MOBILE)
                 .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
                 .build();
     }
 
     private static EmailVerification pendingEmailVerification(String code) {
-        return EmailVerification.createBuilder()
+        return EmailVerification.builder()
+                .id(UUId.random())
                 .userId(USER_ID.toLongId())
                 .scene(VerificationScene.CC)
+                .status(VerificationStatus.P)
                 .target(NEW_EMAIL)
-                .policy(VerificationCodePolicy.DEFAULT_EMAIL)
-                .generator(length -> new RandomString(code))
+                .code(new VerificationCode(code, Instant.now().plus(Duration.ofMinutes(30))))
                 .build();
     }
 
@@ -213,6 +246,33 @@ class UserAuthServiceImplTest {
             assertThat(saved.getTarget()).isEqualTo(NEW_MOBILE);
             assertThat(saved.getCode().code()).isEqualTo(VALID_CODE);
             verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
+        }
+
+        @Test
+        @DisplayName("目标与原手机号相同：抛异常，不发送不落库")
+        void should_throw_when_sameMobile() {
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWithMobile()));
+
+            assertThatThrownBy(() ->
+                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("cannot change to the same mobile");
+            verify(smsSender, never()).send(any(), any());
+            verify(verificationGateway, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("目标手机号已被其他用户占用：抛异常，不发送不落库")
+        void should_throw_when_mobileAlreadyUsed() {
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
+            when(userGateway.existsByMobile(NEW_MOBILE)).thenReturn(true);
+
+            assertThatThrownBy(() ->
+                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Mobile already exists: " + NEW_MOBILE.value());
+            verify(smsSender, never()).send(any(), any());
+            verify(verificationGateway, never()).save(any());
         }
 
         @Test
@@ -285,7 +345,7 @@ class UserAuthServiceImplTest {
             var user = createUser();
             var pending = pendingSmsVerification(VALID_CODE);
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class), eq(SmsVerification.class)))
                     .thenReturn(Optional.of(pending));
 
             service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE));
@@ -304,7 +364,7 @@ class UserAuthServiceImplTest {
             var user = createUser();
             var pending = pendingSmsVerification(VALID_CODE);
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class), eq(SmsVerification.class)))
                     .thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() ->
@@ -322,12 +382,12 @@ class UserAuthServiceImplTest {
             var user = createUser();
             var expired = expiredSmsVerification();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class), eq(SmsVerification.class)))
                     .thenReturn(Optional.of(expired));
 
             assertThatThrownBy(() ->
                     service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
-                    .isInstanceOf(IllegalStateException.class);
+                    .isInstanceOf(IllegalArgumentException.class);
 
             verify(verificationGateway, never()).save(any());
             verify(userGateway, never()).save(any());
@@ -346,16 +406,18 @@ class UserAuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("无待验证聚合时抛出异常")
+        @DisplayName("无待验证聚合时抛出异常（查询按 CC 场景过滤）")
         void should_throw_when_noPendingVerification() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            ArgumentCaptor<VerificationQuery> queryCaptor = ArgumentCaptor.forClass(VerificationQuery.class);
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), queryCaptor.capture(), eq(SmsVerification.class)))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
                     service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("No pending sms verification");
+                    .hasMessageContaining("No pending verification of type SmsVerification");
+            assertThat(queryCaptor.getValue().scene()).isEqualTo(VerificationScene.CC);
             verify(userGateway, never()).save(any());
         }
     }
@@ -380,6 +442,33 @@ class UserAuthServiceImplTest {
             assertThat(saved.getScene()).isEqualTo(VerificationScene.CC);
             assertThat(saved.getTarget()).isEqualTo(NEW_EMAIL);
             verify(emailSender).send(eq(NEW_EMAIL), any(EmailContent.class));
+        }
+
+        @Test
+        @DisplayName("目标与原邮箱相同：抛异常，不发送不落库")
+        void should_throw_when_sameEmail() {
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWithEmail()));
+
+            assertThatThrownBy(() ->
+                    service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("cannot change to the same email");
+            verify(emailSender, never()).send(any(), any());
+            verify(verificationGateway, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("目标邮箱已被其他用户占用：抛异常，不发送不落库")
+        void should_throw_when_emailAlreadyUsed() {
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
+            when(userGateway.existsByEmail(NEW_EMAIL)).thenReturn(true);
+
+            assertThatThrownBy(() ->
+                    service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Email already exists: " + NEW_EMAIL.value());
+            verify(emailSender, never()).send(any(), any());
+            verify(verificationGateway, never()).save(any());
         }
 
         @Test
@@ -409,7 +498,7 @@ class UserAuthServiceImplTest {
             var user = createUser();
             var pending = pendingEmailVerification(VALID_CODE);
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class), eq(EmailVerification.class)))
                     .thenReturn(Optional.of(pending));
 
             service.changeEmail(new ChangeEmailCommand(1L, VALID_CODE));
@@ -427,7 +516,7 @@ class UserAuthServiceImplTest {
             var user = createUser();
             var pending = pendingEmailVerification(VALID_CODE);
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class), eq(EmailVerification.class)))
                     .thenReturn(Optional.of(pending));
 
             assertThatThrownBy(() ->
@@ -440,16 +529,18 @@ class UserAuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("无待验证聚合时抛出异常")
+        @DisplayName("无待验证聚合时抛出异常（查询按 CC 场景过滤）")
         void should_throw_when_noPendingVerification() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
-            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
+            ArgumentCaptor<VerificationQuery> queryCaptor = ArgumentCaptor.forClass(VerificationQuery.class);
+            when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), queryCaptor.capture(), eq(EmailVerification.class)))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
                     service.changeEmail(new ChangeEmailCommand(1L, VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("No pending email verification");
+                    .hasMessageContaining("No pending verification of type EmailVerification");
+            assertThat(queryCaptor.getValue().scene()).isEqualTo(VerificationScene.CC);
             verify(userGateway, never()).save(any());
         }
     }

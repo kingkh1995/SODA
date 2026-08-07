@@ -1,7 +1,9 @@
 package com.soda.user.domain;
 
 import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
+import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
@@ -22,11 +24,11 @@ import com.soda.user.domain.types.SocialType;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
-import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationScene;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
 import java.time.Instant;
 import java.util.List;
@@ -69,52 +71,61 @@ class UserTest {
     private static final RandomStringGenerator
             CODE_GENERATOR = length -> new RandomString("123456");
 
+    // 测试用的发送桩（不真正外发）
+    private static final SmsSender SMS_SENDER = (to, content) -> { };
+    private static final EmailSender EMAIL_SENDER = (to, content) -> { };
+
     // ─── helpers ───
 
-    private static User fullUserWithPasswordAccount() {
-        var hash = PASSWORD_HASHER.hash(new RawCredential("password123"));
-        var passwordAccount = PasswordAuthAccount.restoreBuilder()
+    private static PasswordAuthAccount stubPasswordAccount() {
+        return PasswordAuthAccount.builder()
                 .id(PasswordAuthAccountId.from(USER_ID))
                 .active(Active.TRUE)
-                .passwordHash(hash)
+                .passwordHash(STUB_HASH)
                 .build();
-        return User.restoreBuilder()
+    }
+
+    private static User fullUserWithPasswordAccount() {
+        return User.builder()
                 .id(USER_ID)
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
-                .accounts(List.of(passwordAccount))
+                .passwordAccount(stubPasswordAccount())
+                .accounts(List.of())
                 .build();
     }
 
     private static User fullUserWithSmsAccount() {
         var mobile = new Mobile("13800138000");
-        var smsAccount = SmsAuthAccount.restoreBuilder()
+        var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
                 .verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY)
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
+                .passwordAccount(stubPasswordAccount())
                 .accounts(List.of(smsAccount))
                 .build();
     }
 
     private static User fullUserWithEmailAccount() {
         var email = new Email("test@example.com");
-        var emailAccount = EmailAuthAccount.restoreBuilder()
+        var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
                 .verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY)
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
+                .passwordAccount(stubPasswordAccount())
                 .accounts(List.of(emailAccount))
                 .build();
     }
@@ -124,30 +135,25 @@ class UserTest {
                 .socialType(SocialType.GE)
                 .openId("openid123")
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
+                .passwordAccount(stubPasswordAccount())
                 .accounts(List.of(socialAccount))
                 .build();
     }
 
     private static User fullUserWithMixedAccounts() {
-        var hash = PASSWORD_HASHER.hash(new RawCredential("password123"));
-        var passwordAccount = PasswordAuthAccount.restoreBuilder()
-                .id(PasswordAuthAccountId.from(USER_ID))
-                .active(Active.TRUE)
-                .passwordHash(hash)
-                .build();
         var mobile = new Mobile("13800138000");
-        var smsAccount = SmsAuthAccount.restoreBuilder()
+        var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
                 .verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY)
                 .build();
         var email = new Email("test@example.com");
-        var emailAccount = EmailAuthAccount.restoreBuilder()
+        var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
                 .verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY)
@@ -156,12 +162,13 @@ class UserTest {
                 .socialType(SocialType.GE)
                 .openId("openid123")
                 .build();
-        return User.restoreBuilder()
+        return User.builder()
                 .id(USER_ID)
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
-                .accounts(List.of(passwordAccount, smsAccount, emailAccount, socialAccount))
+                .passwordAccount(stubPasswordAccount())
+                .accounts(List.of(smsAccount, emailAccount, socialAccount))
                 .build();
     }
 
@@ -185,8 +192,20 @@ class UserTest {
             assertThat(user.getNickname()).isEqualTo(NICKNAME);
             assertThat(user.getState()).isEqualTo(UserState.E);
             assertThat(user.getSex()).isEmpty();
-            assertThat(user.getAccounts()).hasSize(1);
-            assertThat(user.getAccounts().getFirst()).isInstanceOf(PasswordAuthAccount.class);
+            assertThat(user.getPasswordAccount()).isNotNull();
+            assertThat(user.getAccounts()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("构造器缺 passwordAccount -> IAE（构造器校验，与 DP 一致）")
+        void should_rejectConstruction_when_missingPasswordAccount() {
+            assertThatThrownBy(() -> User.builder()
+                    .id(USER_ID)
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .state(UserState.E)
+                    .build())
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -200,10 +219,8 @@ class UserTest {
             var events = user.flushEvents();
             assertThat(events).hasSize(1);
             assertThat(events.getFirst()).isInstanceOf(UserCreatedEvent.class);
-            // event.entityId 在 flush 时 id 尚为 null → requireId 触发 NPE（防御编程，ADR-0015）；
-            // 延迟求值语义见 Events 测试「UserCreatedEvent.entityId 延迟求值」
-            assertThatThrownBy(() -> events.getFirst().entityId())
-                    .isInstanceOf(NullPointerException.class);
+            // entityId 延迟求值：assignId 前返回 null（jspecify 契约，见 ADR-0015）
+            assertThat(events.getFirst().entityId()).isNull();
         }
 
         @Test
@@ -226,8 +243,8 @@ class UserTest {
             assertThat(user.getEmail()).hasValue(email);
             assertThat(user.getSex()).hasValue(Sex.F);
             assertThat(user.getAvatar()).hasValue(avatar);
-            assertThat(user.getAccounts()).hasSize(3);
-            assertThat(user.getAccounts()).filteredOn(a -> a instanceof PasswordAuthAccount).hasSize(1);
+            assertThat(user.getPasswordAccount()).isNotNull();
+            assertThat(user.getAccounts()).hasSize(2);
             assertThat(user.getAccounts()).filteredOn(a -> a instanceof SmsAuthAccount).hasSize(1);
             assertThat(user.getAccounts()).filteredOn(a -> a instanceof EmailAuthAccount).hasSize(1);
         }
@@ -241,18 +258,11 @@ class UserTest {
 
         @Test
         @DisplayName("恢复后状态与持久化一致")
-        void should_restoreAllFields_when_usingRestoreBuilder() {
+        void should_restoreAllFields_when_usingBuilder() {
             var mobile = new Mobile("13800138000");
             var email = new Email("test@example.com");
             var avatar = new Avatar("https://example.com/avatar.png");
-            var passwordAccount = PasswordAuthAccount.restoreBuilder()
-                    .id(PasswordAuthAccountId.from(USER_ID))
-                    .active(Active.TRUE)
-                    .passwordHash(PASSWORD_HASHER.hash(new RawCredential("pwd")))
-                    .build();
-            var accounts = List.<AuthAccount<?>>of(passwordAccount);
-
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(USER_ID)
                     .username(USERNAME)
                     .nickname(NICKNAME)
@@ -261,7 +271,8 @@ class UserTest {
                     .sex(Sex.F)
                     .avatar(avatar)
                     .state(UserState.D)
-                    .accounts(accounts)
+                    .passwordAccount(stubPasswordAccount())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
 
             assertThat(user.getId()).isEqualTo(USER_ID);
@@ -272,7 +283,8 @@ class UserTest {
             assertThat(user.getSex()).hasValue(Sex.F);
             assertThat(user.getAvatar()).hasValue(avatar);
             assertThat(user.getState()).isEqualTo(UserState.D);
-            assertThat(user.getAccounts()).hasSize(1);
+            assertThat(user.getPasswordAccount()).isNotNull();
+            assertThat(user.getAccounts()).isEmpty();
             // restore 不应产生新事件
             assertThat(user.flushEvents()).isEmpty();
         }
@@ -280,12 +292,12 @@ class UserTest {
         @Test
         @DisplayName("恢复时空可选字段为空")
         void should_restoreNullOptionals_when_notProvided() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(USER_ID)
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
 
             assertThat(user.getId()).isEqualTo(USER_ID);
@@ -355,12 +367,12 @@ class UserTest {
         @Test
         @DisplayName("disable() 已是 D 则 no-op，不发事件")
         void should_doNothing_when_alreadyDisabled() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(new UserId(1L))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
 
             user.disable();
@@ -372,12 +384,12 @@ class UserTest {
         @Test
         @DisplayName("enable() 将 D→E 且注册 UserStateChangedEvent")
         void should_enableUser_when_stateIsD() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(new UserId(1L))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
             assertThat(user.getState()).isEqualTo(UserState.D);
 
@@ -425,16 +437,16 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("changeMobile 修改手机号")
-        void should_changeMobile() {
+        @DisplayName("修改密码成功并注册 PasswordChangedEvent")
+        void should_changePassword() {
             var user = fullUserWithPasswordAccount();
             var verification = SmsVerification.createBuilder()
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Mobile("13900139000"))
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             user.changeMobile(verification);
@@ -450,13 +462,30 @@ class UserTest {
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Mobile("13900139000"))
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .generator(CODE_GENERATOR)
                     .build();
 
             assertThatThrownBy(() -> user.changeMobile(verification))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("verification must be verified");
+        }
+
+        @Test
+        @DisplayName("changeMobile 拒绝非 CC 场景的验证聚合")
+        void should_rejectChangeMobile_when_sceneNotCredentialChange() {
+            var user = fullUserWithPasswordAccount();
+            var verification = SmsVerification.createBuilder()
+                    .userId(new LongId(1L))
+                    .scene(VerificationScene.LG)
+                    .target(new Mobile("13900139000"))
+                    .generator(CODE_GENERATOR)
+                    .build();
+            verification.send(SMS_SENDER);
+            verification.verify(Instant.now(), new RandomString("123456"));
+
+            assertThatThrownBy(() -> user.changeMobile(verification))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("verification scene must be credential change");
         }
 
         @Test
@@ -467,9 +496,9 @@ class UserTest {
                     .userId(new LongId(999L))
                     .scene(VerificationScene.CC)
                     .target(new Mobile("13900139000"))
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeMobile(verification))
@@ -485,9 +514,9 @@ class UserTest {
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Mobile("13900139000"))
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
             verification.use();
 
@@ -499,21 +528,21 @@ class UserTest {
         @Test
         @DisplayName("changeMobile 拒绝相同手机号")
         void should_rejectChangeMobile_when_sameMobile() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(USER_ID)
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
                     .mobile(new Mobile("13900139000"))
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
             var verification = SmsVerification.createBuilder()
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Mobile("13900139000"))
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(SMS_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeMobile(verification))
@@ -529,9 +558,9 @@ class UserTest {
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Email("new@test.com"))
-                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(EMAIL_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             user.changeEmail(verification);
@@ -547,13 +576,30 @@ class UserTest {
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Email("new@test.com"))
-                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .generator(CODE_GENERATOR)
                     .build();
 
             assertThatThrownBy(() -> user.changeEmail(verification))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("verification must be verified");
+        }
+
+        @Test
+        @DisplayName("changeEmail 拒绝非 CC 场景的验证聚合")
+        void should_rejectChangeEmail_when_sceneNotCredentialChange() {
+            var user = fullUserWithPasswordAccount();
+            var verification = EmailVerification.createBuilder()
+                    .userId(new LongId(1L))
+                    .scene(VerificationScene.RG)
+                    .target(new Email("new@test.com"))
+                    .generator(CODE_GENERATOR)
+                    .build();
+            verification.send(EMAIL_SENDER);
+            verification.verify(Instant.now(), new RandomString("123456"));
+
+            assertThatThrownBy(() -> user.changeEmail(verification))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("verification scene must be credential change");
         }
 
         @Test
@@ -564,9 +610,9 @@ class UserTest {
                     .userId(new LongId(999L))
                     .scene(VerificationScene.CC)
                     .target(new Email("new@test.com"))
-                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(EMAIL_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeEmail(verification))
@@ -577,21 +623,21 @@ class UserTest {
         @Test
         @DisplayName("changeEmail 拒绝相同邮箱")
         void should_rejectChangeEmail_when_sameEmail() {
-            var user = User.restoreBuilder()
+            var user = User.builder()
                     .id(USER_ID)
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
                     .email(new Email("new@test.com"))
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
             var verification = EmailVerification.createBuilder()
                     .userId(new LongId(1L))
                     .scene(VerificationScene.CC)
                     .target(new Email("new@test.com"))
-                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .generator(CODE_GENERATOR)
                     .build();
+            verification.send(EMAIL_SENDER);
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeEmail(verification))
@@ -630,14 +676,7 @@ class UserTest {
             var original = fullUserWithPasswordAccount();
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, User.class);
-            assertThat(restored.getId()).isEqualTo(original.getId());
-            assertThat(restored.getUsername()).isEqualTo(original.getUsername());
-            assertThat(restored.getNickname()).isEqualTo(original.getNickname());
-            assertThat(restored.getState()).isEqualTo(original.getState());
-            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
-            assertThat(restored.getAccounts().get(0).getId()).isEqualTo(original.getAccounts().get(0).getId());
-            assertThat(restored.getAccounts().get(0).getAuthAccountType())
-                    .isEqualTo(original.getAccounts().get(0).getAuthAccountType());
+            assertThat(restored).isEqualTo(original);
         }
 
         @Test
@@ -646,9 +685,7 @@ class UserTest {
             var original = fullUserWithSmsAccount();
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, User.class);
-            assertThat(restored.getId()).isEqualTo(original.getId());
-            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
-            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.S);
+            assertThat(restored).isEqualTo(original);
         }
 
         @Test
@@ -657,9 +694,7 @@ class UserTest {
             var original = fullUserWithEmailAccount();
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, User.class);
-            assertThat(restored.getId()).isEqualTo(original.getId());
-            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
-            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.E);
+            assertThat(restored).isEqualTo(original);
         }
 
         @Test
@@ -668,9 +703,7 @@ class UserTest {
             var original = fullUserWithSocialAccount();
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, User.class);
-            assertThat(restored.getId()).isEqualTo(original.getId());
-            assertThat(restored.getAccounts()).hasSize(original.getAccounts().size());
-            assertThat(restored.getAccounts().get(0).getAuthAccountType()).isEqualTo(AuthAccountType.O);
+            assertThat(restored).isEqualTo(original);
         }
 
         @Test
@@ -679,14 +712,27 @@ class UserTest {
             var original = fullUserWithMixedAccounts();
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, User.class);
-            assertThat(restored.getId()).isEqualTo(original.getId());
-            assertThat(restored.getAccounts()).hasSize(4);
-            var restoredTypes = restored.getAccounts().stream()
-                    .map(a -> a.getAuthAccountType())
-                    .toList();
-            assertThat(restoredTypes).containsExactlyInAnyOrder(
-                    AuthAccountType.P, AuthAccountType.S, AuthAccountType.E, AuthAccountType.O
-            );
+            assertThat(restored).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("缺少 id 的 JSON 拒绝")
+        void should_reject_when_missingId() {
+            var json = """
+                    {"username":"testuser","nickname":"Test_User","state":"E"}
+                    """;
+            assertThatThrownBy(() -> MAPPER.readValue(json, User.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+
+        @Test
+        @DisplayName("未知账户判别符拒绝")
+        void should_reject_when_unknownAccountType() {
+            var json = """
+                    {"id":1,"username":"testuser","nickname":"Test_User","state":"E","accounts":[{"authAccountType":"X"}]}
+                    """;
+            assertThatThrownBy(() -> MAPPER.readValue(json, User.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 
@@ -701,12 +747,12 @@ class UserTest {
         void should_beEqual_when_sameFields() {
             var a = fullUserWithPasswordAccount();
             var b = fullUserWithPasswordAccount();
-            var user2 = User.restoreBuilder()
+            var user2 = User.builder()
                     .id(new UserId(2L))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
-                    .accounts(List.of())
+                    .passwordAccount(stubPasswordAccount())
                     .build();
             assertThat(a).isEqualTo(b);
             assertThat(a).isNotEqualTo(user2);

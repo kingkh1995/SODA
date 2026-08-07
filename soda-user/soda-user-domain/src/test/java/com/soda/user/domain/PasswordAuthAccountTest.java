@@ -10,9 +10,11 @@ import com.soda.user.domain.types.UserId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link PasswordAuthAccount} 单元测试。
@@ -42,7 +44,7 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("构造时设置 ID 和密码哈希")
         void should_setIdAndHash_when_constructed() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(a.getId()).isEqualTo(ID);
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
         }
@@ -59,9 +61,9 @@ class PasswordAuthAccountTest {
         }
 
         @Test
-        @DisplayName("RestoreBuilder 恢复所有字段")
-        void should_restoreAllFields_when_usingRestoreBuilder() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.FALSE).passwordHash(HASH).build();
+        @DisplayName("builder 恢复所有字段")
+        void should_restoreAllFields_when_usingBuilder() {
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build();
             assertThat(a.getId()).isEqualTo(ID);
             assertThat(a.isActive()).isFalse();
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
@@ -74,29 +76,29 @@ class PasswordAuthAccountTest {
 
         @Test
         @DisplayName("返回 P 类型")
-        void should_returnTypeP_when_getAuthAccountType() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            assertThat(a.getAuthAccountType()).isEqualTo(AuthAccountType.P);
+        void should_returnTypeP_when_getAccountType() {
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            assertThat(a.getAccountType()).isEqualTo(AuthAccountType.P);
         }
 
         @Test
         @DisplayName("正确密码验证通过")
         void should_verifyTrue_when_correctPassword() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(a.verify(new RawCredential("secret123"), STUB)).isTrue();
         }
 
         @Test
         @DisplayName("错误密码验证失败")
         void should_verifyFalse_when_wrongPassword() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(a.verify(new RawCredential("wrong"), STUB)).isFalse();
         }
 
         @Test
         @DisplayName("更改密码更新哈希")
         void should_updateHash_when_changePassword() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             a.changePassword(new RawCredential("x"), STUB);
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
         }
@@ -109,19 +111,19 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("Active.TRUE 时启用")
         void should_beActive_when_activeIsTrue() {
-            assertThat(PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build().isActive()).isTrue();
+            assertThat(PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build().isActive()).isTrue();
         }
 
         @Test
         @DisplayName("Active.FALSE 时禁用")
         void should_beInactive_when_activeIsFalse() {
-            assertThat(PasswordAuthAccount.restoreBuilder().id(ID).active(Active.FALSE).passwordHash(HASH).build().isActive()).isFalse();
+            assertThat(PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build().isActive()).isFalse();
         }
 
         @Test
         @DisplayName("停用后设置未激活")
         void should_setInactive_when_deactivate() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             a.deactivate();
             assertThat(a.isActive()).isFalse();
         }
@@ -129,7 +131,7 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("重新激活恢复启用状态")
         void should_restoreActive_when_reactivate() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             a.deactivate();
             a.activate();
             assertThat(a.isActive()).isTrue();
@@ -143,17 +145,24 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("Jackson round-trip")
         void should_serializeDeserialize_when_jackson() throws Exception {
-            var o = PasswordAuthAccount.restoreBuilder()
+            var o = PasswordAuthAccount.builder()
                     .id(ID)
                     .active(Active.TRUE)
                     .passwordHash(HASH)
                     .build();
             var json = MAPPER.writeValueAsString(o);
             var r = MAPPER.readValue(json, PasswordAuthAccount.class);
-            assertThat(r.getId()).isEqualTo(ID);
-            assertThat(r.getAuthAccountType()).isEqualTo(o.getAuthAccountType());
-            assertThat(r.isActive()).isEqualTo(o.isActive());
-            assertThat(r.getPasswordHash()).isEqualTo(o.getPasswordHash());
+            assertThat(r).isEqualTo(o);
+        }
+
+        @Test
+        @DisplayName("缺少 id 的 JSON 拒绝")
+        void should_reject_when_missingId() {
+            var json = """
+                    {"active":true,"passwordHash":"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"}
+                    """;
+            assertThatThrownBy(() -> MAPPER.readValue(json, PasswordAuthAccount.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 
@@ -164,10 +173,10 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("相同字段相等，不同字段不等")
         void should_beEqual_when_sameFields() {
-            var same = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            var equal = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            var diffHash = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(new CredentialHash("$2a$10$different")).build();
-            var diffId = PasswordAuthAccount.restoreBuilder().id(PasswordAuthAccountId.from(new UserId(2L))).active(Active.TRUE).passwordHash(HASH).build();
+            var same = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var equal = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var diffHash = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(new CredentialHash("$2a$10$different")).build();
+            var diffId = PasswordAuthAccount.builder().id(PasswordAuthAccountId.from(new UserId(2L))).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(same).isEqualTo(equal);
             assertThat(same).isNotEqualTo(diffHash);
             assertThat(same).isNotEqualTo(diffId);
@@ -181,7 +190,7 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("toString 包含类名")
         void should_containClassName_when_toString() {
-            var a = PasswordAuthAccount.restoreBuilder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(a.toString()).contains("PasswordAuthAccount@");
         }
     }

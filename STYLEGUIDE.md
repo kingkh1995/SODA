@@ -253,6 +253,39 @@ for (var item : value) {
 }
 ```
 
+## 类内成员访问（`this`）
+
+类内访问成员遵循「写显式、读裸、调用裸」原则：
+
+| 场景 | 规则 | 示例 |
+|---|---|---|
+| 参数/局部变量遮蔽字段的赋值 | 必须 `this.` | `this.username = username;` |
+| 字段赋值 | 必须 `this.` | `this.state = UserState.D;` |
+| 修改字段对象状态的调用（集合增删等） | 必须 `this.` | `this.accounts.add(account);` |
+| 字段读取（含读取性方法调用，如 `equals`/`compareTo`） | 禁止 `this.` | `return value;` / `value.compareTo(other.value)` |
+| 本类方法调用 | 禁止 `this.` | `isIdentified()`、`registerEvent(...)` |
+| 协作调用（委托字段对象执行，如注入的服务/网关） | 禁止 `this.` | `userService.updateUser(...)`、`eventPublisher.publishEvent(...)` |
+
+判断标准：操作是否写入或修改**字段所指向对象的状态**。赋值、集合增删 → `this.`；其余（读取、委托协作）→ 裸访问。
+
+```java
+// ✅ 一致风格
+public void disable() {
+    if (UserState.D.equals(state)) {   // 读取：裸
+        return;
+    }
+    var oldState = state;              // 读取：裸
+    this.state = UserState.D;          // 赋值：this.
+    registerEvent(...);                // 本类方法：裸
+}
+
+public void addAccount(AuthAccount<?> account) {
+    this.accounts.add(account);        // 集合变更：this.
+}
+```
+
+> 注：构造器中 `value = value.toLowerCase(...)` 一类写法是对**参数**的归一化（随后 `this.value = value` 落字段），不属于字段写，不要求 `this.`。
+
 ## 异常
 
 - 异常消息使用英文

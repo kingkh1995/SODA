@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Email;
+import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
@@ -43,15 +44,19 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
     // ─── construction ───
 
     /**
-     * 持久化恢复 / JSON 反序列化。
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * id 非空由 {@link AuthAccount}/{@link Entity} 构造器链路保证。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
     private EmailAuthAccount(
-            @JsonProperty("id") EmailAuthAccountId id,
-            @JsonProperty("active") Active active,
-            @JsonProperty("verificationCodePolicy") VerificationCodePolicy verificationCodePolicy) {
+            @JsonProperty(value = "id", required = true) EmailAuthAccountId id,
+            @JsonProperty(value = "active", required = true) Active active,
+            @JsonProperty(value = "verificationCodePolicy", required = true) VerificationCodePolicy verificationCodePolicy) {
         super(id, active);
-        this.verificationCodePolicy = Objects.requireNonNull(verificationCodePolicy);
+        ValidateUtils.notNull(verificationCodePolicy);
+        this.verificationCodePolicy = verificationCodePolicy;
     }
 
     // ─── factories ───
@@ -59,25 +64,12 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
     /**
      * 创建新邮箱账户 — active 默认 TRUE，ID 从 email 派生。
      */
-    @Builder(builderClassName = "EmailAuthAccountCreateBuilder",
-            builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static EmailAuthAccount create(Email email, @Nullable VerificationCodePolicy verificationCodePolicy) {
         return new EmailAuthAccount(
                 EmailAuthAccountId.from(email),
-                Active.TRUE,
-                Optional.ofNullable(verificationCodePolicy).orElse(DEFAULT_POLICY)
+                Active.TRUE, Objects.requireNonNullElse(verificationCodePolicy, DEFAULT_POLICY)
         );
-    }
-
-    /**
-     * 从持久化恢复邮箱账户 — 全部字段显式传入。
-     */
-    @Builder(builderClassName = "EmailAuthAccountRestoreBuilder",
-            builderMethodName = "restoreBuilder")
-    private static EmailAuthAccount restore(
-            EmailAuthAccountId id, Active active,
-            VerificationCodePolicy verificationCodePolicy) {
-        return new EmailAuthAccount(id, active, verificationCodePolicy);
     }
 
     // ─── accessors ───
@@ -86,7 +78,7 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
      * 认证类型 — 常量来源为 {@link EmailAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
      */
     @Override
-    public AuthAccountType getAuthAccountType() {
+    public AuthAccountType getAccountType() {
         return EmailAuthAccountId.ACCOUNT_TYPE;
     }
 
@@ -94,6 +86,6 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
      * 从 ID 中提取邮箱（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。
      */
     public Email getEmail() {
-        return requireId().email();
+        return getId().email();
     }
 }

@@ -10,7 +10,8 @@ import lombok.experimental.Accessors;
 /**
  * 验证状态枚举。
  * <p>
- * P(Pending) 待验证
+ * I(Initialized) 已初始化（创建后尚未发送验证码）
+ * P(Pending) 待验证（验证码已发送）
  * V(Verified) 已验证
  * U(Used) 已使用（终态；过期是派生判断，不落状态，见 ADR-0011）
  *
@@ -21,6 +22,7 @@ import lombok.experimental.Accessors;
 @RequiredArgsConstructor
 public enum VerificationStatus implements EnumType {
 
+    I("initialized"),
     P("pending"),
     V("verified"),
     U("used");

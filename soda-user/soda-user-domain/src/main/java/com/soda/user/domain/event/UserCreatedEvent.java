@@ -12,10 +12,10 @@ import java.time.Instant;
  * 在 {@link User#createBuilder()} 的 {@code build()} 中通过
  * {@link com.soda.component.domain.Entity#registerEvent} 注册。
  * <p>
- * {@code entityId} 通过 {@link #user()} 实体引用求值——**要求 ID 已分配**：
- * 事件注册时 ID 可能尚未分配（由 Repository 的 {@code save()} 调用 {@code assignId()} 填补），
- * 此时调用 {@link #entityId()} 会因 {@code requireId()} 抛 {@link NullPointerException}（见 ADR-0015 null 守卫）。
- * 调用方须在 {@code assignId()} 之后（如 ApplicationService 持久化后 flush）再取 {@code entityId()}。
+ * {@code entityId} 通过 {@link #user()} 实体引用延迟求值——事件注册时 ID 可能尚未分配
+ * （由 Repository 的 {@code save()} 调用 {@code assignId()} 填补），
+ * 调用方须在 {@code assignId()} 之后（如 ApplicationService 持久化后 flush）再取 {@code entityId()}，
+ * 此前调用返回 {@code null}（jspecify 契约，见 ADR-0015）。
  *
  * @param user       创建的用户实体
  * @param occurredAt 事件发生时间
@@ -32,6 +32,6 @@ public record UserCreatedEvent(User user, Instant occurredAt)
 
     @Override
     public UserId entityId() {
-        return user().requireId();
+        return user().getId();
     }
 }

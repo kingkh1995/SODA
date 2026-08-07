@@ -3,11 +3,10 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.soda.component.domain.Entity;
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import lombok.EqualsAndHashCode;
-
-import java.util.Objects;
 
 /**
  * 认证账户抽象基类 — User 聚合下的子实体。
@@ -15,7 +14,8 @@ import java.util.Objects;
  * 密封类，仅允许 {@link PasswordAuthAccount}、{@link SmsAuthAccount}、{@link EmailAuthAccount}、{@link SocialAuthAccount} 四种子类。
  * 子类通过多态实现不同认证方式的行为差异。
  * <p>
- * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识。
+ton * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识；
+ * 同步补充 {@link AuthAccountType} 枚举常量与一致性测试（ADR-0016）。
  * Jackson 3 从密封类 {@code permits} 子句自动发现子类，无需 {@code @JsonSubTypes}。
  * <p>
  * Jackson 序列化说明：{@link Entity 基类} 声明了 {@code @JsonAutoDetect(getterVisibility = NONE)}，
@@ -42,7 +42,8 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
      */
     protected AuthAccount(Active active) {
         super();
-        this.active = Objects.requireNonNull(active);
+        ValidateUtils.notNull(active);
+        this.active = active;
     }
 
     /**
@@ -50,7 +51,8 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
      */
     protected AuthAccount(ID id, Active active) {
         super(id);
-        this.active = Objects.requireNonNull(active);
+        ValidateUtils.notNull(active);
+        this.active = active;
     }
 
     // ─── factories ───
@@ -58,10 +60,10 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
     /**
      * 返回该账户的认证类型 — 常量来源为各 ID 子类的 {@code ACCOUNT_TYPE}，与 ID 解耦（无 ID 亦可派发）。
      */
-    public abstract AuthAccountType getAuthAccountType();
+    public abstract AuthAccountType getAccountType();
 
     public boolean typeEquals(AuthAccount<?> other) {
-        return Objects.equals(Objects.requireNonNull(other).getAuthAccountType(), getAuthAccountType());
+        return other.getAccountType().equals(getAccountType());
     }
 
     /**

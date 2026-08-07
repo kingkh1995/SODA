@@ -9,7 +9,8 @@ import java.time.Duration;
  * 验证码策略 DP — code 长度 + 有效期。
  * <p>
  * 验证码的唯一策略类型（原 {@code VerificationPolicy} 已并入本类，见 ADR-0011）：
- * 既作为验证实体 {@code Verification} 的 policy 字段，也作为认证方式的账号配置字段。
+ * 作为认证方式的账号配置字段，并在创建 {@code Verification} 时作为构造输入（决定码长与过期时间，
+ * 效果物化进 {@code VerificationCode}，不落验证实体，见 ADR-0011）。
  * 解析链：per-account 覆盖 → ServiceLoader SPI → 子类静态 {@code DEFAULT_POLICY}。
  * <p>
  * 不可变、自校验、可序列化、可比较。

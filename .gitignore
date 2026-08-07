@@ -60,3 +60,6 @@ build/
 # IDE local settings
 out/
 local.properties
+
+# Local issue tracker (scratch)
+.scratch/

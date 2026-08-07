@@ -74,7 +74,7 @@ public final class Percentage implements Type, Comparable<Percentage> {
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 
     /**

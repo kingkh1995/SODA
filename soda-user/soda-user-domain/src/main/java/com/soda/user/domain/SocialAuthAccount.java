@@ -23,12 +23,15 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
     // ─── construction ───
 
     /**
-     * 持久化恢复 / JSON 反序列化。
+     * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
+     * <p>
+     * id 非空由 {@link AuthAccount}/{@link Entity} 构造器链路保证。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
     private SocialAuthAccount(
-            @JsonProperty("id") SocialAuthAccountId id,
-            @JsonProperty("active") Active active) {
+            @JsonProperty(value = "id", required = true) SocialAuthAccountId id,
+            @JsonProperty(value = "active", required = true) Active active) {
         super(id, active);
     }
 
@@ -37,22 +40,12 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
     /**
      * 创建新社交账户 — active 默认 TRUE，ID 从 socialType + openId 派生。
      */
-    @Builder(builderClassName = "SocialAuthAccountCreateBuilder",
-            builderMethodName = "createBuilder")
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static SocialAuthAccount create(SocialType socialType, String openId) {
         return new SocialAuthAccount(
                 SocialAuthAccountId.from(socialType, openId),
                 Active.TRUE
         );
-    }
-
-    /**
-     * 从持久化恢复社交账户 — 全部字段显式传入。
-     */
-    @Builder(builderClassName = "SocialAuthAccountRestoreBuilder",
-            builderMethodName = "restoreBuilder")
-    private static SocialAuthAccount restore(SocialAuthAccountId id, Active active) {
-        return new SocialAuthAccount(id, active);
     }
 
     // ─── accessors ───
@@ -61,7 +54,7 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
      * 认证类型 — 常量来源为 {@link SocialAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
      */
     @Override
-    public AuthAccountType getAuthAccountType() {
+    public AuthAccountType getAccountType() {
         return SocialAuthAccountId.ACCOUNT_TYPE;
     }
 
@@ -69,14 +62,14 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
      * 社交平台类型（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。
      */
     public SocialType getSocialType() {
-        return requireId().socialType();
+        return getId().socialType();
     }
 
     /**
      * 社交平台用户开放 ID（数据在 id 字段中，避免 JSON 属性冲突）。
      */
     public String getOpenId() {
-        return requireId().openId();
+        return getId().openId();
     }
 
 }

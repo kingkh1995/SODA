@@ -60,7 +60,7 @@ REST API 遵循 Google API Improvement Proposals 标准：
 # Step 1 — 发送验证码
 POST /users/{id}:verifyMobile  { "newMobile": "13800138000" }
 AppService 加载 User（存在性校验），执行验证码发起（生成码、构造 SmsVerification 聚合
-（scene=CC, target=newMobile, PENDING）、发送至 newMobile）；验证聚合落库
+（scene=CC, target=newMobile, INITIALIZED）、经 `verification.send(smsSender)` 发送转 PENDING）；验证聚合落库
 
 # Step 2 — 验证并修改
 POST /users/{id}:changeMobile  { "code": "123456" }

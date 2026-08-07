@@ -46,7 +46,7 @@ public record UUId(String value) implements Identifier<String>, Comparable<UUId>
 
     @JsonValue
     public String value() {
-        return this.value;
+        return value;
     }
 
     @Override
@@ -56,6 +56,6 @@ public record UUId(String value) implements Identifier<String>, Comparable<UUId>
 
     @Override
     public int compareTo(UUId other) {
-        return this.value.compareTo(other.value);
+        return value.compareTo(other.value);
     }
 }

@@ -723,5 +723,6 @@ public int compareTo(Xxx other) {
 |---|---|---|---|---|
 | `LongId` | record | ✅ | 无 | 不显式 |
 | `UUId` | record | ✅ | 无 | 不显式 |
+| `Fen` | record | ✅ | 无 | 不显式 |
 | `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式 |
 | `Version` | class | ✅ | `[0, 99]` | ✅ 显式 |

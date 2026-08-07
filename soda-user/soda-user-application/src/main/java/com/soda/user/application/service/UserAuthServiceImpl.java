@@ -7,12 +7,9 @@ import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Email;
-import com.soda.component.domain.types.EmailContent;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.RawCredential;
-import com.soda.component.domain.types.SmsContent;
-import com.soda.component.domain.types.VerificationChannel;
 import com.soda.user.api.UserAuthService;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
@@ -28,11 +25,11 @@ import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.gateway.VerificationGateway.VerificationQuery;
 import com.soda.user.domain.service.CredentialChangeDomainService;
 import com.soda.user.domain.types.UserId;
-import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.time.Instant;
 
@@ -40,8 +37,8 @@ import java.time.Instant;
  * 用户凭证相关的 ApplicationService 实现。
  * <p>
  * 仅做用例编排：加载主体聚合（{@code User}）→ 执行用例流程 → 持久化（先存 user 后存 verification）。
- * 验证码发起（生成码、构造 PENDING 验证聚合、发送）只涉及单聚合创建，在本类内直接展开；
- * 跨聚合的消费流程（verify → change → use）委托 {@link CredentialChangeDomainService}
+ * 验证码发起（生成码、构造 INITIALIZED 验证聚合、经聚合 {@code send(sender)} 发送）只涉及单聚合创建，
+ * 在本类内直接展开；跨聚合的消费流程（verify → change → use）委托 {@link CredentialChangeDomainService}
  * （见 framework-conventions「ApplicationService 编排规范」）。
  */
 @Slf4j
@@ -85,8 +82,10 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
     public void verifyMobile(VerifyMobileCommand command) {
         log.info("verifyMobile: command={}", command);
         var userId = new UserId(command.userId());
-        require(userId);
+        var user = require(userId);
         var target = new Mobile(command.newMobile());
+        Assert.isTrue(!target.equals(user.getMobile().orElse(null)), "cannot change to the same mobile");
+        Assert.isTrue(!gateway.existsByMobile(target), "Mobile already exists: " + command.newMobile());
         if (verificationGateway.hasUnexpiredPending(userId.toLongId(), VerificationScene.CC)) {
             throw new IllegalArgumentException("An unexpired pending verification already exists");
         }
@@ -94,10 +93,9 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
                 .userId(userId.toLongId())
                 .scene(VerificationScene.CC)
                 .target(target)
-                .policy(VerificationCodePolicy.DEFAULT_SMS)
                 .generator(randomStringGenerator)
                 .build();
-        smsSender.send(target, new SmsContent("您的验证码: " + verification.getCode().code()));
+        verification.send(smsSender);
         verificationGateway.save(verification);
     }
 
@@ -106,7 +104,7 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
         log.info("changeMobile: command={}", command);
         var userId = new UserId(command.userId());
         var user = require(userId);
-        var pendingVerification = SmsVerification.class.cast(requireLatestUnexpiredPending(userId, VerificationChannel.S));
+        var pendingVerification = requireLatestUnexpiredPending(userId, VerificationScene.CC, SmsVerification.class);
         credentialChangeService.changeMobile(user, pendingVerification, new RandomString(command.code()));
         gateway.save(user);
         verificationGateway.save(pendingVerification);
@@ -116,8 +114,10 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
     public void verifyEmail(VerifyEmailCommand command) {
         log.info("verifyEmail: command={}", command);
         var userId = new UserId(command.userId());
-        require(userId);
+        var user = require(userId);
         var target = new Email(command.newEmail());
+        Assert.isTrue(!target.equals(user.getEmail().orElse(null)), "cannot change to the same email");
+        Assert.isTrue(!gateway.existsByEmail(target), "Email already exists: " + command.newEmail());
         if (verificationGateway.hasUnexpiredPending(userId.toLongId(), VerificationScene.CC)) {
             throw new IllegalArgumentException("An unexpired pending verification already exists");
         }
@@ -125,10 +125,9 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
                 .userId(userId.toLongId())
                 .scene(VerificationScene.CC)
                 .target(target)
-                .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                 .generator(randomStringGenerator)
                 .build();
-        emailSender.send(target, new EmailContent("验证码", "您的验证码: " + verification.getCode().code()));
+        verification.send(emailSender);
         verificationGateway.save(verification);
     }
 
@@ -137,7 +136,7 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
         log.info("changeEmail: command={}", command);
         var userId = new UserId(command.userId());
         var user = require(userId);
-        var pendingVerification = EmailVerification.class.cast(requireLatestUnexpiredPending(userId, VerificationChannel.E));
+        var pendingVerification = requireLatestUnexpiredPending(userId, VerificationScene.CC, EmailVerification.class);
         credentialChangeService.changeEmail(user, pendingVerification, new RandomString(command.code()));
         gateway.save(user);
         verificationGateway.save(pendingVerification);
@@ -145,21 +144,26 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
 
     /**
      * 断言用户存在最新且未过期的 PENDING 验证并返回 — changeMobile / changeEmail 的公共查询。
+    /**
+     * 断言用户存在最新且未过期的 PENDING 验证并返回 — changeMobile / changeEmail 的公共查询。
      * <p>
-     * 基于 {@code findLatestByUserId} 的便捷封装：场景固定为 {@link VerificationScene#CC}，
-     * {@code status} 固定为 {@link VerificationStatus#P}，判定时刻固定为 {@link Instant#now()}；
-     * 渠道过滤由 {@code channel} 承担（channel 与实体类型一一对应，调用方按渠道强转收敛类型）。
+     * 基于 {@code findLatestByUserId} 的便捷封装：场景由参数指定（换绑固定传
+     * {@link VerificationScene#CC}），{@code status} 固定为 {@link VerificationStatus#P}，
+     * 判定时刻固定为 {@link Instant#now()}；
+     * 类型收敛变体（ADR-0016）：判别值由 gateway 实现按 {@code type} 推导，
+     * 调用方零反查、零强转。
      * 「必须存在」语义：无匹配时抛 {@link IllegalArgumentException}（属应用层校验职责，
      * 对齐 {@link AbstractAppService#require}）。
      *
-     * @param userId  用户 ID
-     * @param channel 验证渠道
+     * @param userId 用户 ID
+     * @param scene  验证场景（过滤条件，换绑为 {@link VerificationScene#CC}）
+     * @param type   验证实体类型（{@link SmsVerification} / {@link EmailVerification}）
      * @return 匹配的最新且未过期的 PENDING 验证实体
      * @throws IllegalArgumentException 无匹配验证时
      */
-    private Verification<?> requireLatestUnexpiredPending(UserId userId, VerificationChannel channel) {
+    private <T extends Verification<?>> T requireLatestUnexpiredPending(UserId userId, VerificationScene scene, Class<T> type) {
         return verificationGateway.findLatestByUserId(userId.toLongId(),
-                        new VerificationQuery(VerificationScene.CC, VerificationStatus.P, channel, Instant.now()))
-                .orElseThrow(() -> new IllegalArgumentException("No pending " + channel.desc() + " verification"));
+                        new VerificationQuery(scene, VerificationStatus.P, Instant.now()), type)
+                .orElseThrow(() -> new IllegalArgumentException("No pending verification of type " + type.getSimpleName()));
     }
 }
