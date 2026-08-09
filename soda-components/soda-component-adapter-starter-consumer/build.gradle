@@ -1,0 +1,4 @@
+dependencies {
+    // consumer 通道当前仅占位（package-info，存在理由见 ADR-0019）；保持家族 {api} 契约
+    api project(':soda-components:soda-component-api-starter')
+}

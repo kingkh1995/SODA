@@ -44,13 +44,15 @@ class VerificationTest {
     private static final Email EMAIL = new Email("test@example.com");
     private static final String VALID_CODE = "123456";
 
-    // 测试用的验证码生成器
+    // 测试用的验证码生成器（字符集参数忽略，恒返回固定码）
     private static final RandomStringGenerator CODE_GENERATOR =
-            length -> new RandomString(VALID_CODE);
+            (length, alphabet) -> new RandomString(VALID_CODE);
 
     // 测试用的发送桩（不真正外发）
-    private static final SmsSender SMS_SENDER = (to, content) -> { };
-    private static final EmailSender EMAIL_SENDER = (to, content) -> { };
+    private static final SmsSender SMS_SENDER = (to, content) -> {
+    };
+    private static final EmailSender EMAIL_SENDER = (to, content) -> {
+    };
 
     // ─── factories ───
 
@@ -71,7 +73,7 @@ class VerificationTest {
             assertThat(verification.getScene()).isEqualTo(VerificationScene.LG);
             assertThat(verification.getStatus()).isEqualTo(VerificationStatus.I);
             assertThat(verification.isInitialized()).isTrue();
-            assertThat(verification.getCode().code()).isEqualTo(VALID_CODE);
+            assertThat(verification.getCode().code()).isEqualTo(new RandomString(VALID_CODE));
             assertThat(verification.getTarget()).isEqualTo(MOBILE);
             assertThat(verification.getUserId()).isEqualTo(USER_ID);
         }
@@ -89,7 +91,7 @@ class VerificationTest {
             assertThat(verification.getScene()).isEqualTo(VerificationScene.RG);
             assertThat(verification.getStatus()).isEqualTo(VerificationStatus.I);
             assertThat(verification.isInitialized()).isTrue();
-            assertThat(verification.getCode().code()).isEqualTo(VALID_CODE);
+            assertThat(verification.getCode().code()).isEqualTo(new RandomString(VALID_CODE));
             assertThat(verification.getTarget()).isEqualTo(EMAIL);
             assertThat(verification.getUserId()).isEqualTo(USER_ID);
         }
@@ -148,12 +150,13 @@ class VerificationTest {
                     .id(UUId.random())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
-                    .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
+                    .code(new VerificationCode(new RandomString(VALID_CODE), Instant.EPOCH))
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
 
-            assertThatThrownBy(() -> verification.send((to, content) -> { }))
+            assertThatThrownBy(() -> verification.send((to, content) -> {
+            }))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("verification must be initialized before sending");
         }
@@ -227,7 +230,7 @@ class VerificationTest {
                     .id(created.getId())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
-                    .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
+                    .code(new VerificationCode(new RandomString(VALID_CODE), Instant.EPOCH))
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
@@ -357,7 +360,7 @@ class VerificationTest {
                     .id(created.getId())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
-                    .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
+                    .code(new VerificationCode(new RandomString(VALID_CODE), Instant.EPOCH))
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();
@@ -373,7 +376,7 @@ class VerificationTest {
                     .id(UUId.random())
                     .scene(VerificationScene.LG)
                     .status(VerificationStatus.P)
-                    .code(new VerificationCode(VALID_CODE, createdAt))
+                    .code(new VerificationCode(new RandomString(VALID_CODE), createdAt))
                     .target(MOBILE)
                     .userId(USER_ID)
                     .build();

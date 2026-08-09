@@ -69,6 +69,14 @@ public final class ValidateUtils {
     }
 
     /**
+     * 字符唯一性校验 — 校验字符串不包含重复字符（如字符集 DP 的集合语义，重复 = 隐式加权，见 ADR-0018）。
+     */
+    public static void noDuplicateChars(@Nullable String value) {
+        Assert.isTrue(value == null || value.chars().distinct().count() == value.length(),
+                "must not contain duplicate characters");
+    }
+
+    /**
      * BigDecimal 小数位数上限校验。
      */
     public static void maxScale(@Nullable BigDecimal value, int max) {

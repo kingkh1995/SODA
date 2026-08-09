@@ -11,7 +11,6 @@ import java.util.Optional;
  * 方法取自 Spring Data JPA 命名约定：
  * <ul>
  *   <li>{@link #save(Object)} — 同 {@code CrudRepository.save(S)}</li>
- *   <li>{@link #remove(Object)} — 同 {@code CrudRepository.delete(T)}</li>
  *   <li>{@link #findById(Object)} — 同 {@code CrudRepository.findById(ID)}</li>
  *   <li>{@link #findAllById(Iterable)} — 同 {@code CrudRepository.findAllById(Iterable)}</li>
  * </ul>
@@ -35,16 +34,6 @@ public interface EntityGateway<T extends Entity<ID>, ID extends Identifier<?>> e
      * @return 实体标识符，总为非 null
      */
     ID save(T entity);
-
-    /**
-     * 移除实体。
-     * <p>
-     * 需先通过 {@link #findById(ID)} 加载实体再进行移除，
-     * 确保聚合不变量在删除前已被校验。
-     *
-     * @param entity 待移除实体，非 null
-     */
-    void remove(T entity);
 
     /**
      * 按 ID 查询实体。

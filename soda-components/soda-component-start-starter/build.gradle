@@ -6,7 +6,9 @@ dependencies {
     // 根模块显式声明：adapter/infrastructure/query-server 的 api 边传递覆盖
     // api、domain；application 无入边（adapter 只在其 runtime classpath 消费），
     // domain-types 无入边，两者都必须显式声明。
-    testRuntimeOnly project(':soda-components:soda-component-adapter-starter')
+    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-web')
+    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-job')
+    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-consumer')
     testRuntimeOnly project(':soda-components:soda-component-infrastructure-starter')
     testRuntimeOnly project(':soda-components:soda-component-query-server-starter')
     testRuntimeOnly project(':soda-components:soda-component-application-starter')

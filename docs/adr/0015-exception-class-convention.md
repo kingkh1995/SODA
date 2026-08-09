@@ -11,6 +11,8 @@
 > 修订（2026-08-07 二次）：**领域层运行时守卫全部退役**——构造器 / 方法参数 null 检查（`Objects.requireNonNull`）、`Identifiable.requireId()`、`User.requirePasswordAccount()` 全部删除。契约由 jspecify `@NullMarked` 声明（默认非空）+ 调用方遵守，未来编译期 checker（NullAway）enforce。聚合不变量**结构化**：`PasswordAuthAccount` 成为 `User` 构造器必填字段（ADR-0004 类型化，无密码账户的 User 不可表示；`accounts` 仅存可选账户，`addAccount` 拒绝密码账户）。JSON 恢复路径由 schema 强制（`@JsonProperty(required = true)`：id 与 passwordAccount 必填，缺 id 由 Jackson 在协议边界拒绝）。可空查找返回 Optional；requireXXX 模式（fetch → null check → throw IAE）仅留在 appservice。应用：`User` / `Entity` / `Identifiable` / `Verification` / 全部 `AuthAccount` 子类；测试同步（删除守卫断言，「缺少 id 的 JSON 拒绝」改为 schema 语义）。
 >
 > 修订（2026-08-07 三次）：**构造器校验回归（DP 式）**——实体构造器恢复参数校验：非空参数用 `ValidateUtils.notNull`（IAE，固定标准消息，与 DP 构造器完全一致）；**方法路径保持零守卫**（契约由 jspecify 声明）。「属性合法」的保证点回到构造器（创建 / 恢复路径统一拦截）。恢复路径 JSON 的**全部非空字段**声明 `@JsonProperty(required = true)`（schema 完整性 = 类型的镜像，缺字段由 Jackson 在协议边界拒绝），可空字段标 `@Nullable`。应用：`User` / `AuthAccount` 及子类 / `Verification` / `SmsVerification` / `EmailVerification` 构造器；`EmailAuthAccountTest` / `UserTest` 断言。
+>
+> 修订（2026-08-08）：**已被 ADR-0017（2026-08-09）取代**（生命周期收敛为单维状态机，本段仅作分类学沿革记录）。原内容：`User` 新增 transient `removed` 标志与 `remove()`（严格 transition：前置必须禁用 D，成功注册 `UserRemovedEvent` 并置位）；公共 `mustEnable()`（E 前置，变更方法统一调用）；私有 `assertNotRemoved()`（removed 后任何行为调用抛 IAE 带消息，含重复 remove）。分类不是非 null 守卫（jspecify 契约，已退役），而是**生命周期状态守卫**——物理删除后聚合不可再加载（跨请求由 appservice `require` not-found 兜底），本守卫只防御同事务内同一实例的误用（remove 后 save 的 JPA merge 行为未定义，可能幽灵复活；重复 remove 产生重复事件）。`isRemoved()` 供基础设施实现 save 防御（UserGateway javadoc 契约约定）。标志 `@JsonIgnore` + transient：不参与序列化与相等性（恢复路径必为存活聚合）。
 
 **Status**: accepted
 

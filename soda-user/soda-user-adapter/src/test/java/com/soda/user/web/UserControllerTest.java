@@ -48,7 +48,7 @@ class UserControllerTest {
         @DisplayName("创建用户成功返回用户对象")
         void should_returnUser_when_createUser() {
             var request = new CreateUserRequest("testuser", "test1234", "测试用户", "13800138000", "test@example.com", "1", null);
-            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "M", null, "E");
+            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "M", null, "E", 5);
             when(userService.createUser(any(CreateUserCommand.class))).thenReturn(dto);
 
             var response = controller.createUser(request);
@@ -62,6 +62,7 @@ class UserControllerTest {
             assertThat(response.data().email()).isEqualTo("test@example.com");
             assertThat(response.data().sex()).isEqualTo("M");
             assertThat(response.data().state()).isEqualTo("E");
+            assertThat(response.data().version()).isEqualTo(5);
         }
     }
 

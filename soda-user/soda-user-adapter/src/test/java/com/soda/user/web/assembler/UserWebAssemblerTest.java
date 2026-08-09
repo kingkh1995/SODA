@@ -174,7 +174,7 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("UserDTO 映射到 UserResponse")
         void should_mapUserDto_when_toResponse() {
-            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "1", null, "E");
+            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "1", null, "E", 3);
 
             var response = assembler.toResponse(dto);
 
@@ -186,14 +186,15 @@ class UserWebAssemblerTest {
             assertThat(response.sex()).isEqualTo("1");
             assertThat(response.avatar()).isNull();
             assertThat(response.state()).isEqualTo("E");
+            assertThat(response.version()).isEqualTo(3);
         }
 
         @Test
         @DisplayName("UserDTO 列表映射到 UserResponse 列表")
         void should_mapUserDtoList_when_toResponseList() {
             var dtos = List.of(
-                    new UserDTO(1L, "user1", "用户1", "13800138000", "u1@test.com", "1", null, "E"),
-                    new UserDTO(2L, "user2", "用户2", "13900139000", "u2@test.com", "2", "avatar.png", "D")
+                    new UserDTO(1L, "user1", "用户1", "13800138000", "u1@test.com", "1", null, "E", 1),
+                    new UserDTO(2L, "user2", "用户2", "13900139000", "u2@test.com", "2", "avatar.png", "D", 2)
             );
 
             var resps = assembler.toResponseList(dtos);
@@ -201,8 +202,10 @@ class UserWebAssemblerTest {
             assertThat(resps).hasSize(2);
             assertThat(resps.get(0).id()).isEqualTo(1L);
             assertThat(resps.get(0).username()).isEqualTo("user1");
+            assertThat(resps.get(0).version()).isEqualTo(1);
             assertThat(resps.get(1).id()).isEqualTo(2L);
             assertThat(resps.get(1).username()).isEqualTo("user2");
+            assertThat(resps.get(1).version()).isEqualTo(2);
         }
     }
 }

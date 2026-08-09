@@ -7,7 +7,6 @@ import com.soda.component.domain.util.ValidateUtils;
 
 import java.util.Locale;
 import java.util.UUID;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
@@ -22,10 +21,6 @@ import java.util.regex.Pattern;
  */
 public record UUId(String value) implements Identifier<String>, Comparable<UUId> {
 
-    /**
-     * 自动生成策略 — 用于客户端生成 {@code Entity(Supplier)} 构造器。
-     */
-    public static final Supplier<UUId> AUTO = UUId::random;
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 

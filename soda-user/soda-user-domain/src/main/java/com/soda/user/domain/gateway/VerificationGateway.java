@@ -15,7 +15,7 @@ import java.util.Optional;
 /**
  * 验证码实体的持久化契约（防腐层接口）。
  * <p>
- * 继承 {@link EntityGateway} 提供基础 CRUD（save、remove、findById、findAllById），
+ * 继承 {@link EntityGateway} 提供基础 CRUD（save、findById、findAllById），
  * 扩展按业务场景查询的方法。验证实体在 {@code soda-user-domain} 模块，
  * 本 gateway 提供领域层访问接口。
  * <p>

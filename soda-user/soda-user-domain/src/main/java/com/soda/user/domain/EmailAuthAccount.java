@@ -5,24 +5,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Email;
-import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import org.jspecify.annotations.Nullable;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * 邮箱认证账户实体 — 邮箱 + 验证码方式的认证。
  * <p>
  * 与 User.email 联动：设置 User.email 时自动创建，清除时自动删除。
- * 只保留认证标识（邮箱）和策略配置（{@link VerificationCodePolicy}），
- * 验证码的发送/校验状态已迁移至独立的 {@link Verification} 实体。
+ * <p>
+ * 只保留认证标识（邮箱）与 active——验证码的发送/校验状态已迁移至独立的
+ * {@link Verification} 实体（ADR-0011）；码形策略是通道级规则，账户不持有 policy 字段
+ * （2026-08-09 移除，见 ADR-0018）。
  *
  * @see AuthAccount
  */
@@ -32,14 +29,9 @@ import java.util.Optional;
 public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     /**
-     * 默认邮箱验证码策略：8 位，30 分钟过期。
+     * 默认邮箱验证码策略：8 位字母数字，30 分钟过期。
      */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_EMAIL;
-
-    /**
-     * 当前生效的策略。
-     */
-    private VerificationCodePolicy verificationCodePolicy;
 
     // ─── construction ───
 
@@ -52,11 +44,8 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
     @Builder
     private EmailAuthAccount(
             @JsonProperty(value = "id", required = true) EmailAuthAccountId id,
-            @JsonProperty(value = "active", required = true) Active active,
-            @JsonProperty(value = "verificationCodePolicy", required = true) VerificationCodePolicy verificationCodePolicy) {
+            @JsonProperty(value = "active", required = true) Active active) {
         super(id, active);
-        ValidateUtils.notNull(verificationCodePolicy);
-        this.verificationCodePolicy = verificationCodePolicy;
     }
 
     // ─── factories ───
@@ -65,11 +54,8 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
      * 创建新邮箱账户 — active 默认 TRUE，ID 从 email 派生。
      */
     @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
-    private static EmailAuthAccount create(Email email, @Nullable VerificationCodePolicy verificationCodePolicy) {
-        return new EmailAuthAccount(
-                EmailAuthAccountId.from(email),
-                Active.TRUE, Objects.requireNonNullElse(verificationCodePolicy, DEFAULT_POLICY)
-        );
+    private static EmailAuthAccount create(Email email) {
+        return new EmailAuthAccount(EmailAuthAccountId.from(email), Active.TRUE);
     }
 
     // ─── accessors ───

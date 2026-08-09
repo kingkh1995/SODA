@@ -28,13 +28,14 @@ graph TD
 
 ### Component starter dependency chain
 
-分层 starter 按 DDD 架构层（api → domain → app → adapter）+ 基础设施 + 读服务 + 启动入口切割。每个 starter 通过 `allowedDependencies` 强制依赖方向——下层模块不允许反向引用上层。业务模块只需按需引入对应层。
+分层 starter 按 DDD 架构层（api → domain → app → adapter 家族）+ 基础设施 + 读服务 + 启动入口切割。每个 starter 通过 `allowedDependencies` 强制依赖方向——下层模块不允许反向引用上层。业务模块只需按需引入对应层。
 
 ```mermaid
 graph TD
-    start(start) -->|allowedDeps: adapter, infrastructure| adapter
-    start --> infrastructure
-    adapter(adapter) -->|allowedDeps: api + application(classpath)| api
+    start(start) -->|allowedDeps: (none)| infrastructure
+    web(web) -->|allowedDeps: api| api
+    job(job) -->|allowedDeps: api| api
+    consumer(consumer) -->|allowedDeps: api| api
     application(application) -->|allowedDeps: domain, api| domain
     application --> api
     infrastructure(infrastructure) -->|allowedDeps: domain| domain
@@ -49,10 +50,12 @@ graph TD
  |`api`|`OPEN`|`com.soda.component.api`|共享 DTO/Command/Query 基类|(none)|
  |`domain`|`OPEN`|`com.soda.component.domain`|DDD 基类型（Entity/Aggregate/Identifier）|(none)|
  |`application`|`CLOSED`|`com.soda.component.application`|ApplicationService 基类 + CommandExecutor|`domain`, `api`|
- |`adapter`|`CLOSED`|`com.soda.component.adapter`|Controller/Assembler 基类|`api` (application 只在 runtime classpath，ModulithTest 强制代码不得 import application)|
+ |`web`|`CLOSED`|`com.soda.component.web`|web 入站通道基类：Result 信封、错误结构、校验注解|`api`|
+|`job`|`CLOSED`|`com.soda.component.job`|定时任务基类：JobContext|`api`|
+|`consumer`|`CLOSED`|`com.soda.component.consumer`|消息消费者基类（空占位，待 MQ 集成，见 ADR-0019）|`api`|
  |`infrastructure`|`CLOSED`|`com.soda.component.infrastructure`|Repository/持久化骨架|`domain`|
  |`query-server`|`CLOSED`|`com.soda.component.queryserver`|读服务（混装）基类|`api`, `infrastructure`|
- |`start`|`CLOSED`|`com.soda.component.start`|写侧启动入口基类及配置|`adapter`, `infrastructure`|
+ |`start`|`CLOSED`|`com.soda.component.start`|写侧启动入口基类及配置|(none)（组件模块仅 testRuntimeOnly，见 start-starter ModulithTest）|
 
 业务模块（如 `soda-user-xxx`）在各自的 build.gradle 中按需引入这些 starter，替代手写原生的 Spring 依赖：
 
@@ -60,10 +63,10 @@ graph TD
 |---|---|
 |`soda-user-api`|`soda-component-api-starter`|
 |`soda-user-domain`|`soda-component-domain-starter` + `soda-component-domain-types`|
-|`soda-user-adapter`|`soda-component-adapter-starter`|
+|`soda-user-adapter`|`soda-component-adapter-starter-web` + `soda-component-adapter-starter-job` + `soda-component-adapter-starter-consumer`|
 |`soda-user-infrastructure`|`soda-component-domain-starter` + `soda-component-infrastructure-starter`|
 |`soda-user-application`|`soda-component-api-starter` + `soda-component-application-starter`|
-|`soda-user-start`|`soda-component-adapter-starter` + `soda-component-infrastructure-starter` + `soda-component-start-starter`|
+|`soda-user-start`|`soda-component-start-starter`（adapter/infrastructure 经 runtimeOnly 的 user-adapter/user-infrastructure 传递）|
 
 ## Modulith 治理规则
 
@@ -115,10 +118,11 @@ class ModulithTest {
 - `changeSex(Sex)` — 修改性别
 - `changeAvatar(Avatar)` — 修改头像
 - `changePassword(RawCredential, CredentialHasher)` — 修改密码（委托到 PasswordAuthAccount；密码账户为构造期必填字段，无查找无守卫）
-- `disable()` — 禁用用户。E→D 发 UserStateChangedEvent；已是 D 则 no-op
-- `enable()` — 启用用户。D→E 发 UserStateChangedEvent；已是 E 则 no-op
+- `disable()` — 禁用用户。E→D 发 UserStateChangedEvent；已是 D 则 no-op；R → IAE（吸收态，见 ADR-0017）
+- `enable()` — 启用用户。D→E 发 UserStateChangedEvent；已是 E 则 no-op；R → IAE（吸收态，见 ADR-0017）
+- `deregister()` — 注销用户（终态迁移）。D→R 严格迁移（前置必须 D），发 UserDeregisteredEvent；R 为吸收态，此后无任何操作
 
-_Avoid_: 用户管理、系统用户、setXXX、changeStatus
+_Avoid_: 用户管理、系统用户、setXXX、changeStatus、删除（作为领域动词）、remove、物理删除
 ### Username
 用户账号。4-30 位字母数字。全局唯一。
 _Avoid_: 账号、账号名
@@ -137,11 +141,14 @@ _Avoid_: 名称、显示名
 头像 URL。URL 格式校验。
 
 ### UserState
-用户状态枚举。取值：`E`（Enabled）、`D`（Disabled）。
+用户状态枚举。取值：`E`（Enabled）、`D`（Disabled）、`R`（Removed / 注销，吸收态终态）。
 
-状态跃迁通过 User 的方法 `disable()` / `enable()` 表达，不暴露泛化的 changeState。
-- `disable()`: state=E → 切换为 D, 触发 `UserStateChangedEvent`; 已是 D → no-op, 不发事件
-- `enable()`: state=D → 切换为 E, 触发 `UserStateChangedEvent`; 已是 E → no-op, 不发事件
+状态跃迁通过 User 的方法 `disable()` / `enable()` / `deregister()` 表达，不暴露泛化的 changeState。
+- `disable()`: state=E → 切换为 D, 触发 `UserStateChangedEvent`; 已是 D → no-op, 不发事件; R → IAE（吸收态，见 ADR-0017）
+- `enable()`: state=D → 切换为 E, 触发 `UserStateChangedEvent`; 已是 E → no-op, 不发事件; R → IAE（吸收态，见 ADR-0017）
+- `deregister()`: state=D → 切换为 R（严格 transition，前置必须 D），触发 `UserDeregisteredEvent`; R 为终态，之后无任何操作可执行
+
+_Avoid_: 删除作为领域动词、remove、把注销建模为独立 flag（终态是状态机一员，见 ADR-0017）
 
 ### SocialType
 社交平台类型枚举。取值：`GE`（Gitee）、`DT`（DingTalk）、`WENT`（WechatWork）、`WMP`（WechatMp）、`WOPN`（WechatOpen）、`WMIN`（WechatMini）、`ALIP`（AlipayMini）。
@@ -154,7 +161,7 @@ _Avoid_: 认证信息、登录方式、Account
 密码认证账号。持有 `passwordHash`（`CredentialHash`）。提供 `verify(RawCredential, CredentialHasher)` 和 `changePassword(RawCredential, CredentialHasher)`。
 
 ### SmsAuthAccount
-短信认证账号。持有 `VerificationCodePolicy`（验证码策略配置）。不再持有临时验证码——验证码状态由独立的 `Verification` 实体管理（见 ADR-0011）。
+短信认证账号。不再持有验证码策略配置——码形是通道级规则，`VerificationCodePolicy` 仅作通道常量载体与 `Verification.create` 输入（2026-08-09 移除字段，见 ADR-0011/0018）；验证码状态由独立的 `Verification` 实体管理（见 ADR-0011）。
 
 ### EmailAuthAccount
 邮箱认证账号。行为同 SmsAuthAccount。
@@ -178,7 +185,7 @@ _Avoid_: 认证信息、登录方式、Account
 认证方式枚举。取值：`P`（Password）、`S`（Sms）、`E`（Email）、`O`（OAuth）。
 
 ### VerificationCodePolicy
-验证码策略 DP（`com.soda.user.domain.types.VerificationCodePolicy`，位于 soda-user-domain）。封装 `codeLength` 和 `expiry`。提供 `DEFAULT_SMS`（6位/5分钟）和 `DEFAULT_EMAIL`（8位/30分钟）。验证码的唯一策略类型：作为认证方式的账号配置字段，并在创建 `Verification` 时作为 create 构造末位可空参数（缺省取子类静态 `DEFAULT_POLICY`——`SmsVerification.DEFAULT_POLICY`/`EmailVerification.DEFAULT_POLICY`；决定码长与过期时间，效果物化进 `VerificationCode`，不落验证实体，见 ADR-0011）。解析链：per-account 覆盖 → 子类静态 `DEFAULT_POLICY`。（ServiceLoader SPI 暂未实现）
+验证码策略 DP（`com.soda.user.domain.types.VerificationCodePolicy`，位于 soda-user-domain）。封装 `codeLength`（`PositiveInt`）、`expiry`（`Duration`）和 `codeAlphabet`（`Alphabet`，字符集）——**嵌套 DP 值对象组合**（2026-08-09，见 ADR-0018；各嵌套 DP 在 JSON 中经自身 `@JsonValue`/creator 序列化为基本类型值）。提供 `DEFAULT_SMS`（6位/5分钟/`Alphabet.DIGITS`）和 `DEFAULT_EMAIL`（8位/30分钟/`Alphabet.ALPHANUMERIC`）。验证码的唯一策略类型：作为**通道常量载体**（码形是通道级规则，非账号数据——`SmsAuthAccount`/`EmailAuthAccount` 不持有 policy 字段，仅保留 `DEFAULT_POLICY` 常量作为预留契约，create 不再接受覆盖参数，2026-08-09 见 ADR-0011/0018）与 `Verification` create 构造末位可空参数（缺省取子类静态 `DEFAULT_POLICY`——`SmsVerification.DEFAULT_POLICY`/`EmailVerification.DEFAULT_POLICY`；决定码长、过期时间与字符集，效果物化进 `VerificationCode`，不落验证实体，见 ADR-0011、ADR-0018）。
 
 ### VerificationCode
 验证码 DP（`com.soda.user.domain.types.VerificationCode`，位于 soda-user-domain）。封装 `code`、`expireAt`。`matches(RandomString)` 纯匹配；`expiredAt(Instant)` 纯过期判断——时钟由调用方注入，过期 / 匹配的组合校验由 `Verification` 聚合负责（jspecify 契约：参数默认非空，见 ADR-0015）。使用状态不落 DP——生命周期由 `Verification` 的 `status` 表达（单一事实源，见 ADR-0011）。
@@ -186,7 +193,7 @@ _Avoid_: 认证信息、登录方式、Account
 ### Verification
 独立验证实体（`com.soda.user.domain.Verification`，位于 soda-user-domain）。无子实体，按 Entity 分类（非聚合根）。密封类层次结构，与 `AuthAccount` 对称设计；`target` 类型参数化到基类（`Verification<T extends Type>`），子类仅保留 target 类型与 `@JsonTypeName` 差异。
 状态机：`I`(Initialized) → `P`(Pending) → `V`(Verified) → `U`(Used)。过期是派生判断（基于 `code().expireAt()`，不落状态）。
-策略不落实体——创建时以子类静态 `DEFAULT_POLICY` 为默认（`policy` 为 create 末位可空参数），决定码长与过期时间，效果物化进 `code`，不作为属性持久化。
+策略不落实体——创建时以子类静态 `DEFAULT_POLICY` 为默认（`policy` 为 create 末位可空参数），决定码长、过期时间与字符集（`alphabet`），效果物化进 `code`，不作为属性持久化。
 行为：`verify(Instant at, RandomString)`（时钟注入）、`use()`、`isInitialized()`、`isPending()`、`isVerified()`、`isExpiredAt(at)`；子类 `send(SmsSender)` / `send(EmailSender)`（sender 参数注入，发送成功后 `I` → `P`，发送失败状态保持 `I`）；`verify` 前置：待验证状态 → 未过期 → 码匹配（业务前置，带消息 IAE）；构造器非空参数用 `ValidateUtils` 校验（与 DP 一致，见 ADR-0015）。
 两种子类型：`SmsVerification`（target=Mobile）、`EmailVerification`（target=Email）。（AuthenticatorVerification 暂不实现）
 User 的 `changeMobile(SmsVerification)` / `changeEmail(EmailVerification)` 接收对应子类型作为参数，验证通过后执行领域行为（守卫：userId 匹配 → scene 必须为 CC → VERIFIED → 目标不同）。
@@ -213,6 +220,10 @@ _Avoid_: 在业务逻辑中按 channel 判断分支（用模式匹配拿具体�
 _Avoid_: 将验证码（临时状态）存入 SmsAuthAccount 或 User 聚合
 
 
+### Alphabet
+字符集 DP（`com.soda.component.domain.types.Alphabet`，位于 soda-components）。包装任意字符集字符串（开集，非枚举）——`RandomStringGenerator` 以它为输入决定输出字符。不变量：非空、字符唯一（字符集语义是集合，重复字符=隐式加权，几乎必是 bug）、size ≥ 2（熵下限）。提供 `size()` 与严格索引 `charAt(int)`（0 ≤ index < size，越界 IAE）——DP 只做纯索引映射，随机源由生成器负责（`SecureRandom.nextInt(size)`，拒绝采样无偏，见 ADR-0018）。常量：`DIGITS`（0-9）、`LETTERS`（a-zA-Z 混合大小写）、`ALPHANUMERIC`（数字+字母）。序列化为裸字符串。
+_Avoid_: 策略（与 `VerificationCodePolicy` 冲突）、charset（与 `java.nio.charset.Charset` 混淆）、把字符池散落进生成器实现
+
 ### Percentage
 百分比 DP（`com.soda.component.domain.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
 
@@ -221,15 +232,23 @@ _Avoid_: 将验证码（临时状态）存入 SmsAuthAccount 或 User 聚合
 分 DP（`com.soda.component.domain.types.Fen`）。通用金额值对象，以分记，int 存储（1 元 = 100 分）。值域覆盖整个 int 范围（约 ±2147 万元），负值合法，用于退款、冲正等负向金额；超出范围请用 `WanYuan`。提供 `fromYuan(BigDecimal[, RoundingMode])`（元转分）、`toYuan()`（分转元，精确）、`toDisplayString()`（输出 "15.00元"）。
 
 
+### SoftwareVersion
+软件版本号 DP（`com.soda.component.domain.types.SoftwareVersion`，位于 soda-components）。三段式纯数字（major.minor.patch），每段 0-999，规范形式带小写 `v` 前缀（如 `v2.1.3`）。前导 0 归一化：`v2.001.003` 与 `v2.1.3` 等价；支持逐段数值比较与 `nextPatch`/`nextMinor`/`nextMajor` 步进（段位到 999 抛错，不进位）。
+_Avoid_: Version（乐观锁版本号，单 int 计数器）、SemVer（本 DP 无 pre-release/build 后缀）、版本号
+
+### Adapter 家族（adapter starter family）
+`com.soda.component` 下按入站通道拆分的可选基类模块族（见 ADR-0019）：`web`（Result 信封、错误结构、校验注解）、`job`（JobContext）、`consumer`（占位）。每通道一个 Gradle 子模块 `soda-component-adapter-starter-{web,job,consumer}`；包名不含 "adapter"——"adapter" 仅是构建级家族标签，Modulith 模块名即通道名。家族依赖 `{api}`，与基础设施（`{domain}`）并列、不隶属，按需引入。
+_Avoid_: 称 adapter 家族为"基础设施层"（依赖方向不同：家族 {api} vs 基础设施 {domain}）；与业务模块写侧 adapter 子模块（soda-user-adapter，见 Request/Response/WebAssembler）混为一谈
+
 ### Result
 统一 API 操作结果信封。`{ code, msg, data, error }`。所有 REST Controller 的返回值必须用此类包裹。
-定义在 `soda-component-adapter-starter` 的 `com.soda.component.web` 包。
+定义在 `soda-component-adapter-starter-web` 的 `com.soda.component.web` 包。
 错误响应时 `error` 字段包含 `ErrorInfo`（reason、domain、metadata），遵循 AIP-193。
 _Avoid_: CommonResult、R 对象
 
 ### ErrorInfo
 错误详情结构。包含 `reason`（UPPER_SNAKE_CASE 语义码）、`domain`（服务域）、`metadata`（上下文键值对）。
-定义在 `soda-component-adapter-starter` 的 `com.soda.component.web` 包。
+定义在 `soda-component-adapter-starter-web` 的 `com.soda.component.web` 包。
 参考 ADR-0013。
 
 ### Command（API 层）

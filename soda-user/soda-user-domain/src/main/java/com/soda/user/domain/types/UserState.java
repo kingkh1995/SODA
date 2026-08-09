@@ -13,7 +13,8 @@ import lombok.experimental.Accessors;
 public enum UserState implements EnumType {
 
     E("enabled"),
-    D("disabled");
+    D("disabled"),
+    R("deregistered");
 
     private final String desc;
 

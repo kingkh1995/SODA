@@ -9,10 +9,11 @@ import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RawCredential;
 import com.soda.component.domain.types.Sex;
-import com.soda.component.domain.util.ValidateUtils;
+import com.soda.component.domain.types.Version;
 import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserCreatedEvent;
+import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Avatar;
@@ -48,6 +49,7 @@ import java.util.function.Predicate;
 @EqualsAndHashCode(callSuper = true)
 public class User extends Aggregate<UserId> {
 
+    private final PasswordAuthAccount passwordAccount;
     private Username username;
     private Nickname nickname;
     private UserState state;
@@ -55,16 +57,21 @@ public class User extends Aggregate<UserId> {
     private @Nullable Email email;
     private @Nullable Sex sex;
     private @Nullable Avatar avatar;
-    private final PasswordAuthAccount passwordAccount;
     private List<AuthAccount<?>> accounts;
+    /**
+     * 乐观锁版本号（持久化状态）— 创建路径恒为 {@link Version#INITIAL}，恢复路径随持久化数据流转。
+     * 递增由基础设施层负责（写入时 {@code WHERE version = ?} 校验后落 version + 1），
+     * 领域逻辑不触碰（Vernon IDDD：手动递增会泄漏基础设施关注点到模型）。
+     */
+    private Version version;
 
     // ─── 构造器 ───
 
     /**
      * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
      * <p>
-     * 委托无 id 创建构造器完成字段初始化后补充 id（构造器参数校验见该构造器）。
-     * 序列化走 {@code Entity} 基类字段可见性；恢复路径非空字段（id、username、nickname、
+     * 委托无 id 创建构造器完成字段初始化后补充 id 与 version（构造器参数校验见该构造器）。
+     * 序列化走 {@code Entity} 基类字段可见性；恢复路径非空字段（id、version、username、nickname、
      * state、passwordAccount）由 JSON schema 声明（{@code required = true}），缺字段由 Jackson
      * 在协议边界拒绝（框架能力，非领域守卫）；可空字段（mobile / email / sex / avatar）标
      * {@code @Nullable}，accounts 缺省为空列表。
@@ -73,6 +80,7 @@ public class User extends Aggregate<UserId> {
     @Builder
     private User(
             @JsonProperty(value = "id", required = true) UserId id,
+            @JsonProperty(value = "version", required = true) Version version,
             @JsonProperty(value = "username", required = true) Username username,
             @JsonProperty(value = "nickname", required = true) Nickname nickname,
             @JsonProperty(value = "state", required = true) UserState state,
@@ -84,6 +92,7 @@ public class User extends Aggregate<UserId> {
             @JsonProperty("accounts") @Nullable List<AuthAccount<?>> accounts) {
         this(username, nickname, state, mobile, email, sex, avatar, passwordAccount, accounts);
         assignId(id);
+        this.version = version;
     }
 
     /**
@@ -93,6 +102,7 @@ public class User extends Aggregate<UserId> {
      * <p>
      * {@code passwordAccount} 为必填字段（ADR-0004：User 必有密码账户，类型化保证，无守卫）；
      * {@code accounts} 仅存放可选账户（Sms / Email / Social），不允许包含密码账户。
+     * {@code version} 创建路径恒为 {@link Version#INITIAL}（乐观锁递增归基础设施层）。
      */
     private User(Username username, Nickname nickname, UserState state, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, PasswordAuthAccount passwordAccount, @Nullable List<AuthAccount<?>> accounts) {
         ValidateUtils.notNull(username);
@@ -108,6 +118,7 @@ public class User extends Aggregate<UserId> {
         this.avatar = avatar;
         this.passwordAccount = passwordAccount;
         this.accounts = new LinkedList<>(Objects.requireNonNullElse(accounts, List.of()));
+        this.version = Version.INITIAL;
     }
 
     // ─── 创建 builder（public，只暴露业务字段）───
@@ -193,6 +204,7 @@ public class User extends Aggregate<UserId> {
      * 修改用户名。
      */
     public void changeUsername(Username newUsername) {
+        mustEnable();
         this.username = newUsername;
     }
 
@@ -200,6 +212,7 @@ public class User extends Aggregate<UserId> {
      * 修改昵称。
      */
     public void changeNickname(Nickname nickname) {
+        mustEnable();
         this.nickname = nickname;
     }
 
@@ -207,6 +220,7 @@ public class User extends Aggregate<UserId> {
      * 修改性别。
      */
     public void changeSex(@Nullable Sex sex) {
+        mustEnable();
         this.sex = sex;
     }
 
@@ -214,6 +228,7 @@ public class User extends Aggregate<UserId> {
      * 修改头像。
      */
     public void changeAvatar(@Nullable Avatar avatar) {
+        mustEnable();
         this.avatar = avatar;
     }
 
@@ -226,6 +241,7 @@ public class User extends Aggregate<UserId> {
      * @param hasher     凭证哈希器
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
+        mustEnable();
         passwordAccount.changePassword(credential, hasher);
         registerEvent(new PasswordChangedEvent(getId()));
     }
@@ -245,6 +261,7 @@ public class User extends Aggregate<UserId> {
      * @param verification 已通过的短信验证聚合
      */
     public void changeMobile(SmsVerification verification) {
+        mustEnable();
         Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
         Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
         Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
@@ -271,6 +288,7 @@ public class User extends Aggregate<UserId> {
      * @param verification 已通过的邮箱验证聚合
      */
     public void changeEmail(EmailVerification verification) {
+        mustEnable();
         Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
         Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
         Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
@@ -282,12 +300,40 @@ public class User extends Aggregate<UserId> {
         addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
     }
 
+    // ─── 生命周期守卫 ───
+
+    /**
+     * 状态前置守卫 — 变更方法必须处于启用状态（E）。
+     * <p>
+     * 语义：禁用（D）与注销（R）均为非启用态——D 仅可 {@link #enable()} / {@link #deregister()}，
+     * R 为吸收态（终态）无任何操作；本守卫一个检查覆盖全部（见 ADR-0017）。
+     */
+    private void mustEnable() {
+        Assert.isTrue(UserState.E.equals(state), "user must be enabled");
+    }
+
+    // ─── 注销 ───
+
+    /**
+     * 注销用户 — 严格 transition：前置必须为禁用状态（D）。
+     * <p>
+     * D → R（Removed / 注销，吸收态终态），注册 {@link UserDeregisteredEvent}。
+     * R 持久化为状态列（ADR-0017）；表示（状态列 / 软删 / 删行）由基础设施层决定，
+     * 领域不感知擦除。此后任何行为方法调用抛 IAE（{@link #mustEnable()} / R 吸收态检查）。
+     */
+    public void deregister() {
+        Assert.isTrue(UserState.D.equals(state), "only disabled user can be deregistered");
+        registerEvent(new UserDeregisteredEvent(getId()));
+        this.state = UserState.R;
+    }
+
     // ─── 状态切换 ───
 
     /**
-     * 禁用用户。E→D 时注册 {@link UserStateChangedEvent}；已是 D 则 no-op。
+     * 禁用用户。E→D 时注册 {@link UserStateChangedEvent}；已是 D 则 no-op；R（吸收态）→ IAE。
      */
     public void disable() {
+        Assert.isTrue(!UserState.R.equals(state), "user already deregistered");
         if (UserState.D.equals(state)) {
             return;
         }
@@ -297,9 +343,10 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 启用用户。D→E 时注册 {@link UserStateChangedEvent}；已是 E 则 no-op。
+     * 启用用户。D→E 时注册 {@link UserStateChangedEvent}；已是 E 则 no-op；R（吸收态）→ IAE。
      */
     public void enable() {
+        Assert.isTrue(!UserState.R.equals(state), "user already deregistered");
         if (UserState.E.equals(state)) {
             return;
         }

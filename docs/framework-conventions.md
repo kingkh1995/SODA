@@ -7,7 +7,7 @@
 ### Domain Primitive（领域原语）
 不可变的值对象，承载领域含义，通过类型系统表达业务约束。所有 DP 必须：不可变、自校验（构造时验证）、可序列化、可比较。参见 `Type` 接口。
 
-**字面值语义**：DP 的内部字段应为基础数据类型（`String`、`BigDecimal`、`Date/LocalDate/LocalDateTime`、`int`、`long`、`boolean` 等可直接对应数据库列类型的值），不允许嵌套持有另一个 DP 作为字段。单字段 DP 映射到单数据库列，多字段 DP 映射到多数据库列，不做序列化编码或 JSON 合并入单列。
+**字面值语义**：DP 的内部字段以基本数据类型为主（`String`、`BigDecimal`、`Date/LocalDate/LocalDateTime`、`int`、`long`、`boolean` 等可直接对应数据库列类型的值），**允许嵌套持有其他 DP 作为字段**（值对象组合——Evans 蓝皮书/Vernon IDDD 主流模式，如 `VerificationCodePolicy` 持有 `Alphabet`/`PositiveInt`，见 ADR-0018）。前提：组合消除重复校验与基本类型↔DP 转换，不为包装而包装。单字段 DP 映射到单数据库列，多字段 DP 映射到多数据库列，不做序列化编码或 JSON 合并入单列。嵌套 DP 在 JSON 中经各自 `@JsonValue`/creator 表现为基本类型值（见 ADR-0018）。
 
 **例外**：Identifier 类 DP 可使用自描述编码格式（如 `AuthAccountId` 的 `"{短名}:{业务键}"`），此类设计必须在 ADR 中显式记录理由。
 
@@ -48,13 +48,16 @@
 UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`。校验规则：格式匹配 `8-4-4-4-12` 十六进制，归一化为小写。提供 `random()` 随机生成。默认使用客户端生成策略。
 
 ### Version
-乐观锁版本号 DP（`domain.types.Version`），实现 `Type`。基于 `int`，带内部缓存（[0, 99]）。提供 `of(int)`、`parse(String)`、`next()`。初始版本 `PRIMARY = 0`。
+乐观锁版本号 DP（`domain.types.Version`），实现 `Type`。基于 `int`，带内部缓存（[0, 99]）。提供 `of(int)`、`parse(String)`、`next()`。初始版本 `INITIAL = 0`。
 
 ### PositiveInt
 正整数 DP（`domain.types.PositiveInt`），实现 `Type` + `Comparable`。值 >= 1。
 
 ### RandomString
-随机字符串 DP（`domain.types.RandomString`），实现 `Type`。由 `RandomStringGenerator` 生成。字符集和随机源由基础设施层决定，领域层只关心长度。
+随机字符串 DP（`domain.types.RandomString`），实现 `Type`。由 `RandomStringGenerator` 生成。字符集由调用方以 `Alphabet` 指定（领域拥有，见 ADR-0018），随机源由基础设施层决定。
+
+### Alphabet
+字符集 DP（`domain.types.Alphabet`），实现 `Type`。包装任意字符集字符串（开集，非枚举）——`RandomStringGenerator` 以它为输入决定输出字符池。不变量：非空、字符唯一（集合语义，重复 = 隐式加权）、size ≥ 2（熵下限）。提供 `size()` 与严格索引 `charAt(int)`（0 ≤ index < size，越界 IAE）；随机源由生成器负责（`SecureRandom.nextInt(size)`，见 ADR-0018）。常用字符集常量：`DIGITS`、`LETTERS`、`ALPHANUMERIC`。
 
 ### Secret
 秘密值基类（`domain.Secret`），`Type` 的子类型，用于敏感数据。自动脱敏 toString（`Xxx[***]`），通过私有构造器 + 非标准访问器命名拒绝序列化。
@@ -96,13 +99,13 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。
 
 ### EntityGateway
-实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。提供 `save(T)`、`remove(T)`、`findById(ID)`、`findAllById(Iterable<ID>)`。`save` 返回 `ID`（可能新生成），`remove` 接收实体。
+实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。提供 `save(T)`、`findById(ID)`、`findAllById(Iterable<ID>)`。`save` 返回 `ID`（可能新生成）。无删除契约——终态（如注销 R）由 `save` 持久化（ADR-0017）。
 
 ### CredentialHasher
 凭证哈希器契约（`domain.gateway.CredentialHasher`），继承 `Gateway`。提供 `hash(RawCredential) → CredentialHash` 和 `matches(RawCredential, CredentialHash)`。实现层可对接 BCrypt、Argon2、SCrypt 等。
 
 ### RandomStringGenerator
-随机字符串生成器契约（`domain.gateway.RandomStringGenerator`），继承 `Gateway`。提供 `generate(PositiveInt) → RandomString`。
+随机字符串生成器契约（`domain.gateway.RandomStringGenerator`），继承 `Gateway`。提供 `generate(PositiveInt, Alphabet) → RandomString`——长度与字符集由调用方指定，实现层只负责随机源与装配。通用能力，不绑定任何业务场景（见 ADR-0018）。
 
 ### SmsSender
 短信发送器契约（`domain.gateway.SmsSender`），继承 `Gateway`。提供 `send(Mobile, SmsContent)`。
@@ -185,7 +188,7 @@ public class UserController {
 1. 能经传递依赖到达的一律不声明（`api` 依赖向下游传播 compile + runtime，`implementation` 只传播 runtime）
 2. 业务模块（api / application / adapter / infrastructure）：不需要传递给下一级的声明为 `implementation`，需要传递的才用 `api`
 3. starter 模块：依赖尽量声明为 `api`（承担为整层提供能力的职责），除非明确不需要传递给依赖方
-4. 各层 Spring 能力由对应 starter 提供（如 application 层的 `spring-tx` 经 application-starter，adapter 层 consumer 的 `@TransactionalEventListener` 经 adapter-starter），业务模块不重复声明
+4. 各层 Spring 能力由对应 starter 提供（如 application 层的 spring-tx 经 application-starter，web 通道的校验能力经 adapter-starter-web）；业务模块不重复声明。例外：consumer 的 `@TransactionalEventListener` 所需 spring-tx 暂由业务模块自声明（consumer 通道为空壳，见 ADR-0019）
 5. 临时依赖（如 user-api → domain-types）不视为可传递：其他模块按需自声明，以便将来优化时不受影响
 
 **包结构**：

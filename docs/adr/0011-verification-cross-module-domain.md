@@ -25,6 +25,8 @@
 > 同日再修订：`User.changeMobile` / `changeEmail` 增加**场景校验**——验证聚合 `scene` 必须为 `CC`（credential change），其他场景（PR/LG/RG）的验证码不可用于换绑凭证；带消息 IAE（"verification scene must be credential change"）。应用层查询本就按 CC 过滤（`requireLatestUnexpiredPending`），本守卫在聚合边界防御性收口（ADR-0015 状态前置）。
 >
 > 同日再修订：`UserAuthServiceImpl.verifyMobile` / `verifyEmail` 增加**发码前置校验**（fail-fast，避免浪费发送）——(1) target 与用户当前 mobile/email 相同 → 带消息 IAE（"cannot change to the same mobile/email"，与 `User.changeXxx` 领域守卫同消息，先于发码拦截）；(2) target 全局唯一——`UserGateway.existsByMobile` / `existsByEmail`（对齐 `createUser` 的重复手机号/邮箱校验）。领域层 `changeXxx` 守卫保留（纵深防御，换绑同值/场景仍由聚合收口）。
+>
+> 再修订（2026-08-09）：`SmsAuthAccount`/`EmailAuthAccount` **移除** `verificationCodePolicy` 字段（不再持久化）——码形是通道级规则（短信=纯数字、邮箱=字母数字），非账号数据：生产代码零处读取该字段、所有创建路径恒取通道默认、override 链（SPI）未实现，属死字段（YAGNI）。**`DEFAULT_POLICY` 常量保留**（per-account 覆盖预留契约，见 ADR-0018）；create 的可空 policy 覆盖参数一并删除（零生产传参，与死字段同源 YAGNI，契约删除）。撤销 2026-08-05"仅保留账号配置字段角色"的定位（字段角色不再，常量角色保留）。`VerificationCodePolicy` 角色收敛为**通道常量载体 + `Verification.create` 输入类型**；`Verification.create` 的 policy 可空参数保留（缺省取子类静态 `DEFAULT_POLICY`）。同日 `VerificationCodePolicy` 重构为**嵌套 DP 值对象**——`codeLength`（`PositiveInt`）、`expiry`、`codeAlphabet`（`Alphabet`）三要素一体，嵌套 DP 在 JSON 中序列化为基本类型值（ADR-0018）：`DEFAULT_SMS` = 6位/5分钟/`Alphabet.DIGITS`、`DEFAULT_EMAIL` = 8位/30分钟/`Alphabet.ALPHANUMERIC`；`RandomStringGenerator` 契约变为 `generate(PositiveInt, Alphabet)`（见 ADR-0018）。
 
 `Verification` 作为独立验证实体放在 `com.soda.user.domain`（soda-user-domain，2026-08-01 修订），支持多种验证方式（SMS、Email、Authenticator），与 `AuthAccount` 对称设计。User 的 `changeMobile` / `changeEmail` 接收对应 Verification 子类型作为参数，验证通过后执行领域行为。
 
@@ -89,7 +91,7 @@ public final class EmailVerification extends Verification {
 
 ### 验证 DP 归属
 
-`VerificationCodePolicy`（codeLength + expiry；`maxAttempts` 已移除——不再跟踪尝试次数）与 `VerificationCode`、`VerificationScene`、`VerificationStatus` 一并位于 `soda-user-domain` 的 `com.soda.user.domain.types`——验证概念不是通用业务类型，随 `Verification` 实体同域。命名默认值：`DEFAULT_SMS`（6位/5分钟）、`DEFAULT_EMAIL`（8位/30分钟）。`SmsAuthAccount` 保留 `VerificationCodePolicy`（codeLength + expiry）字段作为认证方式的配置。
+`VerificationCodePolicy`（codeLength + expiry；`maxAttempts` 已移除——不再跟踪尝试次数）与 `VerificationCode`、`VerificationScene`、`VerificationStatus` 一并位于 `soda-user-domain` 的 `com.soda.user.domain.types`——验证概念不是通用业务类型，随 `Verification` 实体同域。命名默认值：`DEFAULT_SMS`（6位/5分钟）、`DEFAULT_EMAIL`（8位/30分钟）。~~`SmsAuthAccount` 保留 `VerificationCodePolicy`（codeLength + expiry）字段作为认证方式的配置。~~ **已被 2026-08-09 修订取代**（字段与 create 参数均已移除，仅 `DEFAULT_POLICY` 常量保留，见顶部修订注记；本句仅作沿革记录）。
 
 ### User 的 changeMobile / changeEmail
 
@@ -135,7 +137,7 @@ Application Service 编排（`UserAuthServiceImpl`）——按「ApplicationServ
 
 删除临时状态字段，保留配置：
 - **删除**：`verificationCode`、`verifyCode()`、`replaceCode()`、`useCode()`
-- **保留**：`VerificationCodePolicy`（认证方式的验证码策略配置）
+- ~~**保留**：`VerificationCodePolicy`（认证方式的验证码策略配置）~~ —— **已被 2026-08-09 修订取代**（字段已移除，仅 `DEFAULT_POLICY` 常量保留，见顶部修订注记；本行仅作沿革记录）
 
 ## 被否定的方案
 

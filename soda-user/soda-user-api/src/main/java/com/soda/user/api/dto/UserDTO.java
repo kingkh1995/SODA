@@ -11,6 +11,7 @@ public record UserDTO(
         @JsonProperty("email") @Nullable String email,
         @JsonProperty("sex") @Nullable String sex,
         @JsonProperty("avatar") @Nullable String avatar,
-        @JsonProperty("state") String state
+        @JsonProperty("state") String state,
+        @JsonProperty("version") int version
 ) {
 }

@@ -16,13 +16,14 @@ class UserStateTest {
     @Test
     @DisplayName("枚举常量数量")
     void should_haveCorrectCount() {
-        assertThat(UserState.values()).hasSize(2);
+        assertThat(UserState.values()).hasSize(3);
     }
 
     @ParameterizedTest(name = "{0} → desc={1}")
     @CsvSource(textBlock = """
                 E,     enabled
                 D,     disabled
+                R,     deregistered
             """)
     @DisplayName("各枚举常量 desc() 正确")
     void should_haveCorrectDesc(String name, String desc) {
@@ -30,7 +31,7 @@ class UserStateTest {
     }
 
     @ParameterizedTest(name = "of({0}) → {0}")
-    @CsvSource({"E", "D"})
+    @CsvSource({"E", "D", "R"})
     @DisplayName("of(String) 查找正确")
     void should_findByName(String name) {
         assertThat(UserState.of(name)).isEqualTo(UserState.valueOf(name));

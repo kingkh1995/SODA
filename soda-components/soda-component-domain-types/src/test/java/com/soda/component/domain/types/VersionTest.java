@@ -20,9 +20,9 @@ class VersionTest {
     class Constructor {
 
         @Test
-        @DisplayName("of(0) 创建 PRIMARY")
+        @DisplayName("of(0) 创建 INITIAL")
         void should_create_when_zero() {
-            assertThat(Version.of(0)).isSameAs(Version.PRIMARY);
+            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
         }
 
         @Test
@@ -69,9 +69,9 @@ class VersionTest {
     class Cache {
 
         @Test
-        @DisplayName("of(0) 同 PRIMARY")
-        void should_sameAsPrimary() {
-            assertThat(Version.of(0)).isSameAs(Version.PRIMARY);
+        @DisplayName("of(0) 同 INITIAL")
+        void should_sameAsInitial() {
+            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
         }
 
         @Test

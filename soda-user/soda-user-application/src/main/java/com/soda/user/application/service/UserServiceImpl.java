@@ -17,7 +17,6 @@ import com.soda.user.api.command.UpdateUserCommand;
 import com.soda.user.api.dto.UserDTO;
 import com.soda.user.application.convertor.UserDTOConvertor;
 import com.soda.user.domain.User;
-import com.soda.user.domain.event.UserRemovedEvent;
 import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.Nickname;
@@ -25,6 +24,7 @@ import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.Username;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.util.Optional;
@@ -35,6 +35,7 @@ import java.util.Optional;
  * 凭证/验证码相关操作迁至 {@link UserAuthServiceImpl}。
  */
 @Slf4j
+@Transactional
 @Service
 public class UserServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserService {
 
@@ -95,11 +96,10 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
     @Override
     public void deleteUser(DeleteUserCommand command) {
         log.info("deleteUser: command={}", command);
-        var userId = new UserId(command.userId());
-        gateway.findById(userId).ifPresent(user -> {
-            gateway.remove(user);
-            domainEventBus.publish(new UserRemovedEvent(userId));
-        });
+        var user = require(new UserId(command.userId()));
+        user.deregister();
+        gateway.save(user);
+        domainEventBus.publishAll(user.flushEvents());
     }
 
     @Override

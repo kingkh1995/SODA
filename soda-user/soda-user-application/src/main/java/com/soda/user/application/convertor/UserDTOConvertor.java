@@ -28,6 +28,7 @@ public class UserDTOConvertor {
                 user.getEmail().map(Email::value).orElse(null),
                 user.getSex().map(Sex::name).orElse(null),
                 user.getAvatar().map(Avatar::value).orElse(null),
-                user.getState().name());
+                user.getState().name(),
+                user.getVersion().value());
     }
 }

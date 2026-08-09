@@ -184,7 +184,7 @@ public final class Xxx implements Type, Serializable {  // Serializable 按需
             CACHE[i] = new Xxx(i);
         }
     }
-    public static final Xxx PRIMARY = CACHE[0];
+    public static final Xxx INITIAL = CACHE[0];
     // ======================
 
     private final int value;
@@ -488,8 +488,9 @@ public record Mobile(String value) implements Type {
 Record 多字段：
 ```java
 public record VerificationCodePolicy(
-        @JsonProperty("codeLength") int codeLength,
-        @JsonProperty("expiry") Duration expiry
+        @JsonProperty("codeLength") PositiveInt codeLength,
+        @JsonProperty("expiry") Duration expiry,
+        @JsonProperty("codeAlphabet") Alphabet codeAlphabet
 ) implements Type {
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public VerificationCodePolicy { … }
@@ -726,3 +727,4 @@ public int compareTo(Xxx other) {
 | `Fen` | record | ✅ | 无 | 不显式 |
 | `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式 |
 | `Version` | class | ✅ | `[0, 99]` | ✅ 显式 |
+| `SoftwareVersion` | class | ✅ | 无 | 不显式 |

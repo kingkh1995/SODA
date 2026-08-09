@@ -20,6 +20,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class VerificationChannelsTest {
 
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Verification<?>> asVerificationType(Class<?> cls) {
+        return (Class<? extends Verification<?>>) cls;
+    }
+
+    private static void assertConsistent(Class<? extends Verification<?>> cls,
+                                         VerificationChannel channel,
+                                         String jsonTypeName) {
+        assertEquals(channel, VerificationChannels.of(cls), "class→enum 推导");
+        assertEquals(jsonTypeName, cls.getAnnotation(JsonTypeName.class).value(), "@JsonTypeName 值");
+        assertEquals(channel.name(), jsonTypeName, "enum name 与 JSON 判别串");
+    }
+
     @Test
     void derivationMatchesEnumAndJsonTypeName() {
         assertConsistent(SmsVerification.class, VerificationChannel.S, "S");
@@ -37,18 +50,5 @@ class VerificationChannelsTest {
     void unknownTypeThrows() {
         assertThrows(IllegalArgumentException.class,
                 () -> VerificationChannels.of(asVerificationType(Verification.class)));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Verification<?>> asVerificationType(Class<?> cls) {
-        return (Class<? extends Verification<?>>) cls;
-    }
-
-    private static void assertConsistent(Class<? extends Verification<?>> cls,
-                                         VerificationChannel channel,
-                                         String jsonTypeName) {
-        assertEquals(channel, VerificationChannels.of(cls), "class→enum 推导");
-        assertEquals(jsonTypeName, cls.getAnnotation(JsonTypeName.class).value(), "@JsonTypeName 值");
-        assertEquals(channel.name(), jsonTypeName, "enum name 与 JSON 判别串");
     }
 }

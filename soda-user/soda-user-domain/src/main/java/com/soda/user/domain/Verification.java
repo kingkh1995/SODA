@@ -38,7 +38,7 @@ import java.time.Instant;
  * </ul>
  * <p>
  * 策略 ({@link VerificationCodePolicy}) 仅是创建时的输入参数（create 构造末位可空参数，
- * 缺省取子类静态 {@code DEFAULT_POLICY}；决定码长与过期时间），效果已物化进
+ * 缺省取子类静态 {@code DEFAULT_POLICY}；决定码长、过期时间与字符集），效果已物化进
  * {@link VerificationCode}，不作为聚合属性持久化。
  * <p>
  * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识；

@@ -1,0 +1,4 @@
+dependencies {
+    // job 通道编译期仅引用 api 层（CLOSED {api}）；application 层仅运行时装配
+    api project(':soda-components:soda-component-api-starter')
+}

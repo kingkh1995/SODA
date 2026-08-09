@@ -364,6 +364,8 @@ class LongIdTest {
 Jackson 3 原生支持 `Instant` / `Duration` 等 JSR-310 类型，无需注册额外模块。
 
 ```java
+import com.soda.component.domain.types.Alphabet;
+import com.soda.component.domain.types.PositiveInt;
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import tools.jackson.core.JacksonException;
@@ -377,8 +379,8 @@ class VerificationCodePolicyTest {
         @Test
         @DisplayName("合法值创建实例")
         void should_create_when_validValue() {
-            var policy = new VerificationCodePolicy(6, Duration.ofMinutes(5));
-            assertThat(policy.codeLength()).isEqualTo(6);
+            var policy = new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS);
+            assertThat(policy.codeLength()).isEqualTo(PositiveInt.of(6));
         }
     }
 
@@ -388,8 +390,9 @@ class VerificationCodePolicyTest {
         @Test
         @DisplayName("toString 格式正确，含所有字段")
         void should_haveCorrectToString() {
-            var policy = new VerificationCodePolicy(6, Duration.ofMinutes(5));
-            assertThat(policy).hasToString("VerificationCodePolicy[codeLength=6, expiry=PT5M]");
+            var policy = new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS);
+            assertThat(policy).hasToString(
+                    "VerificationCodePolicy[codeLength=PositiveInt[value=6], expiry=PT5M, codeAlphabet=Alphabet[value=0123456789]]");
         }
     }
     @Nested
@@ -398,9 +401,9 @@ class VerificationCodePolicyTest {
         @Test
         @DisplayName("Jackson round-trip 一致（JSON 对象格式）")
         void should_roundTrip() throws Exception {
-            var original = new VerificationCodePolicy(6, Duration.ofMinutes(5));
+            var original = new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS);
             var json = MAPPER.writeValueAsString(original);
-            assertThat(json).contains("codeLength").contains("expiry");
+            assertThat(json).contains("codeLength").contains("expiry").contains("codeAlphabet");
             assertThat(MAPPER.readValue(json, VerificationCodePolicy.class)).isEqualTo(original);
         }
         @Test

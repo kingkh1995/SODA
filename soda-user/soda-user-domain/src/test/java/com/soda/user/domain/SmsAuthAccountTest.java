@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>
  * 验证：
  * <ul>
- *   <li>默认策略和类型</li>
+ *   <li>类型与标识</li>
  *   <li>createBuilder / builder 工厂方法</li>
  *   <li>Jackson 序列化 / 反序列化</li>
  * </ul>
@@ -32,46 +32,31 @@ class SmsAuthAccountTest {
 
     @Test
     void constructor_setsId() {
-        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals(ID, account.getId());
     }
 
     @Test
     void getAccountType_returnsS() {
-        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals(AuthAccountType.S, account.getAccountType());
     }
 
     @Test
-    void defaultPolicy_isSixDigitsFiveMinutes() {
-        assertEquals(SmsAuthAccount.DEFAULT_POLICY, VerificationCodePolicy.DEFAULT_SMS);
-    }
-
-    @Test
     void mobile_returnsFromId() {
-        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertEquals(MOBILE, account.getMobile());
     }
 
     @Test
     void activeTrue_isActive() {
-        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertTrue(account.isActive());
     }
 
     @Test
-    void policy_customViaConstructor() {
-        var customPolicy = new VerificationCodePolicy(4, java.time.Duration.ofMinutes(1));
-        var account = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(customPolicy).build();
-        assertEquals(customPolicy, account.getVerificationCodePolicy());
-    }
-
-    @Test
-    void policy_null_returnsDefault() {
-        var account = SmsAuthAccount.createBuilder()
-                .mobile(MOBILE)
-                .build();
-        assertEquals(SmsAuthAccount.DEFAULT_POLICY, account.getVerificationCodePolicy());
+    void defaultPolicy_isSixDigitsFiveMinutes() {
+        assertEquals(SmsAuthAccount.DEFAULT_POLICY, VerificationCodePolicy.DEFAULT_SMS);
     }
 
     // ——— factories ———
@@ -90,7 +75,6 @@ class SmsAuthAccountTest {
         var account = SmsAuthAccount.builder()
                 .id(ID)
                 .active(Active.FALSE)
-                .verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY)
                 .build();
         assertEquals(ID, account.getId());
         assertFalse(account.isActive());
@@ -111,7 +95,7 @@ class SmsAuthAccountTest {
     @Test
     void jackson_rejectsMissingId() {
         var json = """
-                {"active":true,"verificationCodePolicy":{"codeLength":6,"expiry":"PT5M"}}
+                {"active":true}
                 """;
         assertThrows(JacksonException.class, () -> MAPPER.readValue(json, SmsAuthAccount.class));
     }
@@ -120,17 +104,17 @@ class SmsAuthAccountTest {
 
     @Test
     void equals_byFields() {
-        var same = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
-        var equal = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var same = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
+        var equal = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         var diffMobile = SmsAuthAccountId.from(new Mobile("13900139000"));
-        var diffId = SmsAuthAccount.builder().id(diffMobile).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var diffId = SmsAuthAccount.builder().id(diffMobile).active(Active.TRUE).build();
         assertEquals(same, equal, "相同字段应相等");
         assertNotEquals(same, diffId, "不同 ID 不应相等");
     }
 
     @Test
     void toString_containsClassName() {
-        var a = SmsAuthAccount.builder().id(ID).active(Active.TRUE).verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY).build();
+        var a = SmsAuthAccount.builder().id(ID).active(Active.TRUE).build();
         assertTrue(a.toString().contains("SmsAuthAccount@"));
     }
 }

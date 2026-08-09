@@ -7,7 +7,6 @@ import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.PositiveInt;
 import com.soda.component.domain.types.SmsContent;
 import com.soda.component.domain.types.UUId;
 import com.soda.user.domain.types.VerificationChannel;
@@ -65,7 +64,7 @@ public final class SmsVerification extends Verification<Mobile> {
     /**
      * 创建短信验证实体（创建路径，ID 创建时生成）。
      * <p>
-     * {@code policy} 可不传（默认 {@link #DEFAULT_POLICY}），决定码长与过期时间，
+     * {@code policy} 可不传（默认 {@link #DEFAULT_POLICY}），决定码长、过期时间与字符集，
      * 效果物化进 {@link VerificationCode}，不落验证实体。
      */
     @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
@@ -76,7 +75,9 @@ public final class SmsVerification extends Verification<Mobile> {
             RandomStringGenerator generator,
             @Nullable VerificationCodePolicy policy) {
         var effectivePolicy = Objects.requireNonNullElse(policy, DEFAULT_POLICY);
-        var verificationCode = VerificationCode.from(generator.generate(PositiveInt.of(effectivePolicy.codeLength())), Instant.now().plus(effectivePolicy.expiry()));
+        var verificationCode = VerificationCode.from(
+                generator.generate(effectivePolicy.codeLength(), effectivePolicy.codeAlphabet()),
+                Instant.now().plus(effectivePolicy.expiry()));
         return new SmsVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
     }
 
@@ -101,7 +102,7 @@ public final class SmsVerification extends Verification<Mobile> {
      */
     public void send(SmsSender sender) {
         Assert.isTrue(isInitialized(), "verification must be initialized before sending");
-        sender.send(getTarget(), new SmsContent("您的验证码: " + getCode().code()));
+        sender.send(getTarget(), new SmsContent("您的验证码: " + getCode().code().value()));
         markPending();
     }
 }

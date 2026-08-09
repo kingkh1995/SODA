@@ -14,7 +14,7 @@ import lombok.EqualsAndHashCode;
  * 密封类，仅允许 {@link PasswordAuthAccount}、{@link SmsAuthAccount}、{@link EmailAuthAccount}、{@link SocialAuthAccount} 四种子类。
  * 子类通过多态实现不同认证方式的行为差异。
  * <p>
-ton * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识；
+ * ton * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识；
  * 同步补充 {@link AuthAccountType} 枚举常量与一致性测试（ADR-0016）。
  * Jackson 3 从密封类 {@code permits} 子句自动发现子类，无需 {@code @JsonSubTypes}。
  * <p>

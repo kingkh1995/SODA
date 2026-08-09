@@ -29,6 +29,7 @@ import com.soda.user.domain.types.VerificationScene;
 import com.soda.user.domain.types.VerificationStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.time.Instant;
@@ -42,6 +43,7 @@ import java.time.Instant;
  * （见 framework-conventions「ApplicationService 编排规范」）。
  */
 @Slf4j
+@Transactional
 @Service
 public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserAuthService {
 
@@ -144,7 +146,7 @@ public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGa
 
     /**
      * 断言用户存在最新且未过期的 PENDING 验证并返回 — changeMobile / changeEmail 的公共查询。
-    /**
+     * /**
      * 断言用户存在最新且未过期的 PENDING 验证并返回 — changeMobile / changeEmail 的公共查询。
      * <p>
      * 基于 {@code findLatestByUserId} 的便捷封装：场景由参数指定（换绑固定传

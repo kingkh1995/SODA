@@ -12,9 +12,10 @@ import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.RawCredential;
 import com.soda.component.domain.types.Sex;
+import com.soda.component.domain.types.Version;
 import com.soda.user.domain.event.UserCreatedEvent;
+import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
-import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.Nickname;
@@ -69,11 +70,13 @@ class UserTest {
         }
     };
     private static final RandomStringGenerator
-            CODE_GENERATOR = length -> new RandomString("123456");
+            CODE_GENERATOR = (length, alphabet) -> new RandomString("123456");
 
     // 测试用的发送桩（不真正外发）
-    private static final SmsSender SMS_SENDER = (to, content) -> { };
-    private static final EmailSender EMAIL_SENDER = (to, content) -> { };
+    private static final SmsSender SMS_SENDER = (to, content) -> {
+    };
+    private static final EmailSender EMAIL_SENDER = (to, content) -> {
+    };
 
     // ─── helpers ───
 
@@ -88,6 +91,7 @@ class UserTest {
     private static User fullUserWithPasswordAccount() {
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -96,15 +100,26 @@ class UserTest {
                 .build();
     }
 
+    private static User disabledUser() {
+        return User.builder()
+                .id(USER_ID)
+                .version(Version.of(1))
+                .username(USERNAME)
+                .nickname(NICKNAME)
+                .state(UserState.D)
+                .passwordAccount(stubPasswordAccount())
+                .build();
+    }
+
     private static User fullUserWithSmsAccount() {
         var mobile = new Mobile("13800138000");
         var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
-                .verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY)
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -118,10 +133,10 @@ class UserTest {
         var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
-                .verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY)
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -137,6 +152,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -150,13 +166,11 @@ class UserTest {
         var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
-                .verificationCodePolicy(SmsAuthAccount.DEFAULT_POLICY)
                 .build();
         var email = new Email("test@example.com");
         var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
-                .verificationCodePolicy(EmailAuthAccount.DEFAULT_POLICY)
                 .build();
         var socialAccount = SocialAuthAccount.createBuilder()
                 .socialType(SocialType.GE)
@@ -164,6 +178,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -201,6 +216,7 @@ class UserTest {
         void should_rejectConstruction_when_missingPasswordAccount() {
             assertThatThrownBy(() -> User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -248,6 +264,18 @@ class UserTest {
             assertThat(user.getAccounts()).filteredOn(a -> a instanceof SmsAuthAccount).hasSize(1);
             assertThat(user.getAccounts()).filteredOn(a -> a instanceof EmailAuthAccount).hasSize(1);
         }
+
+        @Test
+        @DisplayName("创建时 version 为 INITIAL")
+        void should_initVersion_when_created() {
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .passwordHash(STUB_HASH)
+                    .build();
+
+            assertThat(user.getVersion()).isSameAs(Version.INITIAL);
+        }
     }
 
     // ─── restoration ───
@@ -264,6 +292,7 @@ class UserTest {
             var avatar = new Avatar("https://example.com/avatar.png");
             var user = User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .mobile(mobile)
@@ -283,6 +312,7 @@ class UserTest {
             assertThat(user.getSex()).hasValue(Sex.F);
             assertThat(user.getAvatar()).hasValue(avatar);
             assertThat(user.getState()).isEqualTo(UserState.D);
+            assertThat(user.getVersion()).isEqualTo(Version.of(1));
             assertThat(user.getPasswordAccount()).isNotNull();
             assertThat(user.getAccounts()).isEmpty();
             // restore 不应产生新事件
@@ -294,6 +324,7 @@ class UserTest {
         void should_restoreNullOptionals_when_notProvided() {
             var user = User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -369,6 +400,7 @@ class UserTest {
         void should_doNothing_when_alreadyDisabled() {
             var user = User.builder()
                     .id(new UserId(1L))
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
@@ -386,6 +418,7 @@ class UserTest {
         void should_enableUser_when_stateIsD() {
             var user = User.builder()
                     .id(new UserId(1L))
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
@@ -410,6 +443,103 @@ class UserTest {
             user.enable();
 
             assertThat(user.getState()).isEqualTo(UserState.E);
+            assertThat(user.flushEvents()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("注销与生命周期守卫")
+    class Deregistration {
+
+        @Test
+        @DisplayName("deregister() 前置：非禁用状态抛 IAE")
+        void should_rejectDeregister_when_notDisabled() {
+            var user = fullUserWithPasswordAccount();
+            assertThat(user.getState()).isEqualTo(UserState.E);
+
+            assertThatThrownBy(user::deregister)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("only disabled user can be deregistered");
+            // 前置失败不注册事件
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("deregister() 禁用状态成功：D→R 并注册 UserDeregisteredEvent")
+        void should_deregisterAndRegisterEvent_when_disabled() {
+            var user = disabledUser();
+            assertThat(user.getState()).isEqualTo(UserState.D);
+
+            user.deregister();
+
+            assertThat(user.getState()).isEqualTo(UserState.R);
+            var events = user.flushEvents();
+            assertThat(events).hasSize(1);
+            assertThat(events.getFirst()).isInstanceOf(UserDeregisteredEvent.class);
+            assertThat(events.getFirst().entityId()).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("重复 deregister() 抛 IAE（吸收态守卫）")
+        void should_rejectSecondDeregister_when_alreadyDeregistered() {
+            var user = disabledUser();
+            user.deregister();
+            user.flushEvents();
+
+            assertThatThrownBy(user::deregister)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("only disabled user can be deregistered");
+        }
+
+        @Test
+        @DisplayName("deregister() 后行为方法调用抛 IAE，不注册新事件")
+        void should_rejectBehaviorMethods_when_deregistered() {
+            var user = disabledUser();
+            user.deregister();
+            user.flushEvents(); // 模拟 appservice publishAll 消费注销事件
+
+            assertThatThrownBy(user::disable)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user already deregistered");
+            assertThatThrownBy(user::enable).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(user::deregister).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeUsername(new Username("newuser")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeNickname(new Nickname("New_Name")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeAvatar(new Avatar("https://example.com/new.png")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changePassword(new RawCredential("password123"), PASSWORD_HASHER))
+                    .isInstanceOf(IllegalArgumentException.class);
+            // 守卫在方法首行：R（吸收态）下先抛 IAE，验证聚合参数不会触达（null 仅作占位）
+            assertThatThrownBy(() -> user.changeMobile(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeEmail(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("禁用状态变更方法抛 IAE（mustEnable 守卫）")
+        void should_rejectChanges_when_disabled() {
+            var user = disabledUser();
+
+            assertThatThrownBy(() -> user.changeUsername(new Username("newuser")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user must be enabled");
+            assertThatThrownBy(() -> user.changeNickname(new Nickname("New_Name")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeSex(Sex.M))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeAvatar(new Avatar("https://example.com/new.png")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changePassword(new RawCredential("password123"), PASSWORD_HASHER))
+                    .isInstanceOf(IllegalArgumentException.class);
+            // 守卫在方法首行：D 态下先抛 IAE，验证聚合参数不会触达（null 仅作占位）
+            assertThatThrownBy(() -> user.changeMobile(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.changeEmail(null))
+                    .isInstanceOf(IllegalArgumentException.class);
             assertThat(user.flushEvents()).isEmpty();
         }
     }
@@ -530,6 +660,7 @@ class UserTest {
         void should_rejectChangeMobile_when_sameMobile() {
             var user = User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -625,6 +756,7 @@ class UserTest {
         void should_rejectChangeEmail_when_sameEmail() {
             var user = User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -726,6 +858,16 @@ class UserTest {
         }
 
         @Test
+        @DisplayName("缺少 version 的 JSON 拒绝")
+        void should_reject_when_missingVersion() {
+            var json = """
+                    {"id":1,"username":"testuser","nickname":"Test_User","state":"E"}
+                    """;
+            assertThatThrownBy(() -> MAPPER.readValue(json, User.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+
+        @Test
         @DisplayName("未知账户判别符拒绝")
         void should_reject_when_unknownAccountType() {
             var json = """
@@ -749,6 +891,7 @@ class UserTest {
             var b = fullUserWithPasswordAccount();
             var user2 = User.builder()
                     .id(new UserId(2L))
+                    .version(Version.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)

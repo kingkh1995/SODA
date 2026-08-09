@@ -12,22 +12,26 @@ import java.time.Instant;
  * 封装验证码的匹配与过期判断；验证码生命周期（待验证/已验证/已使用）
  * 由聚合状态表达，不在 DP 内重复记录使用状态（单一事实源，见 ADR-0011）。
  * 不可变、自校验、可序列化、可比较。
+ * <p>
+ * {@code code} 嵌套 {@link RandomString}（值对象组合，见 ADR-0018）——类型安全
+ * （code 只能是随机字符串，杜绝任意字符串伪造验证码）、零转换（工厂直存、匹配直比）。
+ * JSON 中经 {@link RandomString} 的 {@code @JsonValue} 序列化为字符串，形状不变。
  *
  * @see Type
  * @see RandomString
  */
 public record VerificationCode(
-        String code,
+        RandomString code,
         Instant expireAt
 ) implements Type {
 
     public VerificationCode {
-        ValidateUtils.hasText(code);
+        ValidateUtils.notNull(code);
         ValidateUtils.notNull(expireAt);
     }
 
     public static VerificationCode from(RandomString randomString, Instant expireAt) {
-        return new VerificationCode(randomString.value(), expireAt);
+        return new VerificationCode(randomString, expireAt);
     }
 
     /**
@@ -47,6 +51,6 @@ public record VerificationCode(
      * @return true 匹配；false 不匹配
      */
     public boolean matches(RandomString inputCode) {
-        return code.equals(inputCode.value());
+        return code.equals(inputCode);
     }
 }

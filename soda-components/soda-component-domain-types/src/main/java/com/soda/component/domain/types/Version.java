@@ -31,7 +31,7 @@ public final class Version implements Type, Comparable<Version> {
     private static final ArrayTypeCache<Version> CACHE =
             new ArrayTypeCache<>(0, CACHE_HIGH, Version::new);
 
-    public static final Version PRIMARY = CACHE.get(0);  // 0 始终在缓存范围
+    public static final Version INITIAL = CACHE.get(0);  // 0 始终在缓存范围
 
     private final int value;
 

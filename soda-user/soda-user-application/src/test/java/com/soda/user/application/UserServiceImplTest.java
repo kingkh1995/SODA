@@ -5,7 +5,9 @@ import com.soda.component.domain.gateway.CredentialHasher;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.Version;
 import com.soda.user.api.command.CreateUserCommand;
+import com.soda.user.api.command.DeleteUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.application.convertor.UserDTOConvertor;
@@ -34,6 +36,7 @@ import static com.soda.user.domain.types.UserState.E;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,6 +65,7 @@ class UserServiceImplTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
@@ -102,6 +106,7 @@ class UserServiceImplTest {
             assertThat(result.nickname()).isEqualTo("Test_User");
             assertThat(result.mobile()).isNull();
             assertThat(result.email()).isNull();
+            assertThat(result.version()).isZero();
             assertThat(result.sex()).isNull();
             assertThat(result.avatar()).isNull();
             assertThat(result.state()).isEqualTo("E");
@@ -187,6 +192,7 @@ class UserServiceImplTest {
         void should_enableUserAndFireEvent_when_enable() {
             var user = User.builder()
                     .id(USER_ID)
+                    .version(Version.of(1))
                     .username(new Username("test"))
                     .nickname(new Nickname("Test"))
                     .state(UserState.D)
@@ -213,6 +219,86 @@ class UserServiceImplTest {
             assertThatThrownBy(() ->
                     service.enableUser(new EnableUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("删除用户")
+    class DeleteUser {
+
+        @Test
+        @DisplayName("注销禁用用户：D→R 并保存")
+        void should_deregisterUserAndPersist_when_disabled() {
+            var user = User.builder()
+                    .id(USER_ID)
+                    .version(Version.of(1))
+                    .username(new Username("testuser"))
+                    .nickname(new Nickname("Test_User"))
+                    .state(UserState.D)
+                    .passwordAccount(PasswordAuthAccount.builder()
+                            .id(PasswordAuthAccountId.from(USER_ID))
+                            .active(Active.TRUE)
+                            .passwordHash(STUB_HASH)
+                            .build())
+                    .accounts(List.of())
+                    .build();
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
+
+            service.deleteUser(new DeleteUserCommand(USER_ID.value()));
+
+            assertThat(user.getState()).isEqualTo(UserState.R);
+            verify(userGateway).save(user);
+            verify(domainEventBus).publishAll(any());
+        }
+
+        @Test
+        @DisplayName("非禁用状态注销抛 IAE，不保存不发布")
+        void should_throw_when_notDisabled() {
+            var user = createEnabledUser();
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("only disabled user can be deregistered");
+
+            verify(userGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
+        }
+
+        @Test
+        @DisplayName("用户不存在时抛出异常")
+        void should_throw_when_userNotFound() {
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("已注销用户再次注销抛 IAE，不保存不发布")
+        void should_throw_when_alreadyDeregistered() {
+            var user = User.builder()
+                    .id(USER_ID)
+                    .version(Version.of(1))
+                    .username(new Username("testuser"))
+                    .nickname(new Nickname("Test_User"))
+                    .state(UserState.R)
+                    .passwordAccount(PasswordAuthAccount.builder()
+                            .id(PasswordAuthAccountId.from(USER_ID))
+                            .active(Active.TRUE)
+                            .passwordHash(STUB_HASH)
+                            .build())
+                    .accounts(List.of())
+                    .build();
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("only disabled user can be deregistered");
+
+            verify(userGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
     }
 }

@@ -6,6 +6,7 @@ import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.Alphabet;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.EmailContent;
@@ -15,6 +16,7 @@ import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.RawCredential;
 import com.soda.component.domain.types.SmsContent;
 import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Version;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
@@ -102,6 +104,7 @@ class UserAuthServiceImplTest {
     private static User createUser() {
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
@@ -125,6 +128,7 @@ class UserAuthServiceImplTest {
     private static User createUserWith(Mobile mobile, Email email) {
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
@@ -147,6 +151,7 @@ class UserAuthServiceImplTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
+                .version(Version.of(1))
                 .username(new Username("testuser"))
                 .nickname(new Nickname("Test_User"))
                 .state(UserState.E)
@@ -162,7 +167,7 @@ class UserAuthServiceImplTest {
                 .scene(VerificationScene.CC)
                 .status(VerificationStatus.P)
                 .target(NEW_MOBILE)
-                .code(new VerificationCode(code, Instant.now().plus(Duration.ofMinutes(5))))
+                .code(new VerificationCode(new RandomString(code), Instant.now().plus(Duration.ofMinutes(5))))
                 .build();
     }
 
@@ -173,7 +178,7 @@ class UserAuthServiceImplTest {
                 .scene(VerificationScene.CC)
                 .status(VerificationStatus.P)
                 .target(NEW_MOBILE)
-                .code(new VerificationCode(VALID_CODE, Instant.EPOCH))
+                .code(new VerificationCode(new RandomString(VALID_CODE), Instant.EPOCH))
                 .build();
     }
 
@@ -184,7 +189,7 @@ class UserAuthServiceImplTest {
                 .scene(VerificationScene.CC)
                 .status(VerificationStatus.P)
                 .target(NEW_EMAIL)
-                .code(new VerificationCode(code, Instant.now().plus(Duration.ofMinutes(30))))
+                .code(new VerificationCode(new RandomString(code), Instant.now().plus(Duration.ofMinutes(30))))
                 .build();
     }
 
@@ -233,7 +238,7 @@ class UserAuthServiceImplTest {
         @DisplayName("生成 PENDING 验证聚合并发送短信")
         void should_savePendingVerificationAndSendSms() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
-            when(randomStringGenerator.generate(any(PositiveInt.class)))
+            when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
             service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value()));
@@ -244,7 +249,7 @@ class UserAuthServiceImplTest {
             assertThat(saved.getStatus()).isEqualTo(VerificationStatus.P);
             assertThat(saved.getScene()).isEqualTo(VerificationScene.CC);
             assertThat(saved.getTarget()).isEqualTo(NEW_MOBILE);
-            assertThat(saved.getCode().code()).isEqualTo(VALID_CODE);
+            assertThat(saved.getCode().code()).isEqualTo(new RandomString(VALID_CODE));
             verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
         }
 
@@ -325,7 +330,7 @@ class UserAuthServiceImplTest {
             // 仓库契约：validUntil 时刻已过期的 PENDING 不会被返回
             when(verificationGateway.findLatestByUserId(eq(USER_ID.toLongId()), any(VerificationQuery.class)))
                     .thenReturn(Optional.empty());
-            when(randomStringGenerator.generate(any(PositiveInt.class)))
+            when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
             service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value()));
@@ -430,7 +435,7 @@ class UserAuthServiceImplTest {
         @DisplayName("生成 PENDING 验证聚合并发送邮件")
         void should_savePendingVerificationAndSendEmail() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
-            when(randomStringGenerator.generate(any(PositiveInt.class)))
+            when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
             service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value()));

@@ -67,7 +67,6 @@ public record Fen(int value) implements Type, Comparable<Fen> {
      * Jackson 3 序列化出口 — 必须为 public 方法（record component 上无效）。
      */
     @JsonValue
-    @Override
     public int value() {
         return value;
     }
