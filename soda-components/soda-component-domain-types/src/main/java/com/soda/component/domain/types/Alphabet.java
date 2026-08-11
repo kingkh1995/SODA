@@ -13,7 +13,7 @@ import org.springframework.util.Assert;
  * （0 ≤ index &lt; size，越界 IAE）——DP 只做纯索引映射，随机源由生成器负责
  * （{@code SecureRandom.nextInt(size)}，拒绝采样无偏，见 ADR-0018）。
  * <p>
- * 常用字符集提供静态常量：{@link #DIGITS}、{@link #LETTERS}、{@link #ALPHANUMERIC}。
+ * 常用字符集提供静态常量：{@link #DIGITS}、{@link #UNAMBIGUOUS_ALPHANUMERIC}。
  * 字符池映射归基础设施层，领域层只持有字符集字符串本身。
  *
  * @see Type
@@ -27,15 +27,11 @@ public record Alphabet(String value) implements Type {
     public static final Alphabet DIGITS = new Alphabet("0123456789");
 
     /**
-     * 字母字符集：a-zA-Z（混合大小写）。
+     * 数字 + 字母字符集（去除易混淆字符、仅大写）：数字剔除 0、1，字母剔除 I、O
+     * （形近组：0/O、1/I/l——大写 L 带脚可区分，保留；无小写字母）。
      */
-    public static final Alphabet LETTERS = new Alphabet(
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-
-    /**
-     * 数字 + 字母字符集（由 {@link #DIGITS} 与 {@link #LETTERS} 组合，单一事实源）。
-     */
-    public static final Alphabet ALPHANUMERIC = new Alphabet(DIGITS.value() + LETTERS.value());
+    public static final Alphabet UNAMBIGUOUS_ALPHANUMERIC = new Alphabet(
+            "23456789ABCDEFGHJKLMNPQRSTUVWXYZ");
 
     public Alphabet {
         ValidateUtils.hasText(value);

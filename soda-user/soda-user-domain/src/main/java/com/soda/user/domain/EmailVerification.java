@@ -9,6 +9,7 @@ import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.EmailContent;
 import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.UUId;
+import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.types.VerificationChannel;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
@@ -78,7 +79,9 @@ public final class EmailVerification extends Verification<Email> {
         var verificationCode = VerificationCode.from(
                 generator.generate(effectivePolicy.codeLength(), effectivePolicy.codeAlphabet()),
                 Instant.now().plus(effectivePolicy.expiry()));
-        return new EmailVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
+        var verification = new EmailVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
+        verification.registerEvent(new VerificationCreatedEvent(verification));
+        return verification;
     }
 
     // ─── commands ───

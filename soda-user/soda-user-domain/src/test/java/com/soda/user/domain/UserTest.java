@@ -16,6 +16,7 @@ import com.soda.component.domain.types.Version;
 import com.soda.user.domain.event.UserCreatedEvent;
 import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
+import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.Nickname;
@@ -516,6 +517,10 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeEmail(null))
                     .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class);
             assertThat(user.flushEvents()).isEmpty();
         }
 
@@ -540,6 +545,12 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeEmail(null))
                     .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user must be enabled");
+            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user must be enabled");
             assertThat(user.flushEvents()).isEmpty();
         }
     }
@@ -792,6 +803,103 @@ class UserTest {
             var newAvatar = new Avatar("https://example.com/new.png");
             user.changeAvatar(newAvatar);
             assertThat(user.getAvatar()).hasValue(newAvatar);
+        }
+    }
+
+
+    @Nested
+    @DisplayName("验证码发起")
+    class VerificationCodeInitiation {
+
+        @Test
+        @DisplayName("requestChangeMobileCode 创建 INITIALIZED 短信验证实体（scene=CC）并注册事件")
+        void should_createInitializedSmsVerification_when_requestChangeMobileCode() {
+            var user = fullUserWithPasswordAccount();
+            var target = new Mobile("13900139000");
+
+            var verification = user.requestChangeMobileCode(target, CODE_GENERATOR);
+
+            assertThat(verification.getUserId()).isEqualTo(USER_ID.toLongId());
+            assertThat(verification.getScene()).isEqualTo(VerificationScene.CC);
+            assertThat(verification.isInitialized()).isTrue();
+            assertThat(verification.getTarget()).isEqualTo(target);
+            assertThat(verification.getCode().code().value()).isEqualTo("123456");
+            assertThat(verification.flushEvents()).anyMatch(e -> e instanceof VerificationCreatedEvent);
+            // 不持有、不持久化：User 自身无字段变更、无事件
+            assertThat(user.getMobile()).isEmpty();
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("requestChangeEmailCode 创建 INITIALIZED 邮箱验证实体（scene=CC）并注册事件")
+        void should_createInitializedEmailVerification_when_requestChangeEmailCode() {
+            var user = fullUserWithPasswordAccount();
+            var target = new Email("new@test.com");
+
+            var verification = user.requestChangeEmailCode(target, CODE_GENERATOR);
+
+            assertThat(verification.getUserId()).isEqualTo(USER_ID.toLongId());
+            assertThat(verification.getScene()).isEqualTo(VerificationScene.CC);
+            assertThat(verification.isInitialized()).isTrue();
+            assertThat(verification.getTarget()).isEqualTo(target);
+            assertThat(verification.flushEvents()).anyMatch(e -> e instanceof VerificationCreatedEvent);
+            // 不持有、不持久化：User 自身无字段变更、无事件
+            assertThat(user.getEmail()).isEmpty();
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("requestChangeMobileCode 拒绝相同手机号")
+        void should_rejectSameMobile_when_requestChangeMobileCode() {
+            var currentMobile = new Mobile("13900139000");
+            var user = User.builder()
+                    .id(USER_ID)
+                    .version(Version.of(1))
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .state(UserState.E)
+                    .mobile(currentMobile)
+                    .passwordAccount(stubPasswordAccount())
+                    .build();
+
+            assertThatThrownBy(() -> user.requestChangeMobileCode(currentMobile, CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("cannot change to the same mobile");
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("requestChangeEmailCode 拒绝相同邮箱")
+        void should_rejectSameEmail_when_requestChangeEmailCode() {
+            var currentEmail = new Email("new@test.com");
+            var user = User.builder()
+                    .id(USER_ID)
+                    .version(Version.of(1))
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .state(UserState.E)
+                    .email(currentEmail)
+                    .passwordAccount(stubPasswordAccount())
+                    .build();
+
+            assertThatThrownBy(() -> user.requestChangeEmailCode(currentEmail, CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("cannot change to the same email");
+            assertThat(user.flushEvents()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("禁用用户 requestChangeXxxCode 抛 IAE（mustEnable 守卫）")
+        void should_rejectWhenDisabled_when_requestChangeCode() {
+            var user = disabledUser();
+
+            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user must be enabled");
+            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("user must be enabled");
+            assertThat(user.flushEvents()).isEmpty();
         }
     }
 

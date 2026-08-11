@@ -1,33 +1,31 @@
 package com.soda.user.application;
 
+import com.soda.component.domain.DomainEvent;
 import com.soda.component.domain.DomainEventBus;
 import com.soda.component.domain.gateway.CredentialHasher;
-import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.RandomStringGenerator;
-import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Alphabet;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
-import com.soda.component.domain.types.EmailContent;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PositiveInt;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.RawCredential;
-import com.soda.component.domain.types.SmsContent;
 import com.soda.component.domain.types.UUId;
 import com.soda.component.domain.types.Version;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
-import com.soda.user.api.command.VerifyEmailCommand;
-import com.soda.user.api.command.VerifyMobileCommand;
+import com.soda.user.api.command.RequestChangeEmailCodeCommand;
+import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 import com.soda.user.application.service.UserAuthServiceImpl;
 import com.soda.user.domain.EmailVerification;
 import com.soda.user.domain.PasswordAuthAccount;
 import com.soda.user.domain.SmsVerification;
 import com.soda.user.domain.User;
 import com.soda.user.domain.Verification;
+import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.gateway.VerificationGateway.VerificationQuery;
@@ -52,6 +50,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,7 +67,9 @@ import static org.mockito.Mockito.when;
  * <p>
  * 验证手机号 / 邮箱变更的两步流程：
  * <ul>
- *   <li>verifyXxx：构造 INITIALIZED 验证聚合 → send(sender) 发送 → 落库 PENDING</li>
+ *   <li>requestChangeXxxCode：查询前置（同值 / 唯一 / 无未过期 PENDING）→ User 创建 INITIALIZED
+ *       验证聚合（注册 {@link VerificationCreatedEvent}）→ save → 发布事件（物理发送在
+ *       {@code VerificationCreatedEventHandler}，见 ADR-0011，本测试不覆盖）</li>
  *   <li>changeXxx：verify → change → use 编排；失败路径（错码/过期）不落库（实体无变更）</li>
  * </ul>
  */
@@ -92,10 +93,6 @@ class UserAuthServiceImplTest {
     private DomainEventBus domainEventBus;
     @Mock
     private CredentialHasher credentialHasher;
-    @Mock
-    private SmsSender smsSender;
-    @Mock
-    private EmailSender emailSender;
     @Mock
     private RandomStringGenerator randomStringGenerator;
 
@@ -197,7 +194,7 @@ class UserAuthServiceImplTest {
     void setUp() {
         service = new UserAuthServiceImpl(userGateway, verificationGateway,
                 new CredentialChangeDomainService(),
-                randomStringGenerator, smsSender, emailSender,
+                randomStringGenerator,
                 domainEventBus, credentialHasher);
     }
 
@@ -231,53 +228,53 @@ class UserAuthServiceImplTest {
     }
 
     @Nested
-    @DisplayName("发送手机验证码")
-    class VerifyMobile {
+    @DisplayName("发送手机号换绑验证码")
+    class RequestChangeMobileCode {
 
         @Test
-        @DisplayName("生成 PENDING 验证聚合并发送短信")
-        void should_savePendingVerificationAndSendSms() {
+        @DisplayName("User 创建 INITIALIZED 验证聚合，save 并发布创建事件（发送由监听器执行）")
+        void should_saveInitializedVerificationAndPublishEvent() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
-            service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value()));
+            service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value()));
 
             ArgumentCaptor<Verification<?>> captor = ArgumentCaptor.forClass(Verification.class);
             verify(verificationGateway).save(captor.capture());
             SmsVerification saved = (SmsVerification) captor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(saved.getStatus()).isEqualTo(VerificationStatus.I);
             assertThat(saved.getScene()).isEqualTo(VerificationScene.CC);
             assertThat(saved.getTarget()).isEqualTo(NEW_MOBILE);
             assertThat(saved.getCode().code()).isEqualTo(new RandomString(VALID_CODE));
-            verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
+            assertPublishedVerificationCreatedEvent();
         }
 
         @Test
-        @DisplayName("目标与原手机号相同：抛异常，不发送不落库")
+        @DisplayName("目标与原手机号相同：抛异常，不落库不发布")
         void should_throw_when_sameMobile() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWithMobile()));
 
             assertThatThrownBy(() ->
-                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("cannot change to the same mobile");
-            verify(smsSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
 
         @Test
-        @DisplayName("目标手机号已被其他用户占用：抛异常，不发送不落库")
+        @DisplayName("目标手机号已被其他用户占用：抛异常，不落库不发布")
         void should_throw_when_mobileAlreadyUsed() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(userGateway.existsByMobile(NEW_MOBILE)).thenReturn(true);
 
             assertThatThrownBy(() ->
-                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Mobile already exists: " + NEW_MOBILE.value());
-            verify(smsSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
 
         @Test
@@ -286,7 +283,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("User not found");
             verify(verificationGateway, never()).save(any());
@@ -300,11 +297,10 @@ class UserAuthServiceImplTest {
                     .thenReturn(Optional.of(pendingSmsVerification(VALID_CODE)));
 
             assertThatThrownBy(() ->
-                    service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value())))
+                    service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("unexpired pending verification");
 
-            verify(smsSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
         }
 
@@ -316,10 +312,9 @@ class UserAuthServiceImplTest {
                     .thenReturn(Optional.of(pendingSmsVerification(VALID_CODE)));
 
             assertThatThrownBy(() ->
-                    service.verifyMobile(new VerifyMobileCommand(1L, "13800138000")))
+                    service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, "13800138000")))
                     .isInstanceOf(IllegalArgumentException.class);
 
-            verify(smsSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
         }
 
@@ -333,10 +328,10 @@ class UserAuthServiceImplTest {
             when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
-            service.verifyMobile(new VerifyMobileCommand(1L, NEW_MOBILE.value()));
+            service.requestChangeMobileCode(new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value()));
 
-            verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
             verify(verificationGateway).save(any(Verification.class));
+            assertPublishedVerificationCreatedEvent();
         }
     }
 
@@ -428,52 +423,52 @@ class UserAuthServiceImplTest {
     }
 
     @Nested
-    @DisplayName("发送邮箱验证码")
-    class VerifyEmail {
+    @DisplayName("发送邮箱换绑验证码")
+    class RequestChangeEmailCode {
 
         @Test
-        @DisplayName("生成 PENDING 验证聚合并发送邮件")
-        void should_savePendingVerificationAndSendEmail() {
+        @DisplayName("User 创建 INITIALIZED 验证聚合，save 并发布创建事件（发送由监听器执行）")
+        void should_saveInitializedVerificationAndPublishEvent() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                     .thenReturn(new RandomString(VALID_CODE));
 
-            service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value()));
+            service.requestChangeEmailCode(new RequestChangeEmailCodeCommand(1L, NEW_EMAIL.value()));
 
             ArgumentCaptor<Verification<?>> captor = ArgumentCaptor.forClass(Verification.class);
             verify(verificationGateway).save(captor.capture());
             EmailVerification saved = (EmailVerification) captor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(VerificationStatus.P);
+            assertThat(saved.getStatus()).isEqualTo(VerificationStatus.I);
             assertThat(saved.getScene()).isEqualTo(VerificationScene.CC);
             assertThat(saved.getTarget()).isEqualTo(NEW_EMAIL);
-            verify(emailSender).send(eq(NEW_EMAIL), any(EmailContent.class));
+            assertPublishedVerificationCreatedEvent();
         }
 
         @Test
-        @DisplayName("目标与原邮箱相同：抛异常，不发送不落库")
+        @DisplayName("目标与原邮箱相同：抛异常，不落库不发布")
         void should_throw_when_sameEmail() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWithEmail()));
 
             assertThatThrownBy(() ->
-                    service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value())))
+                    service.requestChangeEmailCode(new RequestChangeEmailCodeCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("cannot change to the same email");
-            verify(emailSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
 
         @Test
-        @DisplayName("目标邮箱已被其他用户占用：抛异常，不发送不落库")
+        @DisplayName("目标邮箱已被其他用户占用：抛异常，不落库不发布")
         void should_throw_when_emailAlreadyUsed() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(userGateway.existsByEmail(NEW_EMAIL)).thenReturn(true);
 
             assertThatThrownBy(() ->
-                    service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value())))
+                    service.requestChangeEmailCode(new RequestChangeEmailCodeCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Email already exists: " + NEW_EMAIL.value());
-            verify(emailSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
 
         @Test
@@ -484,11 +479,10 @@ class UserAuthServiceImplTest {
                     .thenReturn(Optional.of(pendingEmailVerification(VALID_CODE)));
 
             assertThatThrownBy(() ->
-                    service.verifyEmail(new VerifyEmailCommand(1L, NEW_EMAIL.value())))
+                    service.requestChangeEmailCode(new RequestChangeEmailCodeCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("unexpired pending verification");
 
-            verify(emailSender, never()).send(any(), any());
             verify(verificationGateway, never()).save(any());
         }
     }
@@ -548,5 +542,18 @@ class UserAuthServiceImplTest {
             assertThat(queryCaptor.getValue().scene()).isEqualTo(VerificationScene.CC);
             verify(userGateway, never()).save(any());
         }
+    }
+
+    /**
+     * 断言最近一次发布的事件恰为单个 {@link VerificationCreatedEvent}。
+     */
+    @SuppressWarnings("unchecked")
+    private void assertPublishedVerificationCreatedEvent() {
+        ArgumentCaptor<Iterable<DomainEvent<?>>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(domainEventBus).publishAll(captor.capture());
+        List<DomainEvent<?>> events = new ArrayList<>();
+        captor.getValue().forEach(events::add);
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(VerificationCreatedEvent.class);
     }
 }

@@ -60,7 +60,9 @@ PATCH  /authAccounts/{id}
 | 获取用户列表 | `GET /users` | `GET /users` |
 | 获取单个用户 | `GET /users/{id}` | `GET /users/{id}` |
 | 修改密码 | `POST /users/{id}:changePassword` | `POST /users/{id}:change-password` |
-| 验证手机号 | `POST /users/{id}:verifyMobile` | `POST /users/{id}:verify-mobile` |
+| 发送换绑验证码 | `POST /users/{id}:requestChangeMobileCode` | `POST /users/{id}:request-change-mobile-code` |
+
+> 注（2026-08-10）：示例动词随端点改名更新（原 `:verifyMobile` → `:requestChangeMobileCode`，见 ADR-0011 2026-08-10 修订）；约定本身（camelCase 自定义方法）不变。
 
 ## Considered Options
 

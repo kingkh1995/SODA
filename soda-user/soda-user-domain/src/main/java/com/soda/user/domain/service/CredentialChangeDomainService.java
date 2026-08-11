@@ -17,8 +17,9 @@ import java.time.Instant;
  * （framework-conventions「DomainService」条目）：
  * <ul>
  *   <li>仅承载跨聚合编排——「同时更改多个领域」的用例流程才进领域服务；
- *       验证码的发起（生成码、构造 INITIALIZED 验证聚合、经聚合 {@code send(sender)} 发送）只涉及单聚合创建，
- *       由 ApplicationService 直接执行（见 {@code UserAuthServiceImpl.verifyMobile}/{@code verifyEmail}）</li>
+ *       验证码的发起（前置 + 生成码、构造 INITIALIZED 验证聚合、注册 {@code VerificationCreatedEvent}）
+ *       委托 {@code User.requestChangeMobileCode}/{@code requestChangeEmailCode}（User 决策 + 创建），
+ *       物理发送由投递侧监听器在事务提交后执行（见 {@code UserAuthServiceImpl.requestChangeMobileCode}/{@code requestChangeEmailCode}、ADR-0011）</li>
  *   <li><b>禁止持久化</b>——save 一律由 ApplicationService 执行（本类不持有任何 Repository/Gateway 的写端口）</li>
  *   <li><b>不建议查询加载</b>——聚合以参数注入，加载留在 ApplicationService</li>
  * </ul>

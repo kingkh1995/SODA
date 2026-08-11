@@ -1,4 +1,4 @@
-package com.soda.user.infrastructure;
+package com.soda.user.infrastructure.util;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.soda.user.domain.EmailVerification;

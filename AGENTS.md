@@ -37,12 +37,12 @@ soda-xxx/
 
 ### Issue tracker
 
-问题跟踪使用本地 Markdown 文件（`.scratch/`）。详见 `docs/agents/issue-tracker.md`。
+Issue 与 spec 存放于 `.scratch/<feature>/` 本地 markdown（GitHub 不用于追踪）。见 `docs/agents/issue-tracker.md`。
 
 ### Triage labels
 
-五个 triage 角色使用默认标签名。详见 `docs/agents/triage-labels.md`。
+五个标准 triage 角色使用默认标签串（needs-triage / needs-info / ready-for-agent / ready-for-human / wontfix）。见 `docs/agents/triage-labels.md`。
 
 ### Domain docs
 
-单上下文模式 — 根目录 `CONTEXT.md` 包含完整领域词汇。详见 `docs/agents/domain.md`。
+Single-context：根目录 `CONTEXT.md` + `docs/adr/`。见 `docs/agents/domain.md`。

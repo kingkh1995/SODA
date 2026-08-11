@@ -1,4 +1,4 @@
-package com.soda.user.infrastructure;
+package com.soda.user.infrastructure.util;
 
 import com.soda.user.domain.EmailVerification;
 import com.soda.user.domain.SmsVerification;

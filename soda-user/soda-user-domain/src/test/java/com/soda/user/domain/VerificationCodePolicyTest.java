@@ -32,10 +32,10 @@ class VerificationCodePolicyTest {
         @Test
         @DisplayName("自定义策略创建实例（嵌套 DP 组合）")
         void should_createViaFactory_when_customPolicy() {
-            var policy = new VerificationCodePolicy(PositiveInt.of(4), Duration.ofMinutes(10), Alphabet.ALPHANUMERIC);
+            var policy = new VerificationCodePolicy(PositiveInt.of(4), Duration.ofMinutes(10), Alphabet.UNAMBIGUOUS_ALPHANUMERIC);
             assertThat(policy.codeLength()).isEqualTo(PositiveInt.of(4));
             assertThat(policy.expiry()).isEqualTo(Duration.ofMinutes(10));
-            assertThat(policy.codeAlphabet()).isEqualTo(Alphabet.ALPHANUMERIC);
+            assertThat(policy.codeAlphabet()).isEqualTo(Alphabet.UNAMBIGUOUS_ALPHANUMERIC);
         }
 
         @Test
@@ -51,7 +51,7 @@ class VerificationCodePolicyTest {
         void should_haveCorrectDefaults_when_defaultEmail() {
             assertThat(VerificationCodePolicy.DEFAULT_EMAIL.codeLength()).isEqualTo(PositiveInt.of(8));
             assertThat(VerificationCodePolicy.DEFAULT_EMAIL.expiry()).isEqualTo(Duration.ofMinutes(30));
-            assertThat(VerificationCodePolicy.DEFAULT_EMAIL.codeAlphabet()).isEqualTo(Alphabet.ALPHANUMERIC);
+            assertThat(VerificationCodePolicy.DEFAULT_EMAIL.codeAlphabet()).isEqualTo(Alphabet.UNAMBIGUOUS_ALPHANUMERIC);
         }
     }
 
@@ -122,7 +122,7 @@ class VerificationCodePolicyTest {
         @DisplayName("不同参数不等")
         void should_notBeEqual_when_differentParams() {
             assertThat(new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS))
-                    .isNotEqualTo(new VerificationCodePolicy(PositiveInt.of(8), Duration.ofMinutes(30), Alphabet.ALPHANUMERIC));
+                    .isNotEqualTo(new VerificationCodePolicy(PositiveInt.of(8), Duration.ofMinutes(30), Alphabet.UNAMBIGUOUS_ALPHANUMERIC));
         }
 
         @Test
@@ -157,23 +157,23 @@ class VerificationCodePolicyTest {
         }
 
         @Test
-        @DisplayName("DEFAULT_EMAIL 常量 round-trip（字母数字字符集）")
+        @DisplayName("DEFAULT_EMAIL 常量 round-trip（去混淆字母数字字符集）")
         void should_roundTrip_when_defaultEmail() throws Exception {
             var original = VerificationCodePolicy.DEFAULT_EMAIL;
             var json = MAPPER.writeValueAsString(original);
             assertThat(json).contains("\"codeLength\":8");
-            assertThat(json).contains("\"codeAlphabet\":\"" + Alphabet.ALPHANUMERIC.value() + "\"");
+            assertThat(json).contains("\"codeAlphabet\":\"" + Alphabet.UNAMBIGUOUS_ALPHANUMERIC.value() + "\"");
             assertThat(MAPPER.readValue(json, VerificationCodePolicy.class)).isEqualTo(original);
         }
 
         @Test
         @DisplayName("自定义策略 round-trip（非默认长度/有效期/字符集组合）")
         void should_roundTrip_when_customPolicy() throws Exception {
-            var original = new VerificationCodePolicy(PositiveInt.of(4), Duration.ofMinutes(10), Alphabet.LETTERS);
+            var original = new VerificationCodePolicy(PositiveInt.of(4), Duration.ofMinutes(10), new Alphabet("XYZ789"));
             var json = MAPPER.writeValueAsString(original);
             assertThat(json).contains("\"codeLength\":4");
             assertThat(json).contains("\"expiry\":\"PT10M\"");
-            assertThat(json).contains("\"codeAlphabet\":\"" + Alphabet.LETTERS.value() + "\"");
+            assertThat(json).contains("\"codeAlphabet\":\"" + new Alphabet("XYZ789").value() + "\"");
             assertThat(MAPPER.readValue(json, VerificationCodePolicy.class)).isEqualTo(original);
         }
 

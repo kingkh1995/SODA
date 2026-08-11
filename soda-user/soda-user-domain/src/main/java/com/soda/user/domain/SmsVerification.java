@@ -9,6 +9,7 @@ import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.SmsContent;
 import com.soda.component.domain.types.UUId;
+import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.types.VerificationChannel;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
@@ -78,7 +79,9 @@ public final class SmsVerification extends Verification<Mobile> {
         var verificationCode = VerificationCode.from(
                 generator.generate(effectivePolicy.codeLength(), effectivePolicy.codeAlphabet()),
                 Instant.now().plus(effectivePolicy.expiry()));
-        return new SmsVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
+        var verification = new SmsVerification(UUId.random(), scene, VerificationStatus.I, verificationCode, target, userId);
+        verification.registerEvent(new VerificationCreatedEvent(verification));
+        return verification;
     }
 
     // ─── accessors ───

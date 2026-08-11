@@ -9,9 +9,9 @@ import com.soda.user.web.request.ChangeMobileRequest;
 import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
+import com.soda.user.web.request.RequestChangeEmailCodeRequest;
+import com.soda.user.web.request.RequestChangeMobileCodeRequest;
 import com.soda.user.web.request.UpdateUserRequest;
-import com.soda.user.web.request.VerifyEmailRequest;
-import com.soda.user.web.request.VerifyMobileRequest;
 import com.soda.user.web.response.UserResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -94,11 +94,11 @@ public class UserController {
         return Result.success();
     }
 
-    @PostMapping("/{id}:verifyMobile")
-    public Result<Void> verifyMobile(@PathVariable("id") @Positive Long id,
-                                     @RequestBody @Valid VerifyMobileRequest request) {
-        log.info("verifyMobile: id={}, request={}", id, request);
-        userAuthService.verifyMobile(assembler.toVerifyMobileCommand(id, request));
+    @PostMapping("/{id}:requestChangeMobileCode")
+    public Result<Void> requestChangeMobileCode(@PathVariable("id") @Positive Long id,
+                                                @RequestBody @Valid RequestChangeMobileCodeRequest request) {
+        log.info("requestChangeMobileCode: id={}, request={}", id, request);
+        userAuthService.requestChangeMobileCode(assembler.toRequestChangeMobileCodeCommand(id, request));
         return Result.success();
     }
 
@@ -110,11 +110,11 @@ public class UserController {
         return Result.success();
     }
 
-    @PostMapping("/{id}:verifyEmail")
-    public Result<Void> verifyEmail(@PathVariable("id") @Positive Long id,
-                                    @RequestBody @Valid VerifyEmailRequest request) {
-        log.info("verifyEmail: id={}, request={}", id, request);
-        userAuthService.verifyEmail(assembler.toVerifyEmailCommand(id, request));
+    @PostMapping("/{id}:requestChangeEmailCode")
+    public Result<Void> requestChangeEmailCode(@PathVariable("id") @Positive Long id,
+                                               @RequestBody @Valid RequestChangeEmailCodeRequest request) {
+        log.info("requestChangeEmailCode: id={}, request={}", id, request);
+        userAuthService.requestChangeEmailCode(assembler.toRequestChangeEmailCodeCommand(id, request));
         return Result.success();
     }
 

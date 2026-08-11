@@ -3,5 +3,12 @@ dependencies {
     implementation project(':soda-components:soda-component-infrastructure-starter')
     implementation project(':soda-user:soda-user-domain')
     implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisSpringBootVersion}"
+    // Flyway 数据库迁移（核心 + MySQL 方言；H2 方言含在 flyway-core）
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+    // BCrypt 密码哈希（CredentialHasherImpl 实现，版本由 Spring Boot BOM 管理）
+    implementation 'org.springframework.security:spring-security-crypto'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    // H2 仅测试用（集成测试内存库，MODE=MySQL）
+    testRuntimeOnly 'com.h2database:h2'
 }

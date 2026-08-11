@@ -8,18 +8,18 @@ import com.soda.user.api.command.CreateUserCommand;
 import com.soda.user.api.command.DeleteUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
+import com.soda.user.api.command.RequestChangeEmailCodeCommand;
+import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 import com.soda.user.api.command.UpdateUserCommand;
-import com.soda.user.api.command.VerifyEmailCommand;
-import com.soda.user.api.command.VerifyMobileCommand;
 import com.soda.user.api.dto.UserDTO;
 import com.soda.user.web.request.ChangeEmailRequest;
 import com.soda.user.web.request.ChangeMobileRequest;
 import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
+import com.soda.user.web.request.RequestChangeEmailCodeRequest;
+import com.soda.user.web.request.RequestChangeMobileCodeRequest;
 import com.soda.user.web.request.UpdateUserRequest;
-import com.soda.user.web.request.VerifyEmailRequest;
-import com.soda.user.web.request.VerifyMobileRequest;
 import com.soda.user.web.response.UserResponse;
 import org.mapstruct.Mapper;
 
@@ -53,11 +53,11 @@ public interface UserWebAssembler {
 
     ChangePasswordCommand toChangePasswordCommand(Long userId, ChangePasswordRequest request);
 
-    VerifyMobileCommand toVerifyMobileCommand(Long userId, VerifyMobileRequest request);
+    RequestChangeMobileCodeCommand toRequestChangeMobileCodeCommand(Long userId, RequestChangeMobileCodeRequest request);
 
     ChangeMobileCommand toChangeMobileCommand(Long userId, ChangeMobileRequest request);
 
-    VerifyEmailCommand toVerifyEmailCommand(Long userId, VerifyEmailRequest request);
+    RequestChangeEmailCodeCommand toRequestChangeEmailCodeCommand(Long userId, RequestChangeEmailCodeRequest request);
 
     ChangeEmailCommand toChangeEmailCommand(Long userId, ChangeEmailRequest request);
 

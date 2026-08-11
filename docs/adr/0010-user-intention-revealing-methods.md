@@ -49,11 +49,13 @@ REST API 遵循 Google API Improvement Proposals 标准：
 | `PATCH` | `/users/{id}` | 更新个人资料（body: nickname, sex, avatar）<br>mobile 和 email 不走此端点，走独立验证流程 |
 | `POST` | `/users/{id}:disable` | 禁用用户 — AIP-136 自定义方法 |
 | `POST` | `/users/{id}:enable` | 启用用户 — AIP-136 自定义方法 |
-| `POST` | `/users/{id}:verifyMobile` | 发送手机验证码 — body: { newMobile } |
+| `POST` | ~~`/users/{id}:verifyMobile`~~ | ~~发送手机验证码 — body: { newMobile }~~ — 已更名 `:requestChangeMobileCode`（2026-08-10 修订，见 ADR-0011） |
 | `POST` | `/users/{id}:changeMobile` | 验证手机并修改 — body: { code } |
-| `POST` | `/users/{id}:changePassword` | 修改密码 — body: { newPassword }，委托到 PasswordAuthAccount.changePassword()（旧密码校验待实现，见待办） |
-| `POST` | `/users/{id}:verifyEmail` | 发送邮箱验证码 — body: { newEmail } |
+| `POST` | `/users/{id}:changePassword` | 修改密码 — body: { newPassword }，委托到 PasswordAuthAccount.changePassword()（2026-08-11 决策：不实现旧密码校验——admin 重置场景无旧密码语义；用户自助改密时再评估） |
+| `POST` | ~~`/users/{id}:verifyEmail`~~ | ~~发送邮箱验证码 — body: { newEmail }~~ — 已更名 `:requestChangeEmailCode`（2026-08-10 修订，见 ADR-0011） |
 | `POST` | `/users/{id}:changeEmail` | 验证邮箱并修改 — body: { code } |
+
+> 注（2026-08-10）：端点 `:verifyMobile`/`:verifyEmail` 已更名为 `:requestChangeMobileCode`/`:requestChangeEmailCode`，验证码发起已改为 User 聚合行为（决策 + 创建）+ 事件驱动投递（AFTER_COMMIT）。上表与流程为沿革记录，当前设计见 ADR-0011 2026-08-10 修订。
 
 验证流程（以手机为例）——验证码发起（单聚合创建）在 `UserAuthServiceImpl` 内展开，消费流程集中于 `CredentialChangeDomainService`（跨聚合编排）：
 ```

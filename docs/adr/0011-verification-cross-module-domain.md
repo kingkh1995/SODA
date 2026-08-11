@@ -28,6 +28,15 @@
 >
 > 再修订（2026-08-09）：`SmsAuthAccount`/`EmailAuthAccount` **移除** `verificationCodePolicy` 字段（不再持久化）——码形是通道级规则（短信=纯数字、邮箱=字母数字），非账号数据：生产代码零处读取该字段、所有创建路径恒取通道默认、override 链（SPI）未实现，属死字段（YAGNI）。**`DEFAULT_POLICY` 常量保留**（per-account 覆盖预留契约，见 ADR-0018）；create 的可空 policy 覆盖参数一并删除（零生产传参，与死字段同源 YAGNI，契约删除）。撤销 2026-08-05"仅保留账号配置字段角色"的定位（字段角色不再，常量角色保留）。`VerificationCodePolicy` 角色收敛为**通道常量载体 + `Verification.create` 输入类型**；`Verification.create` 的 policy 可空参数保留（缺省取子类静态 `DEFAULT_POLICY`）。同日 `VerificationCodePolicy` 重构为**嵌套 DP 值对象**——`codeLength`（`PositiveInt`）、`expiry`、`codeAlphabet`（`Alphabet`）三要素一体，嵌套 DP 在 JSON 中序列化为基本类型值（ADR-0018）：`DEFAULT_SMS` = 6位/5分钟/`Alphabet.DIGITS`、`DEFAULT_EMAIL` = 8位/30分钟/`Alphabet.ALPHANUMERIC`；`RandomStringGenerator` 契约变为 `generate(PositiveInt, Alphabet)`（见 ADR-0018）。
 
+> 再修订（2026-08-10）：**验证码发起重构为「User 决策创建 + 事件驱动投递」**，取代 2026-08-03"发起在 AppService 内展开"与 2026-08-07"AppService 内调 send"两段（沿革保留）。
+>
+> 1. **User 聚合行为方法**：新增 `User.requestChangeMobileCode(Mobile, RandomStringGenerator)` / `requestChangeEmailCode(Email, RandomStringGenerator)`——自检规则（`mustEnable` + 目标与当前值不同，顺带修复原请求路径缺 `mustEnable` 的洞）→ 创建 INITIALIZED 验证实体（scene=CC 硬编码）→ 返回实体（不持有、不持久化）。跨实例前置（`existsByMobile`/`existsByEmail` 全局唯一、`hasUnexpiredPending` 无未过期 PENDING）留在 ApplicationService 查询拦截（fail-fast，需查询故不入聚合）。
+> 2. **投递改 AFTER_COMMIT 事件驱动**：`Verification` 创建工厂（`createBuilder`，同 `User.createBuilder` 模式）注册单一 `VerificationCreatedEvent`（携带实体）；AppService 持久化（I 落库）后 `publishAll(verification.flushEvents())`；`VerificationCreatedEventHandler`（application/event，`@TransactionalEventListener(AFTER_COMMIT, fallbackExecution=true)` + `@Transactional`）JEP 441 模式匹配选通道 sender（ADR-0016 规则 6）→ `verification.send(sender)` → P 落库（新事务）。
+> 3. **动机**：(a) DB 事务不再跨外部投递通道（SMTP/短信）持有（IDDD 反模式修复）；(b) 记录先于发送持久化——"sender 成功但事务回滚→有码无记录"的幽灵码窗口消除；(c) AppService 依赖收敛（`EmailSender`/`SmsSender` 移出，仅留 `RandomStringGenerator`——码必须同步生成落库）。
+> 4. **失败语义**：sender 契约升级——`EmailSender`/`SmsSender` 类级 javadoc 声明"返回即已确认投递，实现层自行保证（内部重试/补偿）；抛异常视为未投递"。监听器**无重试无 catch**：send 抛异常（契约违反）→ 异常上抛、记录保持 INITIALIZED（无变更不落库），用户重发自愈。"PENDING 蕴含已送达"不变量不变（P 仅在 send 返回后落）。残余窗口（诚实记录）：发送成功后 P 落库失败 → 码作废、记录停 I，用户重发自愈——与旧窗口同源（发送后瞬间 DB 故障），非 outbox+MQ 不可消除；email/SMS 本质 at-most-once，投递层本无事务保证。
+> 5. **状态语义**：`I` = 已创建、待投递（原"已初始化未发送"扩展）；`P` 语义不变。并发双请求竞态（先查后建非原子）不变；孤儿 I 清理 job 与 DB 唯一约束列为基础设施 TODO。
+> 6. **命名**：RPC/AppService/Controller 全链路 `verifyMobile`/`verifyEmail` → `requestChangeMobileCode`/`requestChangeEmailCode`（`Verification.verify` 的校验语义无碰撞；Command/Request/URL 同步改）。
+
 `Verification` 作为独立验证实体放在 `com.soda.user.domain`（soda-user-domain，2026-08-01 修订），支持多种验证方式（SMS、Email、Authenticator），与 `AuthAccount` 对称设计。User 的 `changeMobile` / `changeEmail` 接收对应 Verification 子类型作为参数，验证通过后执行领域行为。
 
 ## 问题
@@ -119,18 +128,19 @@ public void changeEmail(EmailVerification verification) {
 }
 ```
 
-Application Service 编排（`UserAuthServiceImpl`）——按「ApplicationService 编排规范」：AppService 只做加载/委托/保存；验证码发起（生成码、构造 INITIALIZED 验证聚合、经聚合 `send(sender)` 发送）在 AppService 内展开（generator + sender 注入 AppService，2026-08-03 修订；发送封装为聚合行为方法并以 sender 参数注入，2026-08-07 修订），跨聚合消费流程在 `CredentialChangeDomainService`：
+Application Service 编排（`UserAuthServiceImpl`）——按「ApplicationService 编排规范」：AppService 只做加载/委托/保存。~~验证码发起（生成码、构造 INITIALIZED 验证聚合、经聚合 `send(sender)` 发送）在 AppService 内展开（generator + sender 注入 AppService，2026-08-03 修订；发送封装为聚合行为方法并以 sender 参数注入，2026-08-07 修订）~~ **已被 2026-08-10 修订取代**——验证码发起改为 User 聚合行为（决策 + 创建）+ AFTER_COMMIT 事件驱动投递（沿革见顶部修订注记），AppService 仅保留跨实例前置（目标全局唯一、无未过期 PENDING）fail-fast 查询拦截。跨聚合消费流程在 `CredentialChangeDomainService`：
 ```java
-// verifyMobile — AppService：加载 User（存在性校验）
-//   → 唯一性校验：同一 (userId, scene=CC) 已存在未过期 PENDING（无论 target）→ 抛 IllegalArgumentException（不重发、不新建）
-//   → 验证码发起（AppService 内展开）：生成码 → 构造 SmsVerification（scene=CC, INITIALIZED）→ verification.send(smsSender)（发送 + 转 PENDING）
-//   → verificationGateway.save（落库 PENDING；发送失败时异常上抛、零落库）
+// requestChangeMobileCode — AppService：加载 User（存在性校验）
+//   → 前置 fail-fast：目标与当前值不同、existsByMobile 全局唯一、hasUnexpiredPending 无未过期 PENDING → 抛 IllegalArgumentException（不重发、不新建）
+//   → 领域：user.requestChangeMobileCode(newMobile, generator) → SmsVerification（scene=CC, INITIALIZED，注册 VerificationCreatedEvent）
+//   → verificationGateway.save（I 落库）→ publishAll(verification.flushEvents())
+//   → 投递：VerificationCreatedEventHandler（AFTER_COMMIT）→ verification.send(smsSender) → P 落库（新事务）
 // changeMobile — AppService：加载 User + 待验证聚合（CC + SmsVerification）
 //   → CredentialChangeDomainService.changeMobile(user, verification, code)
 //       内部：verification.verify(code) → user.changeMobile(verification) → verification.use()
 //   → 保存顺序：先 userGateway.save(user)，再 verificationGateway.save(verification)（USED 终态）
 //   → 失败路径（verify 抛异常）：不落库——实体无变更（无 attempts 可累计）
-// 邮箱同理（验证码发起 / changeEmail）
+// 邮箱同理（requestChangeEmailCode / changeEmail）
 ```
 
 ### SmsAuthAccount 重构

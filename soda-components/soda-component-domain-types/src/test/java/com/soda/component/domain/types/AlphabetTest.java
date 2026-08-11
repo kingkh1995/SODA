@@ -39,10 +39,8 @@ class AlphabetTest {
         @DisplayName("常量字符集正确")
         void should_haveCorrectConstants() {
             assertThat(Alphabet.DIGITS.value()).isEqualTo("0123456789");
-            assertThat(Alphabet.LETTERS.value())
-                    .isEqualTo("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-            assertThat(Alphabet.ALPHANUMERIC.value())
-                    .isEqualTo(Alphabet.DIGITS.value() + Alphabet.LETTERS.value());
+            assertThat(Alphabet.UNAMBIGUOUS_ALPHANUMERIC.value())
+                    .isEqualTo("23456789ABCDEFGHJKLMNPQRSTUVWXYZ");
         }
     }
 

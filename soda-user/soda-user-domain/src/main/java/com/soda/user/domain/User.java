@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
 import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
@@ -298,6 +299,62 @@ public class User extends Aggregate<UserId> {
         // 替换 EmailAuthAccount：移除旧账户，添加新账户
         removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);
         addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
+    }
+
+    // ─── 验证码发起 ───
+
+    /**
+     * 请求发送手机号换绑验证码 — 创建 INITIALIZED 短信验证实体（scene=CC）并注册
+     * {@link VerificationCreatedEvent}（由投递侧监听器在事务提交后发送，见 ADR-0011）。
+     * <p>
+     * 业务规则（User 自检规则，不依赖查询）：
+     * <ul>
+     *   <li>用户必须处于启用状态（E）</li>
+     *   <li>目标不能与当前手机号相同</li>
+     * </ul>
+     * 全局唯一（existsByMobile）与未过期 PENDING 唯一性属跨实例规则，由 ApplicationService
+     * 查询后前置拦截（fail-fast）；本方法不持有、不持久化验证实体——调用方负责 save。
+     *
+     * @param target    新手机号
+     * @param generator 随机码生成器（码在创建时生成并物化进 {@link VerificationCode}）
+     * @return 已创建（INITIALIZED，未发送）的短信验证实体
+     */
+    public SmsVerification requestChangeMobileCode(Mobile target, RandomStringGenerator generator) {
+        mustEnable();
+        Assert.isTrue(!Objects.equals(mobile, target), "cannot change to the same mobile");
+        return SmsVerification.createBuilder()
+                .userId(getId().toLongId())
+                .scene(VerificationScene.CC)
+                .target(target)
+                .generator(generator)
+                .build();
+    }
+
+    /**
+     * 请求发送邮箱换绑验证码 — 创建 INITIALIZED 邮箱验证实体（scene=CC）并注册
+     * {@link VerificationCreatedEvent}（由投递侧监听器在事务提交后发送，见 ADR-0011）。
+     * <p>
+     * 业务规则（User 自检规则，不依赖查询）：
+     * <ul>
+     *   <li>用户必须处于启用状态（E）</li>
+     *   <li>目标不能与当前邮箱相同</li>
+     * </ul>
+     * 全局唯一（existsByEmail）与未过期 PENDING 唯一性属跨实例规则，由 ApplicationService
+     * 查询后前置拦截（fail-fast）；本方法不持有、不持久化验证实体——调用方负责 save。
+     *
+     * @param target    新邮箱
+     * @param generator 随机码生成器（码在创建时生成并物化进 {@link VerificationCode}）
+     * @return 已创建（INITIALIZED，未发送）的邮箱验证实体
+     */
+    public EmailVerification requestChangeEmailCode(Email target, RandomStringGenerator generator) {
+        mustEnable();
+        Assert.isTrue(!Objects.equals(email, target), "cannot change to the same email");
+        return EmailVerification.createBuilder()
+                .userId(getId().toLongId())
+                .scene(VerificationScene.CC)
+                .target(target)
+                .generator(generator)
+                .build();
     }
 
     // ─── 生命周期守卫 ───

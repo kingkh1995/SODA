@@ -38,10 +38,10 @@ public record VerificationCodePolicy(
             new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS);
 
     /**
-     * 默认邮箱验证码策略：8 位字母数字，30 分钟过期。
+     * 默认邮箱验证码策略：8 位去混淆字母数字（{@link Alphabet#UNAMBIGUOUS_ALPHANUMERIC}），30 分钟过期。
      */
     public static final VerificationCodePolicy DEFAULT_EMAIL =
-            new VerificationCodePolicy(PositiveInt.of(8), Duration.ofMinutes(30), Alphabet.ALPHANUMERIC);
+            new VerificationCodePolicy(PositiveInt.of(8), Duration.ofMinutes(30), Alphabet.UNAMBIGUOUS_ALPHANUMERIC);
 
     public VerificationCodePolicy {
         ValidateUtils.notNull(codeLength);

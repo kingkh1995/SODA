@@ -57,7 +57,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 随机字符串 DP（`domain.types.RandomString`），实现 `Type`。由 `RandomStringGenerator` 生成。字符集由调用方以 `Alphabet` 指定（领域拥有，见 ADR-0018），随机源由基础设施层决定。
 
 ### Alphabet
-字符集 DP（`domain.types.Alphabet`），实现 `Type`。包装任意字符集字符串（开集，非枚举）——`RandomStringGenerator` 以它为输入决定输出字符池。不变量：非空、字符唯一（集合语义，重复 = 隐式加权）、size ≥ 2（熵下限）。提供 `size()` 与严格索引 `charAt(int)`（0 ≤ index < size，越界 IAE）；随机源由生成器负责（`SecureRandom.nextInt(size)`，见 ADR-0018）。常用字符集常量：`DIGITS`、`LETTERS`、`ALPHANUMERIC`。
+字符集 DP（`domain.types.Alphabet`），实现 `Type`。包装任意字符集字符串（开集，非枚举）——`RandomStringGenerator` 以它为输入决定输出字符池。不变量：非空、字符唯一（集合语义，重复 = 隐式加权）、size ≥ 2（熵下限）。提供 `size()` 与严格索引 `charAt(int)`（0 ≤ index < size，越界 IAE）；随机源由生成器负责（`SecureRandom.nextInt(size)`，见 ADR-0018）。常用字符集常量：`DIGITS`、`UNAMBIGUOUS_ALPHANUMERIC`（去混淆数字+大写字母，剔除 0/1/I/O）。
 
 ### Secret
 秘密值基类（`domain.Secret`），`Type` 的子类型，用于敏感数据。自动脱敏 toString（`Xxx[***]`），通过私有构造器 + 非标准访问器命名拒绝序列化。
@@ -140,7 +140,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 - 实现 `DomainService` 标记接口（`com.soda.component.domain.DomainService`，类似 `Gateway` 的定位：供 IOC 扫描 / AOP 识别）
 - 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
 
-**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（生成码、构造 INITIALIZED 聚合、经聚合 `send(sender)` 发送）只涉及单聚合创建，由 `UserAuthServiceImpl.verifyMobile`/`verifyEmail` 直接执行。AppService 负责加载与 save 顺序（先 user 后 verification）。
+**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（前置 + 生成码、构造 INITIALIZED 聚合、注册 `VerificationCreatedEvent`）委托 `User.requestChangeMobileCode`/`requestChangeEmailCode`（User 决策 + 创建），物理发送由投递侧监听器在事务提交后执行（见 ADR-0011）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
 
 ### ApplicationService 编排规范
 
@@ -156,8 +156,8 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 2. **外部 domain（其他聚合）的 action 方法禁止在 AppService 中直接调用**（get/读取除外）
 3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的**参数**传入，逻辑封装进主体聚合内部
 4. 若用例**修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
-5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程中，发送类副作用封装为聚合行为方法（`SmsVerification.send(SmsSender)` / `EmailVerification.send(EmailSender)`），sender 类 gateway 注入 AppService 后以**参数**传入聚合方法（领域层不持有 gateway 端口）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
-6. 外部聚合的**工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合（INITIALIZED）→ `verification.send(sender)`（发送 + 转 PENDING）→ save，如 `UserAuthServiceImpl.verifyMobile`）
+5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程中，发送类副作用封装为聚合行为方法（`SmsVerification.send(SmsSender)` / `EmailVerification.send(EmailSender)`），**投递时机在事务提交后**——创建工厂注册 `VerificationCreatedEvent`，AppService 持久化后发布，投递侧监听器（`@TransactionalEventListener(AFTER_COMMIT)`）调用聚合 `send(sender)` 并落库（DB 事务不跨外部投递通道持有；sender 契约保证投递成功才返回，见 ADR-0011）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
+6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合（INITIALIZED）→ save → 发布 `VerificationCreatedEvent` → 提交后由监听器 `verification.send(sender)`（发送 + 转 PENDING）。发码用例可进一步把「决策 + 创建」收进主体聚合行为方法（`User.requestChangeMobileCode`/`requestChangeEmailCode`：自检规则 + 创建 + 注册事件，见 ADR-0011），AppService 退化为查询前置 + save + 发布）
 
 典型反例：AppService 直接 `verification.verify(code)` 再 `user.changeMobile(...)`——verify 修改外部聚合状态，必须经 `CredentialChangeDomainService`。
 

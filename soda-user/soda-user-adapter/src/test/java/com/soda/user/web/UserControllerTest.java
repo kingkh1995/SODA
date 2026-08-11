@@ -10,9 +10,9 @@ import com.soda.user.web.request.ChangeMobileRequest;
 import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
+import com.soda.user.web.request.RequestChangeEmailCodeRequest;
+import com.soda.user.web.request.RequestChangeMobileCodeRequest;
 import com.soda.user.web.request.UpdateUserRequest;
-import com.soda.user.web.request.VerifyEmailRequest;
-import com.soda.user.web.request.VerifyMobileRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -192,27 +192,27 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /{id}:verifyMobile")
-    class VerifyMobile {
+    @DisplayName("POST /{id}:requestChangeMobileCode")
+    class RequestChangeMobileCode {
 
         @Test
         @DisplayName("发送验证码成功返回空 data")
-        void should_returnSuccess_when_verifyMobile() {
-            var request = new VerifyMobileRequest("13900139000");
-            var response = controller.verifyMobile(1L, request);
+        void should_returnSuccess_when_requestChangeMobileCode() {
+            var request = new RequestChangeMobileCodeRequest("13900139000");
+            var response = controller.requestChangeMobileCode(1L, request);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
         }
 
         @Test
-        @DisplayName("委托 UserAuthService.verifyMobile 执行")
-        void should_delegateToUserAuthService_when_verifyMobile() {
-            var request = new VerifyMobileRequest("13900139000");
+        @DisplayName("委托 UserAuthService.requestChangeMobileCode 执行")
+        void should_delegateToUserAuthService_when_requestChangeMobileCode() {
+            var request = new RequestChangeMobileCodeRequest("13900139000");
 
-            controller.verifyMobile(42L, request);
+            controller.requestChangeMobileCode(42L, request);
 
-            verify(userAuthService).verifyMobile(any());
+            verify(userAuthService).requestChangeMobileCode(any());
         }
     }
 
@@ -243,27 +243,27 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /{id}:verifyEmail")
-    class VerifyEmail {
+    @DisplayName("POST /{id}:requestChangeEmailCode")
+    class RequestChangeEmailCode {
 
         @Test
         @DisplayName("发送验证码成功返回空 data")
-        void should_returnSuccess_when_verifyEmail() {
-            var request = new VerifyEmailRequest("new@test.com");
-            var response = controller.verifyEmail(1L, request);
+        void should_returnSuccess_when_requestChangeEmailCode() {
+            var request = new RequestChangeEmailCodeRequest("new@test.com");
+            var response = controller.requestChangeEmailCode(1L, request);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
         }
 
         @Test
-        @DisplayName("委托 UserAuthService.verifyEmail 执行")
-        void should_delegateToUserAuthService_when_verifyEmail() {
-            var request = new VerifyEmailRequest("new@test.com");
+        @DisplayName("委托 UserAuthService.requestChangeEmailCode 执行")
+        void should_delegateToUserAuthService_when_requestChangeEmailCode() {
+            var request = new RequestChangeEmailCodeRequest("new@test.com");
 
-            controller.verifyEmail(42L, request);
+            controller.requestChangeEmailCode(42L, request);
 
-            verify(userAuthService).verifyEmail(any());
+            verify(userAuthService).requestChangeEmailCode(any());
         }
     }
 

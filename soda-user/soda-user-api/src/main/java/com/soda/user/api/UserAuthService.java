@@ -3,15 +3,15 @@ package com.soda.user.api;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
-import com.soda.user.api.command.VerifyEmailCommand;
-import com.soda.user.api.command.VerifyMobileCommand;
+import com.soda.user.api.command.RequestChangeEmailCodeCommand;
+import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 
 /**
  * 用户凭证相关的 ApplicationService 接口。
  * <p>
  * 管理手机号 / 邮箱 / 密码的修改与验证，每个修改走两步验证流程：
  * <ol>
- *   <li>发送验证码 → {@link #verifyMobile(VerifyMobileCommand)} / {@link #verifyEmail(VerifyEmailCommand)}</li>
+ *   <li>发送验证码 → {@link #requestChangeMobileCode(RequestChangeMobileCodeCommand)} / {@link #requestChangeEmailCode(RequestChangeEmailCodeCommand)}</li>
  *   <li>核验并修改 → {@link #changeMobile(ChangeMobileCommand)} / {@link #changeEmail(ChangeEmailCommand)}</li>
  * </ol>
  * 密码修改走单步流程 → {@link #changePassword(ChangePasswordCommand)}。
@@ -30,9 +30,9 @@ public interface UserAuthService {
     void changePassword(ChangePasswordCommand command);
 
     /**
-     * 发送手机验证码（两步验证第一步）。
+     * 发送手机号换绑验证码（两步验证第一步）。
      */
-    void verifyMobile(VerifyMobileCommand command);
+    void requestChangeMobileCode(RequestChangeMobileCodeCommand command);
 
     /**
      * 核验并修改手机号（两步验证第二步）。
@@ -40,9 +40,9 @@ public interface UserAuthService {
     void changeMobile(ChangeMobileCommand command);
 
     /**
-     * 发送邮箱验证码（两步验证第一步）。
+     * 发送邮箱换绑验证码（两步验证第一步）。
      */
-    void verifyEmail(VerifyEmailCommand command);
+    void requestChangeEmailCode(RequestChangeEmailCodeCommand command);
 
     /**
      * 核验并修改邮箱（两步验证第二步）。
