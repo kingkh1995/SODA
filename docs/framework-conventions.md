@@ -9,7 +9,7 @@
 
 **字面值语义**：DP 的内部字段以基本数据类型为主（`String`、`BigDecimal`、`Date/LocalDate/LocalDateTime`、`int`、`long`、`boolean` 等可直接对应数据库列类型的值），**允许嵌套持有其他 DP 作为字段**（值对象组合——Evans 蓝皮书/Vernon IDDD 主流模式，如 `VerificationCodePolicy` 持有 `Alphabet`/`PositiveInt`，见 ADR-0018）。前提：组合消除重复校验与基本类型↔DP 转换，不为包装而包装。单字段 DP 映射到单数据库列，多字段 DP 映射到多数据库列，不做序列化编码或 JSON 合并入单列。嵌套 DP 在 JSON 中经各自 `@JsonValue`/creator 表现为基本类型值（见 ADR-0018）。
 
-**例外**：Identifier 类 DP 可使用自描述编码格式（如 `AuthAccountId` 的 `"{短名}:{业务键}"`），此类设计必须在 ADR 中显式记录理由。
+**例外**：Identifier 类 DP 可使用自描述编码格式（如 `AuthAccountId` 的 `"{短名}:{业务键}"`），此类设计必须在 ADR 中显式记录理由。非 Identifier 的投递端点 DP `VerificationRecipient`（`SmsRecipient`/`EmailRecipient`）同样使用通道前缀自描述格式（`S:13800138000`/`E:user@x.com`——channel 内嵌、restore 前缀路由，channel 只在 VerificationRecipient、无独立判别列）——理由记录于 ADR-0026 §2（AuthAccountId 同构）。
 
 ### Entity
 具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。使用 Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)` 继承父类字段。
@@ -17,7 +17,7 @@
 **JSON 序列化契约**：序列化走 `Entity` 基类字段可见性（`@JsonAutoDetect(fieldVisibility = ANY)`），属性名即字段名；反序列化唯一入口为**全参数恢复构造器**——`@JsonCreator(mode = PROPERTIES)` + `@JsonProperty` + `@Builder`（restoreBuilder）统一挂在全参数构造器上，确保 JSON 反序列化与手动恢复路径一致。创建路径使用独立的无 id 构造器（`User` 拆双构造器；其余实体 id 非空由 `Entity` 构造器链路保证）。`id` 参数标 `@JsonProperty(required = true)`，缺 id 由 Jackson `required` + `Entity.assignId` 非空校验双重拦截（双构造器实体的恢复构造器委托后经 `assignId` 补 id；单构造器实体由 `Entity` 构造器链路保证），JSON 缺 `id` 视为非法输入（实体 JSON 只表达已持久化状态）。新增字段必须同步补充构造器参数，round-trip 全等断言测试（`assertEquals(restored, original)` + 非法 JSON 拒绝）兜底防字段/参数漂移。
 **多态实体分派（type↔class 规则，见 ADR-0016）**：子类层次用 sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句自动发现，无需 `@JsonSubTypes`）。完整规则：
 - **何时用类**：种类间有行为或字段差异（含前瞻差异）→ sealed class 层次。调用方逻辑（构造、按类型查询、分派、领域方法传参）一律用 class。
-- **何时用枚举**：纯标签/状态/元数据（无行为差异）→ 枚举（数据枚举，如 `VerificationStatus`/`VerificationScene`）；判别值作为边界合同（DB 列、JSON 判别串、ID 前缀）→ 短名判别枚举（`AuthAccountType`/`VerificationChannel`）。枚举是"数据形态"词汇，**不参与行为决策**——在 domain/app 逻辑中按判别枚举判断分支即反模式（用模式匹配拿具体子类）。
+- **何时用枚举**：纯标签/状态/元数据（无行为差异）→ 枚举（数据枚举，如 `VerificationState`/`VerificationScene`）；判别值作为边界合同（DB 列、JSON 判别串、ID 前缀）→ 短名判别枚举（`AuthAccountType`/`VerificationChannel`）。枚举是"数据形态"词汇，**不参与行为决策**——在 domain/app 逻辑中按判别枚举判断分支即反模式（用模式匹配拿具体子类）。
 - **实例侧编码**：判别值由子类覆写抽象方法提供（`getChannel()` / `getAccountType()`），编译器强制每个子类实现。
 - **枚举不持 Class 引用**：禁止 Type Object 注册表式反查（`of(Class)`）——`types` 包不反向依赖 `domain` 包。
 - **反查归基础设施**：`class→判别值` 推导只存在于 gateway 实现（infra 解析类，如 `VerificationChannels`）；domain/app 零反查。
@@ -37,6 +37,9 @@
 
 ### EnumType
 枚举类型的根标记接口（`com.soda.component.domain.EnumType`），继承 `Type`，同时也是 Domain Primitive。提供 `desc()` 返回英文描述。序列化使用枚举 `name()` 短名，各枚举额外提供 `of(String)`（`@JsonCreator` 入口）。
+
+### StateEnumType
+状态机枚举标记接口（`com.soda.component.domain.StateEnumType`），继承 `EnumType`。状态机形态 = 单一维度枚举 + 聚合根命令迁移方法（ADR-0017）。提供实例谓词 `terminal()` 终态（吸收态）判定，供领域守卫与基础设施兜底统一消费——终态行不可写守卫按 `terminal()` 泛化，新增终态只需枚举成员标记，守卫零改动（ADR-0023）。实现约定：状态属性（如 `terminal`）用**构造器注入字段**（record 风格，与 `desc` 字段一致），常量声明处自文档；谓词用实例方法（多态分派是接口价值所在，静态方法无法按枚举分派）；**不提供** `isInitial()`/`isNew()`：初始态语义随状态机而异（未来「待激活」态会使创建态不再是初始态）；`isNew` 与 Spring `Persistable#isNew()`（持久化状态检测）同名异义。
 
 ### Identifier
 不可变的领域原语，扩展 `Type`，在限界上下文内唯一标识一个实体。底层值类型是泛型的（`Identifier<T extends Comparable<T>>`）。子类自行实现 `Comparable<Self>`。实现类需提供 `identifier()` 返回类型化值，以及基于值的 `equals()`/`hashCode()`。
@@ -100,6 +103,32 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 
 ### EntityGateway
 实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。提供 `save(T)`、`findById(ID)`、`findAllById(Iterable<ID>)`。`save` 返回 `ID`（可能新生成）。无删除契约——终态（如注销 R）由 `save` 持久化（ADR-0017）。
+**save 全权委托约定（ADR-0024）**：PO 的 `isNew()` = `id == null` 判定（收在 `AbstractPersistable`——所有 PO 强制继承的统一基类），save = `repository.save(toPersistence(domain))`——id==null（服务端生成 id 创建路径）→ persist（INSERT + `assignId` 回填）；id 恒有 → merge 按行存在性统一路由 insert / put（全量更新，领域 null = 清空列）/ 终态处理。要点：① 乐观锁由 merge 自动校验（`@Version` 版本不一致 → 异常 → 事务回滚），网关不做手动比对/行数判断；② convertor `toPersistence` 全量构造（含显式 null），是 merge 拷贝的唯一来源，无覆写原语；③ 终态守卫/归档等聚合级策略在 gateway 内裁决；④ 客户端生成 id 的聚合 save 前置：必须已标识；⑤ 同事务加载享一级缓存 ctx 命中，update 路径零额外 SQL；⑥ insert-only 表（如 `user_archive`）id 恒有 → 恒 merge，insert 多一次 PK SELECT，低频可接受；⑦ 持久化防御编程用 JDK 设施/裸抛（终态拒写裸抛 ISE、未标识 `Objects.requireNonNull` → NPE、行不存在 `orElseThrow()` → NSE），不携消息——异常类型 + 栈帧即语义；不建守卫工具类、不散落自定义消息。
+
+### Convertor（基础设施）
+
+基础设施层领域聚合 ↔ 持久化模型的转换器（`soda-xxx-infrastructure` 的 `infrastructure/convertor/` 子包，COLA 惯例）。
+
+**命名**：`XxxConvertor`（每个聚合一个）；final 类 + 私有构造器（工具类）。
+
+**公共方法**（层命名，全项目统一）：
+
+| 方法 | 方向 | 语义 |
+|---|---|---|
+| `toDomain(PO)` | 持久化行 → 领域聚合 | 恢复路径（判别组装、null → Optional.empty 等） |
+| `toPersistence(domain)` | 领域聚合 → PO | 全量构造（含显式 null 清空列；id 可空 → persist 后回填；id 有值 → merge 按行路由，见 ADR-0024） |
+
+规则：
+- **领域对象是行的唯一事实源**：`toPersistence` 逐列赋值（含 null——领域 null = 清空列），创建/更新路径共用同一转换，领域列单点定义不漂移
+- **不原地覆写托管实例**（ADR-0024）：save 对 id 有值走 `em.merge`，托管实例是加载快照供版本校验；变异它会使乐观锁冲突检测失效（2026-08-15 实证回退）
+- **审计列自动处理**（2026-08-15 修订）：`toPersistence` 不构造审计列（null 即可）——created_date 由基类 `updatable=false` 保护（不进 UPDATE）、last_modified_date 由 auditing `@PreUpdate` 刷新；merge 的 null 不会覆盖审计列（实证：`PersistenceEndToEndTest.should_updatePreserveAuditColumns`）
+- **一持久化形状一 convertor**：归档/审计等第二张表用独立 convertor 类（如 `UserArchiveConvertor.toPersistence(User)` → `UserArchivePO`），不塞进聚合 convertor
+- **不设共享的「逐列应用」私有方法**：`toPersistence` 内联全量构造，避免半转换 helper（部分构造 + 变异入参的混淆）；私有辅助方法（如从聚合派生列值）命名自由
+
+### 查询契约命名（existsBy / findBy）
+- **存在性谓词一律 `existsBy*`**（Spring Data 派生查询词汇表有 `existsBy` 无 `hasBy`；先例 `UserGateway.existsByUsername`）。`has*` 是领域对象自问状态的命名（`isPending`/`isExpiredAt`），不用于网关。
+- **语义 = 键存在性 + 唯一性约定**：`existsBy*` 与 DB 唯一索引成对出现（应用层预检 + DB 兜底，如 `uk_username`、`uk_active_key`）；过滤语义（活跃/未过期/状态等）在契约 javadoc 声明、**实现细节归基础设施**——契约名不拼过滤措辞（例：`existsBySceneAndChannelAndTarget` 的活跃/过期判定由基础设施实现，见 ADR-0025）。
+- **消费/检索用 `findBy`/`findFirstBy` + 显式参数**；固定形状查询不用查询对象（`VerificationQuery` 已删除，ADR-0025）——查询对象/规格模式只用于开放过滤（管理端任意筛选组合）。
 
 ### CredentialHasher
 凭证哈希器契约（`domain.gateway.CredentialHasher`），继承 `Gateway`。提供 `hash(RawCredential) → CredentialHash` 和 `matches(RawCredential, CredentialHash)`。实现层可对接 BCrypt、Argon2、SCrypt 等。
@@ -140,7 +169,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 - 实现 `DomainService` 标记接口（`com.soda.component.domain.DomainService`，类似 `Gateway` 的定位：供 IOC 扫描 / AOP 识别）
 - 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
 
-**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（前置 + 生成码、构造 INITIALIZED 聚合、注册 `VerificationCreatedEvent`）委托 `User.requestChangeMobileCode`/`requestChangeEmailCode`（User 决策 + 创建），物理发送由投递侧监听器在事务提交后执行（见 ADR-0011）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
+**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起由 `VerificationService.requestCode` 编排（CC 前置查询拦截 + Verification 工厂构造 INITIALIZED 聚合、注册 `VerificationCreatedEvent`，见 ADR-0021），物理发送由投递侧监听器在事务提交后执行（见 ADR-0011）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
 
 ### ApplicationService 编排规范
 
@@ -157,7 +186,9 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的**参数**传入，逻辑封装进主体聚合内部
 4. 若用例**修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
 5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程中，发送类副作用封装为聚合行为方法（`SmsVerification.send(SmsSender)` / `EmailVerification.send(EmailSender)`），**投递时机在事务提交后**——创建工厂注册 `VerificationCreatedEvent`，AppService 持久化后发布，投递侧监听器（`@TransactionalEventListener(AFTER_COMMIT)`）调用聚合 `send(sender)` 并落库（DB 事务不跨外部投递通道持有；sender 契约保证投递成功才返回，见 ADR-0011）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
-6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（单聚合创建用例：生成码 → 构造聚合（INITIALIZED）→ save → 发布 `VerificationCreatedEvent` → 提交后由监听器 `verification.send(sender)`（发送 + 转 PENDING）。发码用例可进一步把「决策 + 创建」收进主体聚合行为方法（`User.requestChangeMobileCode`/`requestChangeEmailCode`：自检规则 + 创建 + 注册事件，见 ADR-0011），AppService 退化为查询前置 + save + 发布）
+6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（发码用例：`VerificationService.requestCode`——CC 前置（跨实例查询拦截）→ Verification 工厂构造 INITIALIZED 验证聚合（scene=CC）→ save → 发布 `VerificationCreatedEvent` → 提交后由监听器 `verification.send(sender)`（发送 + 转 PENDING）。主体聚合自检规则可收进聚合行为方法，跨实例查询必须留在 AppService；2026-08-12 决策：发码的主体聚合 = Verification（`User.requestChangeXxxCode` 已删除，见 ADR-0021））
+
+**终态守卫（Stateful）**：`Aggregate` 基类实现 `Stateful`（聚合根自动具备状态机契约——`getState()` 暴露状态枚举（非空）、`isTerminal()` 委托 `StateEnumType.terminal()` 判定终态，单一事实源在枚举；聚合的 `getState()` 由 `@Getter` 生成即满足，无需显式方法/泛型；普通实体如 AuthAccount 不实现本契约）；加载后经 `AbstractAppService.requireNotTerminal(id)` 统一守卫——终态（吸收态）实体禁止一切写，抛 IAE（业务拒绝，与领域 R 吸收态 IAE 一致；持久层兜底为网关 save 内行终态判定裸抛的 ISE，防御编程不携消息）。用例级状态前置（如 CC 发码要求启用态）仍为用例业务断言，不进通用守卫。新增状态机聚合：状态枚举实现 `StateEnumType` + 聚合的 `getState()` 返回它（@Getter 即满足），零额外样板（术语见 CONTEXT.md）。
 
 典型反例：AppService 直接 `verification.verify(code)` 再 `user.changeMobile(...)`——verify 修改外部聚合状态，必须经 `CredentialChangeDomainService`。
 
@@ -181,7 +212,7 @@ public class UserController {
 
 ### 模块依赖与 build.gradle 声明规则
 
-**api → domain（待定）**：`api` 依赖 `domain` 的正式方案未定。当前 `soda-xxx-api` 只临时直接声明 `soda-component-domain-types`（契约使用其枚举，如 Sex），**不**声明 `domain` 模块；`soda-component-api-starter` 也**不**依赖 `domain-starter`（api 层框架与 domain 框架解耦）。
+**api → domain（待定）**：`api` 依赖 `domain` 的正式方案未定。当前 `soda-xxx-api` 只临时直接声明 `soda-component-domain-types`（契约使用其枚举，如 Sex），**不**声明 `domain` 模块；`soda-component-api-starter` 也**不**依赖 `domain-starter`（api 层框架与 domain 框架解耦）。临时例外（2026-08-12）：`soda-user-api` 声明 `soda-user-domain`——`RequestCodeCommand` 携带 `VerificationScene`/`VerificationChannel` 领域枚举（用户决定替代字符串短名，正式方案落地后复核，见 ADR-0021 修订）。
 
 **声明规则**：
 
@@ -214,6 +245,8 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 
 **分拆/合并规则**：一个聚合根一个 Service，方法数不超过 10 个。当方法超过 10 个或出现复杂编排时，从 `service/` 的 ServiceImpl 按 Command 拆出 `command/*Processor`（COLA 风格），但对外接口保持一个。
 
+> 例外（既有实践）：按关注点拆分服务——`UserService`（身份 CRUD）与 `UserAuthService`（凭证变更）同属 User 聚合根的双服务先例；新聚合根服务仍按一聚合根一服务建立（`Verification` → `VerificationService`，见 ADR-0021）。
+
 **Entity 创建**：使用 `XxxEntity.createBuilder()` / `builder()` 双 Builder 模式。当构建逻辑涉及跨聚合引用或需要依赖注入时，引入 `factory/*Factory`，但当前 Builder 模式已足够。
 
 **Command 定义**：Java `record` + `@JsonProperty`，无需继承基类。可空属性标注 JSpecify `@Nullable`，未标注则默认非空（见「参数契约」）。
@@ -234,7 +267,7 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 判定原则（检查对象）：检查「参数值 / 业务状态是否允许操作」→ IAE 校验（客户端可预期的一切：错码、过期、重复用户名、未请求验证码、状态前置）；「值是否为 null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
 
 规则：
-- 消息策略：IAE 带消息（客户端唯一反馈通道，wiring 未实现前不可省）；构造器校验用 `ValidateUtils` 固定消息，不自定义
+- 消息策略：IAE 带消息（客户端唯一反馈通道，wiring 未实现前不可省）；构造器校验用 `ValidateUtils` 固定消息，不自定义。例外：防御编程守卫（调用方按契约调用、兜底拦截——网关内裸抛 ISE / `Objects.requireNonNull` NPE / `orElseThrow` NSE / 不支持的操作 `UnsupportedOperationException`）不携消息，非客户端反馈通道，契约违反即调用方 bug，异常类型 + 栈帧即诊断
 - 操作语义：set-state（`disable` / `enable`）幂等 no-op、不发事件；transition（`verify` / `use`）业务状态前置失败抛带消息 IAE；`changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015）
 - requireXXX 模式只在 appservice：网关加载后 null 校验 → IAE（User not found / No pending）；可空查找返回 `Optional`
 - `Objects.requireNonNullElse` 仅用于默认值模式（如 `User` 构造器 accounts 缺省），不属于守卫
@@ -249,6 +282,16 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 - 不返回 `Optional<@Nullable T>`——Optional 本身表达可空返回
 - 瞬态字段（如 `Entity.id`）标 `@Nullable`，使用点由调用方保证非空（方法路径无运行时窄化守卫）
 - **构造器校验 + 方法零守卫**（2026-08-07 三次修订）：null 契约在构造器由 `ValidateUtils.notNull` 拦截（与 DP 一致），方法路径由注解声明 + 调用方遵守；恢复路径 JSON 非空字段 `@JsonProperty(required = true)`；编译期 checker（NullAway + Error Prone）未来引入，路线见 ADR-0015
+
+## Database（开发阶段）
+
+数据源为 H2 内存库（`jdbc:h2:mem:…;MODE=MySQL`，见 soda-user-start `application.yml`），**不接真实 MySQL**；schema 由 Flyway 执行 `db/migration/` 下 SQL 创建。
+
+**开发阶段约定**（2026-08-12，见 ADR-0022）：
+- **单 V1**：`db/migration/` 只保留 `V1__init_user_tables.sql`——schema 变更**直接修改 create table 语句**，严禁新增 V2/V3… 增量迁移（无存量数据；切真库时冻结 V1 为基线再启用增量迁移）
+- **严禁外键**（阿里手册【强制】）：不得使用外键与级联，完整性由应用层聚合边界保证
+- **严禁存储过程 / 触发器 / 视图**等 DB 端逻辑：业务逻辑一律在应用层/领域层实现，DDL 仅表达表、列、索引
+- 表名单数；`user` 等保留字反引号包裹；枚举列用短名（ADR-0005）；审计字段（`created_date`/`last_modified_date`，2026-08-13 修订替代 `create_time`/`update_time` + DB 默认值方案）：由 Spring Data auditing 维护（`@CreatedDate`/`@LastModifiedDate`，经 `JpaAuditingAutoConfiguration`），**无 DB 默认值**——`CURRENT_TIMESTAMP` 按会话时区生成会漂移，由应用恒填充；时间类型 `Instant` + `TIMESTAMP_UTC`，列存 UTC 字面值。insert-only 归档表（如 `user_archive`）用单一时间戳（`archive_time`，`@CreatedDate`），不复用审计列对
 
 ## Code Style
 

@@ -13,6 +13,12 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 > 再修订（2026-08-03）：`VerificationChannel` 归属 `soda-user-domain`（`com.soda.user.domain.types.VerificationChannel`，取值 `S`/`E`）——验证通道作为 `Verification` 子类型的判别值（与 `@JsonTypeName` 同构，见 ADR-0011），也被 gateway 查询过滤使用；因与 `Verification` 子类型一一对应、映射需业务侧维护，故不放 `soda-components`（`Sex` 因 web 层跨模块引用才下沉组件层）；上一版"已删除"注记作废。
 >
 > 再修订（2026-08-05）：「映射需业务侧维护」作废——`class→VerificationChannel` 反查下沉基础设施（ADR-0016）；枚举仅作为领域词汇与判别值锚点保留在 user-domain（取值与短名规则不变）。
+>
+> 再修订（2026-08-13）：`VerificationStatus` 改名 `VerificationState`（`soda-user-domain.types`）——修复本 ADR「state vs status 命名规则」的既有违规（I→P→V→U 是状态机，按规则应 `XxxState`）；验证状态属性/列/JSON 判别值随之统一 `state`（`Verification` 实体字段、`user_verification.state` 列、`VerificationQuery`），见 ADR-0011 修订注记。
+>
+> 再修订（2026-08-15）：`VerificationScene` 取值改为**扁平助记码** `UCC/UPR/ULG/URG`（领域前缀，跨领域共享枚举时隔离，SocialType 先例；列宽 2→4）；`VerificationChannel` 定位修订——**仅保留命令输入判别**（2026-08-15 多态塌缩后无持久化列、无聚合访问器、无查询参数；通道判别单一源栖身 `Subject` 密封类型），`channel` 列与 class↔channel 映射删除——见 ADR-0025。
+>
+> 再修订（2026-08-16）：`VerificationScene` → **`UserVerificationScene`**（调用方词汇，Verification 只存场景字符串；`code()` 返回助记码串 = `VerificationSource.scene` 值）；`VerificationChannel` 角色扩为三项（① 预认证命令输入、② `Recipient` 判别/序列化属性、③ 工厂策略选择）——**channel 只在 Recipient**（subject 不携带、无独立 channel 列），`Subject` 密封层级删除——见 ADR-0026。
 
 随着 DTO/VO 层确认不直接引用枚举类型（使用 `String` 传递），`soda-user-common` 模块失去存在意义，枚举需要重新设计。
 
@@ -34,11 +40,11 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 | 枚举 | 常量（短名 → desc） |
 |------|---------------------|
 | `Sex` | `M`(male), `F`(female) |
-| `UserState` | `E`(enabled), `D`(disabled) |
+| `UserState` | `E`(enabled), `D`(disabled), `R`(removed) |
 | `AuthAccountType` | `P`(password), `S`(sms), `E`(email), `O`(oauth) |
 | `SocialType` | `GE`(gitee), `DT`(ding-talk), `WENT`(wechat-work), `WMP`(wechat-mp), `WOPN`(wechat-open), `WMIN`(wechat-mini), `ALIP`(alipay-mini) |
-| `VerificationScene` | `CC`(credential-change), `PR`(password-reset), `LG`(login), `RG`(register) |
-| `VerificationStatus` | `I`(initialized), `P`(pending), `V`(verified), `U`(used) |
+| `UserVerificationScene` | `UCC`(user-credential-change), `UPR`(user-password-reset), `ULG`(user-login), `URG`(user-register) |
+| `VerificationState` | `I`(initialized), `P`(pending), `V`(verified), `U`(used) |
 
 ### state vs status 命名规则
 

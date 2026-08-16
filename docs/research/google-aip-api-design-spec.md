@@ -273,7 +273,7 @@ record ListUsersResponse(
 | 自定义动词 **必须** 使用 `camelCase` | MUST | [AIP-136](https://google.aip.dev/136) |
 | `body` **应当** 是 `"*"` | SHOULD | [AIP-136](https://google.aip.dev/136) |
 
-**SODA 适配**：项目使用 `POST /{resource}/{id}:{action}` 模式（如 `POST /users/1:disable`），与 AIP-136 一致。
+**SODA 适配**：项目使用 `POST /{resource}/{id}:{action}` 模式（如 `POST /users/1:disable`），与 AIP-136 一致。集合级自定义方法（无 parent 顶层集合）同样允许：`POST /collection:verb`（如 Firebase Identity Toolkit `POST /v1/accounts:signUp`、`accounts:sendOobCode`）——预认证/无资源场景（ULG/UPR/URG 发码）适用，见 ADR-0026。
 
 **SODA 自定义方法命名规范**（[来源: AIP-136](https://google.aip.dev/136)）：
 

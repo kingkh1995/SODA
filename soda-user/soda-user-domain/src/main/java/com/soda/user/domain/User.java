@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
 import com.soda.component.domain.gateway.CredentialHasher;
-import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
@@ -24,8 +23,9 @@ import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
-import com.soda.user.domain.types.VerificationScene;
-import com.soda.user.domain.types.VerificationStatus;
+import com.soda.user.domain.types.EmailRecipient;
+import com.soda.user.domain.types.SmsRecipient;
+import com.soda.user.domain.types.UserVerificationScene;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -248,26 +248,37 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 修改手机号（需要短信验证）。
+     * 修改手机号（需要手机号验证码）。
      * <p>
      * 业务规则：
      * <ul>
-     *   <li>验证场景必须为 CC（credential change）——其他场景的验证码不可用于换绑</li>
-     *   <li>验证必须处于 VERIFIED 状态（USED 为终态，不可重放）</li>
-     *   <li>不能修改为相同的手机号</li>
+     *   <li>验证主体必须匹配本用户（source 匹配——subject 裸键串，见 ADR-0026）</li>
+     *   <li>验证场景必须为 UCC（credential change）——其他场景的验证码不可用于换绑</li>
+     *   <li>验证必须处于 VERIFIED 状态（{@code isVerified()} 单一规则来源；USED 为终态，不可重放）</li>
+     *   <li>验证投递端点必须是手机号且不能修改为相同的手机号</li>
      *   <li>更新 User.mobile 字段</li>
      *   <li>替换旧 SmsAuthAccount 为新账户</li>
      * </ul>
      *
-     * @param verification 已通过的短信验证聚合
+     * @param verification 已通过验证的验证聚合（recipient 为 {@link SmsRecipient}）
      */
-    public void changeMobile(SmsVerification verification) {
+    public void changeMobile(Verification verification) {
         mustEnable();
-        Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
-        Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
-        Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
-        var newMobile = verification.getTarget();
-        Assert.isTrue(!Objects.equals(mobile, newMobile), "cannot change to the same mobile");
+        Assert.isTrue(Objects.equals(verification.getSource().scene(), UserVerificationScene.UCC.name()),
+                "verification scene must be credential change, but was " + verification.getSource().scene());
+        // subject 裸键串推导与 UserVerificationFactory.source 一致——防御纵深守卫（find-by-source 已按
+        // 构造精确，此处冗余兜底；推导刻意留在聚合侧而非复用工厂，见 ADR-0026 §9）
+        Assert.isTrue(Objects.equals(verification.getSource().subject(), Long.toString(getId().value())),
+                "verification subject must match user " + getId().value()
+                        + ", but was " + verification.getSource().subject());
+        Assert.isTrue(verification.isVerified(), "verification must be verified");
+        var recipient = verification.getRecipient();
+        if (!(recipient instanceof SmsRecipient(Mobile newMobile))) {
+            throw new IllegalArgumentException(
+                    "verification recipient must be a mobile, but was " + recipient.channel() + ":" + recipient.target());
+        }
+        Assert.isTrue(!Objects.equals(mobile, newMobile),
+                "cannot change to the same mobile: " + newMobile.value());
         this.mobile = newMobile;
         // 替换 SmsAuthAccount：移除旧账户，添加新账户
         removeAccount(SmsAuthAccountId.ACCOUNT_TYPE);
@@ -275,86 +286,40 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 修改邮箱（需要邮箱验证）。
+     * 修改邮箱（需要邮箱验证码）。
      * <p>
      * 业务规则：
      * <ul>
-     *   <li>验证场景必须为 CC（credential change）——其他场景的验证码不可用于换绑</li>
-     *   <li>验证必须处于 VERIFIED 状态（USED 为终态，不可重放）</li>
-     *   <li>不能修改为相同的邮箱</li>
+     *   <li>验证主体必须匹配本用户（source 匹配——subject 裸键串，见 ADR-0026）</li>
+     *   <li>验证场景必须为 UCC（credential change）——其他场景的验证码不可用于换绑</li>
+     *   <li>验证必须处于 VERIFIED 状态（{@code isVerified()} 单一规则来源；USED 为终态，不可重放）</li>
+     *   <li>验证投递端点必须是邮箱且不能修改为相同的邮箱</li>
      *   <li>更新 User.email 字段</li>
      *   <li>替换旧 EmailAuthAccount 为新账户</li>
      * </ul>
      *
-     * @param verification 已通过的邮箱验证聚合
+     * @param verification 已通过验证的验证聚合（recipient 为 {@link EmailRecipient}）
      */
-    public void changeEmail(EmailVerification verification) {
+    public void changeEmail(Verification verification) {
         mustEnable();
-        Assert.isTrue(Objects.equals(verification.getUserId(), getId().toLongId()), "verification userId must match this user");
-        Assert.isTrue(Objects.equals(verification.getScene(), VerificationScene.CC), "verification scene must be credential change");
-        Assert.isTrue(Objects.equals(verification.getStatus(), VerificationStatus.V), "verification must be verified");
-        var newEmail = verification.getTarget();
-        Assert.isTrue(!Objects.equals(email, newEmail), "cannot change to the same email");
+        Assert.isTrue(Objects.equals(verification.getSource().scene(), UserVerificationScene.UCC.name()),
+                "verification scene must be credential change, but was " + verification.getSource().scene());
+        // subject 裸键串推导与 UserVerificationFactory.source 一致——防御纵深守卫（见 changeMobile 注释）
+        Assert.isTrue(Objects.equals(verification.getSource().subject(), Long.toString(getId().value())),
+                "verification subject must match user " + getId().value()
+                        + ", but was " + verification.getSource().subject());
+        Assert.isTrue(verification.isVerified(), "verification must be verified");
+        var recipient = verification.getRecipient();
+        if (!(recipient instanceof EmailRecipient(Email newEmail))) {
+            throw new IllegalArgumentException(
+                    "verification recipient must be an email, but was " + recipient.channel() + ":" + recipient.target());
+        }
+        Assert.isTrue(!Objects.equals(email, newEmail),
+                "cannot change to the same email: " + newEmail.value());
         this.email = newEmail;
         // 替换 EmailAuthAccount：移除旧账户，添加新账户
         removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);
         addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
-    }
-
-    // ─── 验证码发起 ───
-
-    /**
-     * 请求发送手机号换绑验证码 — 创建 INITIALIZED 短信验证实体（scene=CC）并注册
-     * {@link VerificationCreatedEvent}（由投递侧监听器在事务提交后发送，见 ADR-0011）。
-     * <p>
-     * 业务规则（User 自检规则，不依赖查询）：
-     * <ul>
-     *   <li>用户必须处于启用状态（E）</li>
-     *   <li>目标不能与当前手机号相同</li>
-     * </ul>
-     * 全局唯一（existsByMobile）与未过期 PENDING 唯一性属跨实例规则，由 ApplicationService
-     * 查询后前置拦截（fail-fast）；本方法不持有、不持久化验证实体——调用方负责 save。
-     *
-     * @param target    新手机号
-     * @param generator 随机码生成器（码在创建时生成并物化进 {@link VerificationCode}）
-     * @return 已创建（INITIALIZED，未发送）的短信验证实体
-     */
-    public SmsVerification requestChangeMobileCode(Mobile target, RandomStringGenerator generator) {
-        mustEnable();
-        Assert.isTrue(!Objects.equals(mobile, target), "cannot change to the same mobile");
-        return SmsVerification.createBuilder()
-                .userId(getId().toLongId())
-                .scene(VerificationScene.CC)
-                .target(target)
-                .generator(generator)
-                .build();
-    }
-
-    /**
-     * 请求发送邮箱换绑验证码 — 创建 INITIALIZED 邮箱验证实体（scene=CC）并注册
-     * {@link VerificationCreatedEvent}（由投递侧监听器在事务提交后发送，见 ADR-0011）。
-     * <p>
-     * 业务规则（User 自检规则，不依赖查询）：
-     * <ul>
-     *   <li>用户必须处于启用状态（E）</li>
-     *   <li>目标不能与当前邮箱相同</li>
-     * </ul>
-     * 全局唯一（existsByEmail）与未过期 PENDING 唯一性属跨实例规则，由 ApplicationService
-     * 查询后前置拦截（fail-fast）；本方法不持有、不持久化验证实体——调用方负责 save。
-     *
-     * @param target    新邮箱
-     * @param generator 随机码生成器（码在创建时生成并物化进 {@link VerificationCode}）
-     * @return 已创建（INITIALIZED，未发送）的邮箱验证实体
-     */
-    public EmailVerification requestChangeEmailCode(Email target, RandomStringGenerator generator) {
-        mustEnable();
-        Assert.isTrue(!Objects.equals(email, target), "cannot change to the same email");
-        return EmailVerification.createBuilder()
-                .userId(getId().toLongId())
-                .scene(VerificationScene.CC)
-                .target(target)
-                .generator(generator)
-                .build();
     }
 
     // ─── 生命周期守卫 ───
@@ -365,7 +330,12 @@ public class User extends Aggregate<UserId> {
      * 语义：禁用（D）与注销（R）均为非启用态——D 仅可 {@link #enable()} / {@link #deregister()}，
      * R 为吸收态（终态）无任何操作；本守卫一个检查覆盖全部（见 ADR-0017）。
      */
-    private void mustEnable() {
+    /**
+     * 断言启用态（{@code UserState.E}）——用户域不变量：变更方法（changeXxx）与发码前置
+     * （{@code UserAuthService.requireEnabled}，2026-08-16 见 ADR-0026）共用的单一守卫，
+     * 服务层不重复该规则（防消息/逻辑漂移）。
+     */
+    public void mustEnable() {
         Assert.isTrue(UserState.E.equals(state), "user must be enabled");
     }
 

@@ -1,3 +1,5 @@
 dependencies {
     api project(':soda-components:soda-component-domain-starter')
+    // JPA 持久化基类（Auditable/AbstractAuditable）编译与传递依赖
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
 }

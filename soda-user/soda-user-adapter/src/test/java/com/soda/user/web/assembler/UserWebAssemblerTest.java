@@ -125,7 +125,7 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("RequestChangeMobileCodeRequest 映射到 RequestChangeMobileCodeCommand（userId 来自额外参数）")
+        @DisplayName("RequestChangeMobileCodeRequest 映射到 RequestChangeMobileCodeCommand（userId 来自路径）")
         void should_mapRequestChangeMobileCodeRequest_when_toRequestChangeMobileCodeCommand() {
             var request = new RequestChangeMobileCodeRequest("13900139000");
             var cmd = assembler.toRequestChangeMobileCodeCommand(1L, request);
@@ -145,7 +145,7 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("RequestChangeEmailCodeRequest 映射到 RequestChangeEmailCodeCommand（userId 来自额外参数）")
+        @DisplayName("RequestChangeEmailCodeRequest 映射到 RequestChangeEmailCodeCommand（userId 来自路径）")
         void should_mapRequestChangeEmailCodeRequest_when_toRequestChangeEmailCodeCommand() {
             var request = new RequestChangeEmailCodeRequest("new@test.com");
             var cmd = assembler.toRequestChangeEmailCodeCommand(1L, request);

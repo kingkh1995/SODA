@@ -2,6 +2,8 @@
 
 **Status**: accepted
 
+> 修订（2026-08-15）：`Verification` 多态塌缩为单类——本 ADR 的 verification 部分（class↔channel 映射 `VerificationChannels`、`@JsonTypeName` 判别、决策 8 类层次保留理由）**作废**；`VerificationChannel` 枚举仅保留命令输入判别；`AuthAccount` 侧不变。详见 ADR-0025。
+
 **Context**:
 
 项目用 sealed 类层次表达"固定种类集"（`AuthAccount` 4 子类 / `Verification` 2 子类，JEP 409），判别值（短名）由领域枚举（`AuthAccountType` / `VerificationChannel`）承载；JSON 判别走 `@JsonTypeName` + Jackson 3 从 `permits` 自动发现子类（无 `@JsonSubTypes`）。

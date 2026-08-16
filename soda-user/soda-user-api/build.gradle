@@ -1,6 +1,9 @@
 dependencies {
     api project(':soda-components:soda-component-api-starter')
-    // api 依赖 domain 的正式方案未定：adapter 的 Request 校验（@EnumName(Sex.class) 等）需
-    // domain-types 枚举，经本 api 边传递获得（临时方案）。adapter 不自声明 domain-types。
+    // api 依赖 domain 的正式方案未定（见 ADR-0021 修订）：
+    //  - component-domain-types：adapter 的 Request 校验（@EnumName(Sex.class) 等）需枚举，经本 api 边传递获得（临时方案）
+    //  - soda-user-domain：2026-08-12 临时声明——RequestCodeCommand 携带领域枚举；2026-08-16 移除
+    //    （api 按用例拆分，per-use-case 命令回归 primitive 形状，scene/channel 隐式——0021 悬案以
+    //    消除需求的方式了结，见 ADR-0026）。
     api project(':soda-components:soda-component-domain-types')
 }

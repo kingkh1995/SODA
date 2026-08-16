@@ -55,6 +55,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     private PasswordAuthAccount(Active active, CredentialHash passwordHash) {
         super(active);
         ValidateUtils.notNull(passwordHash);
+        // 恒启用不变量（ADR-0004）：密码账户不允许禁用——创建路径强制 TRUE、恢复路径拒绝 FALSE
+        ValidateUtils.requireEquals(active, Active.TRUE);
         this.passwordHash = passwordHash;
     }
 
@@ -103,6 +105,18 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      */
     public void changePassword(RawCredential credential, CredentialHasher hasher) {
         this.passwordHash = hasher.hash(credential);
+    }
+
+    /**
+     * 停用账户 — 拒绝：密码账户**恒启用**（设计不变量，ADR-0004——无解绑流程，
+     * 持久化无 active 列，恢复恒 {@code Active.TRUE}）。不允许设置为禁用态。
+     * 防御编程：调用方按契约不得调用，异常类型 + 栈帧即语义，不携消息。
+     *
+     * @throws UnsupportedOperationException 恒抛（该操作对密码账户不支持）
+     */
+    @Override
+    public void deactivate() {
+        throw new UnsupportedOperationException();
     }
 
 }

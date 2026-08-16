@@ -7,7 +7,6 @@ import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
-import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.RawCredential;
@@ -16,17 +15,19 @@ import com.soda.component.domain.types.Version;
 import com.soda.user.domain.event.UserCreatedEvent;
 import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
-import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.EmailAuthAccountId;
+import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.Nickname;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.SmsAuthAccountId;
+import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.SocialType;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
-import com.soda.user.domain.types.VerificationScene;
+import com.soda.user.domain.types.VerificationCodePolicy;
+import com.soda.user.domain.types.VerificationSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -517,10 +518,6 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeEmail(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class);
             assertThat(user.flushEvents()).isEmpty();
         }
 
@@ -545,12 +542,6 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeEmail(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("user must be enabled");
-            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("user must be enabled");
             assertThat(user.flushEvents()).isEmpty();
         }
     }
@@ -581,13 +572,13 @@ class UserTest {
         @DisplayName("修改密码成功并注册 PasswordChangedEvent")
         void should_changePassword() {
             var user = fullUserWithPasswordAccount();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
-            verification.send(SMS_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             user.changeMobile(verification);
@@ -599,11 +590,11 @@ class UserTest {
         @DisplayName("changeMobile 拒绝未验证的验证聚合")
         void should_rejectChangeMobile_when_verificationNotVerified() {
             var user = fullUserWithPasswordAccount();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
 
             assertThatThrownBy(() -> user.changeMobile(verification))
@@ -615,49 +606,49 @@ class UserTest {
         @DisplayName("changeMobile 拒绝非 CC 场景的验证聚合")
         void should_rejectChangeMobile_when_sceneNotCredentialChange() {
             var user = fullUserWithPasswordAccount();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.LG)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("ULG", Long.toString(USER_ID.value())))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
-            verification.send(SMS_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeMobile(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("verification scene must be credential change");
+                    .hasMessageContaining("verification scene must be credential change");
         }
 
         @Test
         @DisplayName("changeMobile 拒绝目标用户不匹配的验证聚合")
         void should_rejectChangeMobile_when_verificationUserIdMismatch() {
             var user = fullUserWithPasswordAccount();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(999L))
-                    .scene(VerificationScene.CC)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", "999"))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
-            verification.send(SMS_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeMobile(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("verification userId must match");
+                    .hasMessageContaining("verification subject must match");
         }
 
         @Test
         @DisplayName("changeMobile 拒绝已使用的验证聚合")
         void should_rejectChangeMobile_when_verificationUsed() {
             var user = fullUserWithPasswordAccount();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
-            verification.send(SMS_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
             verification.use();
 
@@ -678,13 +669,13 @@ class UserTest {
                     .mobile(new Mobile("13900139000"))
                     .passwordAccount(stubPasswordAccount())
                     .build();
-            var verification = SmsVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Mobile("13900139000"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new SmsRecipient(new Mobile("13900139000")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
-            verification.send(SMS_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeMobile(verification))
@@ -696,13 +687,13 @@ class UserTest {
         @DisplayName("changeEmail 修改邮箱")
         void should_changeEmail() {
             var user = fullUserWithPasswordAccount();
-            var verification = EmailVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Email("new@test.com"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
-            verification.send(EMAIL_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             user.changeEmail(verification);
@@ -714,11 +705,11 @@ class UserTest {
         @DisplayName("changeEmail 拒绝未验证的验证聚合")
         void should_rejectChangeEmail_when_verificationNotVerified() {
             var user = fullUserWithPasswordAccount();
-            var verification = EmailVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Email("new@test.com"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
 
             assertThatThrownBy(() -> user.changeEmail(verification))
@@ -730,36 +721,36 @@ class UserTest {
         @DisplayName("changeEmail 拒绝非 CC 场景的验证聚合")
         void should_rejectChangeEmail_when_sceneNotCredentialChange() {
             var user = fullUserWithPasswordAccount();
-            var verification = EmailVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.RG)
-                    .target(new Email("new@test.com"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("ULG", "new@test.com"))
+                    .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
-            verification.send(EMAIL_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeEmail(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("verification scene must be credential change");
+                    .hasMessageContaining("verification scene must be credential change");
         }
 
         @Test
         @DisplayName("changeEmail 拒绝目标用户不匹配的验证聚合")
         void should_rejectChangeEmail_when_verificationUserIdMismatch() {
             var user = fullUserWithPasswordAccount();
-            var verification = EmailVerification.createBuilder()
-                    .userId(new LongId(999L))
-                    .scene(VerificationScene.CC)
-                    .target(new Email("new@test.com"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", "999"))
+                    .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
-            verification.send(EMAIL_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeEmail(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("verification userId must match");
+                    .hasMessageContaining("verification subject must match");
         }
 
         @Test
@@ -774,13 +765,13 @@ class UserTest {
                     .email(new Email("new@test.com"))
                     .passwordAccount(stubPasswordAccount())
                     .build();
-            var verification = EmailVerification.createBuilder()
-                    .userId(new LongId(1L))
-                    .scene(VerificationScene.CC)
-                    .target(new Email("new@test.com"))
+            var verification = Verification.createBuilder()
+                    .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
+                    .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
+                    .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
-            verification.send(EMAIL_SENDER);
+            verification.markSent();
             verification.verify(Instant.now(), new RandomString("123456"));
 
             assertThatThrownBy(() -> user.changeEmail(verification))
@@ -803,103 +794,6 @@ class UserTest {
             var newAvatar = new Avatar("https://example.com/new.png");
             user.changeAvatar(newAvatar);
             assertThat(user.getAvatar()).hasValue(newAvatar);
-        }
-    }
-
-
-    @Nested
-    @DisplayName("验证码发起")
-    class VerificationCodeInitiation {
-
-        @Test
-        @DisplayName("requestChangeMobileCode 创建 INITIALIZED 短信验证实体（scene=CC）并注册事件")
-        void should_createInitializedSmsVerification_when_requestChangeMobileCode() {
-            var user = fullUserWithPasswordAccount();
-            var target = new Mobile("13900139000");
-
-            var verification = user.requestChangeMobileCode(target, CODE_GENERATOR);
-
-            assertThat(verification.getUserId()).isEqualTo(USER_ID.toLongId());
-            assertThat(verification.getScene()).isEqualTo(VerificationScene.CC);
-            assertThat(verification.isInitialized()).isTrue();
-            assertThat(verification.getTarget()).isEqualTo(target);
-            assertThat(verification.getCode().code().value()).isEqualTo("123456");
-            assertThat(verification.flushEvents()).anyMatch(e -> e instanceof VerificationCreatedEvent);
-            // 不持有、不持久化：User 自身无字段变更、无事件
-            assertThat(user.getMobile()).isEmpty();
-            assertThat(user.flushEvents()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("requestChangeEmailCode 创建 INITIALIZED 邮箱验证实体（scene=CC）并注册事件")
-        void should_createInitializedEmailVerification_when_requestChangeEmailCode() {
-            var user = fullUserWithPasswordAccount();
-            var target = new Email("new@test.com");
-
-            var verification = user.requestChangeEmailCode(target, CODE_GENERATOR);
-
-            assertThat(verification.getUserId()).isEqualTo(USER_ID.toLongId());
-            assertThat(verification.getScene()).isEqualTo(VerificationScene.CC);
-            assertThat(verification.isInitialized()).isTrue();
-            assertThat(verification.getTarget()).isEqualTo(target);
-            assertThat(verification.flushEvents()).anyMatch(e -> e instanceof VerificationCreatedEvent);
-            // 不持有、不持久化：User 自身无字段变更、无事件
-            assertThat(user.getEmail()).isEmpty();
-            assertThat(user.flushEvents()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("requestChangeMobileCode 拒绝相同手机号")
-        void should_rejectSameMobile_when_requestChangeMobileCode() {
-            var currentMobile = new Mobile("13900139000");
-            var user = User.builder()
-                    .id(USER_ID)
-                    .version(Version.of(1))
-                    .username(USERNAME)
-                    .nickname(NICKNAME)
-                    .state(UserState.E)
-                    .mobile(currentMobile)
-                    .passwordAccount(stubPasswordAccount())
-                    .build();
-
-            assertThatThrownBy(() -> user.requestChangeMobileCode(currentMobile, CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot change to the same mobile");
-            assertThat(user.flushEvents()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("requestChangeEmailCode 拒绝相同邮箱")
-        void should_rejectSameEmail_when_requestChangeEmailCode() {
-            var currentEmail = new Email("new@test.com");
-            var user = User.builder()
-                    .id(USER_ID)
-                    .version(Version.of(1))
-                    .username(USERNAME)
-                    .nickname(NICKNAME)
-                    .state(UserState.E)
-                    .email(currentEmail)
-                    .passwordAccount(stubPasswordAccount())
-                    .build();
-
-            assertThatThrownBy(() -> user.requestChangeEmailCode(currentEmail, CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot change to the same email");
-            assertThat(user.flushEvents()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("禁用用户 requestChangeXxxCode 抛 IAE（mustEnable 守卫）")
-        void should_rejectWhenDisabled_when_requestChangeCode() {
-            var user = disabledUser();
-
-            assertThatThrownBy(() -> user.requestChangeMobileCode(new Mobile("13900139000"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("user must be enabled");
-            assertThatThrownBy(() -> user.requestChangeEmailCode(new Email("new@test.com"), CODE_GENERATOR))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("user must be enabled");
-            assertThat(user.flushEvents()).isEmpty();
         }
     }
 

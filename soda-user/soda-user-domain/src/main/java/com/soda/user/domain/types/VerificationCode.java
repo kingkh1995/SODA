@@ -13,25 +13,26 @@ import java.time.Instant;
  * 由聚合状态表达，不在 DP 内重复记录使用状态（单一事实源，见 ADR-0011）。
  * 不可变、自校验、可序列化、可比较。
  * <p>
- * {@code code} 嵌套 {@link RandomString}（值对象组合，见 ADR-0018）——类型安全
- * （code 只能是随机字符串，杜绝任意字符串伪造验证码）、零转换（工厂直存、匹配直比）。
- * JSON 中经 {@link RandomString} 的 {@code @JsonValue} 序列化为字符串，形状不变。
+ * {@code code} 为普通字符串：码形（非空非空白）在此自校验，随机性与字符集由生成侧
+ * （{@link RandomString} + {@code RandomStringGenerator}，见 ADR-0018）负责，
+ * DP 不持有生成包装——工厂入口（{@link #from}）与匹配入口（{@link #matches}）
+ * 仍以 {@link RandomString} 收参，签名不变。JSON 形状为字符串，保持不变。
  *
  * @see Type
  * @see RandomString
  */
 public record VerificationCode(
-        RandomString code,
+        String code,
         Instant expireAt
 ) implements Type {
 
     public VerificationCode {
-        ValidateUtils.notNull(code);
+        ValidateUtils.hasText(code);
         ValidateUtils.notNull(expireAt);
     }
 
     public static VerificationCode from(RandomString randomString, Instant expireAt) {
-        return new VerificationCode(randomString, expireAt);
+        return new VerificationCode(randomString.value(), expireAt);
     }
 
     /**
@@ -51,6 +52,6 @@ public record VerificationCode(
      * @return true 匹配；false 不匹配
      */
     public boolean matches(RandomString inputCode) {
-        return code.equals(inputCode);
+        return code.equals(inputCode.value());
     }
 }

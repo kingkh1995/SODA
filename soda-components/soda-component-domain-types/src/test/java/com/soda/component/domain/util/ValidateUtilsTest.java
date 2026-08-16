@@ -167,4 +167,21 @@ class ValidateUtilsTest {
     void maxScale_exceeds_throws() {
         assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxScale(new BigDecimal("10.555"), 2));
     }
+
+    // ——— requireEquals ———
+
+    @Test
+    void requireEquals_equal_passes() {
+        ValidateUtils.requireEquals("a", "a");
+    }
+
+    @Test
+    void requireEquals_notEqual_throws() {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.requireEquals("a", "b"));
+    }
+
+    @Test
+    void requireEquals_nullActual_throws() {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.requireEquals(null, "a"));
+    }
 }

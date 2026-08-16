@@ -1,5 +1,9 @@
 # 0004 — AuthAccount 多态设计与持久化策略
 
+> 修订（2026-08-15）：正文「持久化策略」/Rationale/Considered alternatives 全面改写为单表化现状（评审修复；原 CTI 四表设计移入被否方案）。2026-08-11 注记的 active 表述同步修正：Sms/Email active 落 `sms_login_enabled`/`email_login_enabled` 列（默认 true），非「不落表恒 true」；PasswordAuthAccount active 不落列（恒启用不变量：`deactivate` 拒绝 + 恢复路径拒绝 `Active.FALSE`，见 `PasswordAuthAccount`）。
+>
+> 修订（2026-08-11）：**持久化策略单表化**（用户决策，issue-19 范围确认）。领域设计完全不变（`User.passwordAccount` 独立必填字段 + `accounts` 多态列表仍成立），但持久化不再用 CTI 四表：`user` 单表增加 `password_hash` 列落 `PasswordAuthAccount`；Sms/Email 账户不建账户表，Repository 恢复时从 `user.mobile`/`user.email` 列**派生**身份（非空即存在），`active` 落 `sms_login_enabled`/`email_login_enabled` 列（默认 true；false=关闭该渠道登录、账号标识保留——支付宝/阿里云模式）；`PasswordAuthAccount` active 不落列（当前无解绑流程，恢复恒 true）。理由：验证码已移出账户表（ADR-0011），Sms/Email 扩展表成空表，CTI 在此处只剩组装复杂度；单表消除多表事务与手工 diff。代价与边界：`SocialAuthAccount`（07 票 defer）将来需要表或列时再设计；若未来引入解绑（active=false）语义，派生需回退为显式列/表。原「Yudao 扁平 DO 方式」否决理由（领域层 if-else 分发）不受影响——领域层多态仍完整，仅持久化层扁平化。
+>
 > 修订（2026-08-07）：`PasswordAuthAccount` 在 `User` 聚合内的表达改为**独立必填字段**（`User.passwordAccount`，构造器强制——ADR「一个 User 一个密码账户」不变量类型化，无密码账户的 User 不可表示）；`accounts` 仅存可选账户（Sms / Email / Social），`addAccount` 以 IAE 拒绝密码账户。持久化策略不变：仍按 `account_type` 鉴别分发，PasswordAuthAccount 行仍在 system_user_account 基表 + password 扩展表。
 
 **Status**: accepted
@@ -37,62 +41,41 @@
 - `SocialAuthAccount` 通过绑定/解绑流程独立添加和删除
 
 验证码行为由 ApplicationService 编排：生成随机码、创建 `VerificationCode` DP 后通过 `replaceCode(VerificationCode)` 注入到 AuthAccount 子类，并调用发送器 Gateway 发送。Domain 层不持有任何 Gateway 或 Generator 依赖。
+> 注记（2026-08-15）：本段为旧设计——验证码已迁出账户（ADR-0011），发码由 `VerificationService.requestCode` 编排、`Verification` 聚合承载（见 ADR-0021）。
 验证码策略（长度、过期时间）由 `VerificationCodePolicy` DP 表达，AuthAccount 子类持有静态默认值，构造时可选传入自定义策略，实例化后不可变更（移除了 `overridePolicy()` 方法）。
 `AuthAccount` 构造器接受显式 `boolean active` 参数（而非默认 true），确保激活状态的语义明确。
 
 ### 持久化策略
 
-采用 **类表继承**（Class Table Inheritance）：
+采用 **单表化**（2026-08-11 决策，issue-19 范围确认；原 CTI 四表设计作废，见 Considered alternatives）：
 
 ```
-system_user_account           ← 基表
-├── account_id (PK)
-├── user_id (FK → system_user)
-├── account_type (VARCHAR)
-├── active (BOOLEAN)
-└── ...通用审计字段
-
-system_user_password_account  ← PasswordAuthAccount 扩展表
-├── account_id (PK + FK)
-└── password_hash (VARCHAR)
-
-system_user_sms_account       ← SmsAuthAccount 扩展表
-├── account_id (PK + FK)
-├── verification_code (VARCHAR?)
-├── verification_expire_at (DATETIME?)
-├── verification_used (BOOLEAN?)
-├── code_length (INT)
-└── code_expiry_minutes (INT)
-
-system_user_email_account     ← EmailAuthAccount 扩展表
-├── account_id (PK + FK)
-├── verification_code (VARCHAR?)
-├── verification_expire_at (DATETIME?)
-├── verification_used (BOOLEAN?)
-├── code_length (INT)
-└── code_expiry_minutes (INT)
-
-system_user_social_account    ← SocialAuthAccount 扩展表
-├── account_id (PK + FK)
-└── (socialType + openId 编码在 account_id 中)
+`user` 单表（V1__init_user_tables.sql；审计列见 framework-conventions「Database」节）：
+├── password_hash (VARCHAR NOT NULL)      ← PasswordAuthAccount（无扩展表）
+├── sms_login_enabled  (BOOLEAN NOT NULL DEFAULT TRUE)  ← SmsAuthAccount.active
+├── email_login_enabled (BOOLEAN NOT NULL DEFAULT TRUE)  ← EmailAuthAccount.active
+└── mobile / email 列                      ← Sms/Email 账户身份派生源（非空即存在对应账户）
 ```
 
-Repository 层通过 `account_type` 鉴别器分发到正确的子类映射。
+- `PasswordAuthAccount` 落 `user.password_hash` 列；`active` **不落列**——设计不变量（2026-08-15 强化）：密码账户**恒启用、不允许禁用**（`PasswordAuthAccount.deactivate` 拒绝、恢复路径拒绝 `Active.FALSE`，见 `PasswordAuthAccount` javadoc；无解绑流程；若未来引入解绑语义需重新设计）。
+- `SmsAuthAccount` / `EmailAuthAccount` **不建账户表**：Repository 恢复时从 `mobile`/`email` 列**派生**身份，`active` 落 `sms_login_enabled`/`email_login_enabled` 列（默认 true；false = 关闭该渠道登录，账号标识保留——支付宝/阿里云模式）。
+- 无 `account_type` 鉴别分发：多态组装由 convertor 按列直接构造。领域层多态完整（`accounts` 列表 + 子类分派），仅持久化层扁平化——原「Yudao 扁平 DO」否决理由（领域层 if-else 分发）不受影响。
+- `SocialAuthAccount`（07 票 defer）将来需要表或列时再设计。
 
 **Rationale**：
 
 - **领域职责正确**：认证方式是独立的领域概念，有自身的生命周期和业务规则（验证码过期、密码编码、社交平台映射），不应作为 User 的散列字段。
-- **扩展性**：新增认证方式只需新增 AuthAccount 子类 + 扩展表，User 聚合不修改（OCP）。
-- **类表继承优于单表继承**：无 nullable 列（子类特有字段只在扩展表中），schema 紧凑；基表支持 `findByUserId()` 全量查询，扩展表通过 FK 按需 join。
-- **类表继承优于每类一表**：基表提供统一查询入口，ApplicationService 可通过 `UserGateway.findByUserId()` 一次加载所有 AuthAccount，不需要每种子类单独查询。
+- **扩展性**：新增认证方式只需新增 AuthAccount 子类（领域层多态，User 聚合不修改，OCP）；持久化形态届时按需设计（当前 Sms/Email 派生、Password 单列）。
+- **单表化优于 CTI 四表**（2026-08-11 反转原结论）：验证码已移出账户表（ADR-0011）后 Sms/Email 扩展表成空表，CTI 在此处只剩组装复杂度（基表 + 扩展表 join、`account_type` 鉴别分发、多表事务、手工 diff）；`user` 单表消除这一切，代价仅是可空列（mobile/email）与派生组装——当前领域无解绑流程，派生无损。
+- **持久化扁平化不动摇领域多态**：领域层 `accounts` 多态列表 + 子类行为完整保留；扁平化仅限表示层，`UserGateway.findByUserId()` 仍一次组装全部账户。
 - **对齐账户业务概念**：Yudao 的 `password` / `mobile` / `SocialUser` 三种认证存储方式在 DDD 中被统一为同一抽象层次的概念，而非三个不同的数据模式。
 
 | Positive | Negative |
 |----------|----------|
-| 新增认证方式（如指纹、硬件 Key）只需新增子类，User 零修改 | 写入时需要操作多张表（基表 + 扩展表），事务跨度增加 |
-| Schema 紧凑，每种认证只存自己的字段 | Repository 需要 `account_type` 鉴别分发，实现复杂度略高于单表 |
-| `UserGateway.findByUserId()` 可一次性查询所有 AuthAccount | 纯查询场景（query-server）不需要 AuthAccount 信息时仍需 join |
-| 领域模型与 DB 映射一致，无阻抗失配 | — |
+| 新增认证方式只需新增子类（领域层），User 零修改 | 可空列（mobile/email）——派生语义依赖列非空判断 |
+| 单表：无多表事务、无手工 diff、无鉴别分发 | 派生组装由 convertor 承担，恢复路径需随账户字段演进同步维护 |
+| `UserGateway.findByUserId()` 一次查询组装全部账户（password_hash 列 + mobile/email 派生） | 纯查询场景不需要账户信息时仍需读 password_hash 列 |
+| 领域多态与持久化扁平化分离，无阻抗失配 | — |
 | VerificationCode DP 封装验证码业务规则，不散落在 Service 层 | — |
 | 【2026-06-21】Domain 层不再依赖 Gateway/Generator 接口（`sendCode` 移出），Application 层负责编排发送流程 | — |
 | 【2026-06-21】`overridePolicy()` 移除，策略在构造时设定，实例后不可变 | — |
@@ -128,8 +111,9 @@ Repository 层通过 `account_type` 鉴别器分发到正确的子类映射。
 |------|---------|
 | **Yudao 扁平 DO 方式**：password 直接作 User 字段，SocialUser 独立 DO | 无法表达"认证方式"统一概念；if-else 分散在 Service 层；不支持未来新增认证方式 |
 | **Account 非多态，单个类 + 联合字段**：一张 Account 表包含所有可能字段 | 大量 nullable 列，无类型安全，Java 层用 if-else 或 switch 分发 |
-| **单表继承**：一张 system_user_account 包含所有子类字段 + type 鉴别器 | schema 不紧凑，大量可选列，数据库约束能力弱 |
+| **单表继承**：一张 system_user_account 包含所有子类字段 + type 鉴别器 | schema 不紧凑，大量可选列，数据库约束能力弱（被否的是继承式鉴别器单表，非 2026-08-11 采纳的扁平 `user` 单表 + 派生方案） |
 | **每类一表**：四个独立表，无基表 | 无法统一查询某个 User 的所有 AuthAccount，ApplicationService 需要多次调用不同 Repository |
+| **CTI 四表**（本 ADR 原选定方案：`system_user_account` 基表 + password/sms/email/social 扩展表 + `account_type` 鉴别分发） | 2026-08-11 作废（issue-19 范围确认）：验证码移出账户表（ADR-0011）后 Sms/Email 扩展表成空表；CTI 只剩组装复杂度（多表事务、手工 diff、鉴别分发）；改单表（`password_hash` 列 + `mobile`/`email` 派生身份 + active 列）。领域多态设计不受影响 |
 | **Social 作为独立聚合根（Yudao 方式）** | SocialAuthAccount 的生命周期完全依附于 User（绑定/解绑），无独立存在意义。如果未来需要跨用户复用社交身份（同一社交账号绑定多个本地账号），可以再拆分为独立聚合 |
 
 **Related documents**:

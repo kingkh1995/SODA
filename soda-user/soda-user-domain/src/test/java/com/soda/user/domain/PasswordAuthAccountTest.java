@@ -63,9 +63,9 @@ class PasswordAuthAccountTest {
         @Test
         @DisplayName("builder 恢复所有字段")
         void should_restoreAllFields_when_usingBuilder() {
-            var a = PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build();
+            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(a.getId()).isEqualTo(ID);
-            assertThat(a.isActive()).isFalse();
+            assertThat(a.isActive()).isTrue();
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
         }
     }
@@ -105,36 +105,29 @@ class PasswordAuthAccountTest {
     }
 
     @Nested
-    @DisplayName("状态")
-    class Status {
+    @DisplayName("恒启用不变量（ADR-0004）")
+    class AlwaysEnabledInvariant {
 
         @Test
-        @DisplayName("Active.TRUE 时启用")
+        @DisplayName("Active.TRUE 恢复时启用")
         void should_beActive_when_activeIsTrue() {
             assertThat(PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build().isActive()).isTrue();
         }
 
         @Test
-        @DisplayName("Active.FALSE 时禁用")
-        void should_beInactive_when_activeIsFalse() {
-            assertThat(PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build().isActive()).isFalse();
+        @DisplayName("恢复路径拒绝 Active.FALSE（恒启用不变量）")
+        void should_rejectRestore_when_activeIsFalse() {
+            assertThatThrownBy(() -> PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("must equal Active[value=true], got: Active[value=false]");
         }
 
         @Test
-        @DisplayName("停用后设置未激活")
-        void should_setInactive_when_deactivate() {
+        @DisplayName("deactivate 拒绝：密码账户不允许设置为禁用态")
+        void should_reject_when_deactivate() {
             var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            a.deactivate();
-            assertThat(a.isActive()).isFalse();
-        }
-
-        @Test
-        @DisplayName("重新激活恢复启用状态")
-        void should_restoreActive_when_reactivate() {
-            var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            a.deactivate();
-            a.activate();
-            assertThat(a.isActive()).isTrue();
+            assertThatThrownBy(a::deactivate)
+                    .isInstanceOf(UnsupportedOperationException.class);
         }
     }
 

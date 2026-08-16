@@ -23,10 +23,10 @@ class VerificationCodeTest {
     @DisplayName("构造")
     class Constructor {
         @Test
-        @DisplayName("from 工厂直存 RandomString（零转换）")
+        @DisplayName("from 工厂直存 RandomString 并解包为 String")
         void should_createViaFactory_when_validValue() {
             var code = VerificationCode.from(CODE, EXPIRE_AT);
-            assertThat(code.code()).isEqualTo(CODE);
+            assertThat(code.code()).isEqualTo(CODE.value());
             assertThat(code.expireAt()).isEqualTo(EXPIRE_AT);
         }
 
@@ -40,7 +40,7 @@ class VerificationCodeTest {
         @Test
         @DisplayName("null expireAt 拒绝")
         void should_throw_when_expireAtIsNull() {
-            assertThatThrownBy(() -> new VerificationCode(CODE, null))
+            assertThatThrownBy(() -> new VerificationCode(CODE.value(), null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -104,7 +104,7 @@ class VerificationCodeTest {
         @DisplayName("toString 格式正确，含所有字段")
         void should_haveCorrectToString() {
             assertThat(VerificationCode.from(new RandomString("123456"), Instant.EPOCH))
-                    .hasToString("VerificationCode[code=RandomString[value=123456], expireAt=1970-01-01T00:00:00Z]");
+                    .hasToString("VerificationCode[code=123456, expireAt=1970-01-01T00:00:00Z]");
         }
     }
 
@@ -112,7 +112,7 @@ class VerificationCodeTest {
     @DisplayName("序列化")
     class Serialization {
         @Test
-        @DisplayName("Jackson round-trip 一致（嵌套 RandomString 序列化为字符串）")
+        @DisplayName("Jackson round-trip 一致（code 序列化为字符串）")
         void should_roundTrip() throws Exception {
             var original = VerificationCode.from(CODE, EXPIRE_AT);
             var json = MAPPER.writeValueAsString(original);

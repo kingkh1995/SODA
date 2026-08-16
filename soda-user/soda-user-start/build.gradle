@@ -5,6 +5,13 @@ apply plugin: 'org.springframework.boot'
 // (query-server may have its own DAO layer in future).
 dependencies {
     implementation project(':soda-components:soda-component-start-starter')
+    // JPA 扫描注解（@EntityScan/@EnableJpaRepositories）编译期需要；运行期实现来自 infra 模块
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly project(':soda-user:soda-user-adapter')
     runtimeOnly project(':soda-user:soda-user-infrastructure')
+    // H2 集成测试（内存库 MODE=MySQL，主 application.yml 已配置）
+    testRuntimeOnly 'com.h2database:h2'
+    // 集成测试编译期引用 api（UserService/UserAuthService）与 domain（gateway/聚合）
+    testImplementation project(':soda-user:soda-user-api')
+    testImplementation project(':soda-user:soda-user-domain')
 }

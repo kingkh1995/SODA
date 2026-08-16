@@ -3,18 +3,17 @@ package com.soda.user.application;
 import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.SmsContent;
 import com.soda.component.domain.types.UUId;
 import com.soda.user.application.event.VerificationCreatedEventHandler;
-import com.soda.user.domain.SmsVerification;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.gateway.VerificationGateway;
+import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.VerificationCode;
-import com.soda.user.domain.types.VerificationScene;
-import com.soda.user.domain.types.VerificationStatus;
+import com.soda.user.domain.types.VerificationSource;
+import com.soda.user.domain.types.VerificationState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -67,6 +66,16 @@ class VerificationCreatedEventHandlerWiringTest {
 
     private GenericApplicationContext context;
 
+    private static Verification initializedSmsVerification() {
+        return Verification.builder()
+                .id(UUId.random())
+                .source(VerificationSource.of("UCC", "1"))
+                .state(VerificationState.I)
+                .recipient(new SmsRecipient(NEW_MOBILE))
+                .code(new VerificationCode(VALID_CODE, Instant.now().plus(Duration.ofMinutes(5))))
+                .build();
+    }
+
     @BeforeEach
     void setUp() {
         var handler = new VerificationCreatedEventHandler(smsSender, emailSender, verificationGateway);
@@ -82,17 +91,6 @@ class VerificationCreatedEventHandlerWiringTest {
     void tearDown() {
         context.close();
         TransactionSynchronizationManager.clear();
-    }
-
-    private static SmsVerification initializedSmsVerification() {
-        return SmsVerification.builder()
-                .id(UUId.random())
-                .userId(USER_ID.toLongId())
-                .scene(VerificationScene.CC)
-                .status(VerificationStatus.I)
-                .target(NEW_MOBILE)
-                .code(new VerificationCode(new RandomString(VALID_CODE), Instant.now().plus(Duration.ofMinutes(5))))
-                .build();
     }
 
     @Test

@@ -14,10 +14,10 @@ import org.springframework.modulith.core.ApplicationModules;
  * ┌──────────────────┬──────────┬──────────────────────────────────────┐
  * │ Module           │ Type     │ Allowed dependencies                 │
  * ├──────────────────┼──────────┼──────────────────────────────────────┤
- * │ api              │ OPEN     │ (none)                               │
+ * │ api              │ OPEN     │ (none) — 2026-08-16 解除 domain 依赖（见 ADR-0026）│
  * │ domain           │ OPEN     │ (none)                               │
  * │ application      │ CLOSED   │ api, domain                          │
- * │ web              │ CLOSED   │ api                                  │
+ * │ web              │ CLOSED   │ api — 2026-08-16 解除 domain 依赖（见 ADR-0026）  │
  * │ job              │ CLOSED   │ api                                  │
  * │ consumer         │ CLOSED   │ api                                  │
  * │ infrastructure   │ CLOSED   │ domain                               │

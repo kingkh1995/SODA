@@ -206,13 +206,14 @@ class UserControllerTest {
         }
 
         @Test
-        @DisplayName("委托 UserAuthService.requestChangeMobileCode 执行")
+        @DisplayName("委托 UserAuthService.requestChangeMobileCode 执行（userId 来自路径）")
         void should_delegateToUserAuthService_when_requestChangeMobileCode() {
             var request = new RequestChangeMobileCodeRequest("13900139000");
 
             controller.requestChangeMobileCode(42L, request);
 
-            verify(userAuthService).requestChangeMobileCode(any());
+            verify(userAuthService).requestChangeMobileCode(
+                    new com.soda.user.api.command.RequestChangeMobileCodeCommand(42L, "13900139000"));
         }
     }
 
@@ -257,13 +258,14 @@ class UserControllerTest {
         }
 
         @Test
-        @DisplayName("委托 UserAuthService.requestChangeEmailCode 执行")
+        @DisplayName("委托 UserAuthService.requestChangeEmailCode 执行（userId 来自路径）")
         void should_delegateToUserAuthService_when_requestChangeEmailCode() {
             var request = new RequestChangeEmailCodeRequest("new@test.com");
 
             controller.requestChangeEmailCode(42L, request);
 
-            verify(userAuthService).requestChangeEmailCode(any());
+            verify(userAuthService).requestChangeEmailCode(
+                    new com.soda.user.api.command.RequestChangeEmailCodeCommand(42L, "new@test.com"));
         }
     }
 

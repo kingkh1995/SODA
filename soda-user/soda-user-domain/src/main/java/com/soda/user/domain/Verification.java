@@ -1,19 +1,19 @@
 package com.soda.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.soda.component.domain.Entity;
-import com.soda.component.domain.Type;
-import com.soda.component.domain.types.Email;
-import com.soda.component.domain.types.LongId;
-import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.Aggregate;
+import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.UUId;
 import com.soda.component.domain.util.ValidateUtils;
-import com.soda.user.domain.types.VerificationChannel;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.soda.user.domain.event.VerificationCreatedEvent;
+import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
-import com.soda.user.domain.types.VerificationScene;
-import com.soda.user.domain.types.VerificationStatus;
+import com.soda.user.domain.types.VerificationSource;
+import com.soda.user.domain.types.VerificationState;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.springframework.util.Assert;
@@ -21,84 +21,105 @@ import org.springframework.util.Assert;
 import java.time.Instant;
 
 /**
- * 验证抽象基类 — 独立验证实体。
+ * 验证聚合根 — 单类（2026-08-15 多态塌缩，见 ADR-0025；2026-08-12 由「Entity 非聚合根」
+ * 重分类为聚合根，见 ADR-0021）。
  * <p>
- * 密封类，仅允许 {@link SmsVerification}、{@link EmailVerification} 两个子类。
- * 两个子类的唯一差异是验证目标（{@code target}）类型：{@link SmsVerification} 目标为
- * {@link Mobile}，{@link EmailVerification} 目标为 {@link Email}。因此 {@code target}
- * 以类型参数 {@code T extends Type} 收敛到本基类，子类仅保留类型差异与
- * {@code @JsonTypeName} 标识。
+ * <b>双概念模型</b>（2026-08-16，见 ADR-0026）：只感知 {@code source}（{@link VerificationSource}
+ * ——<b>不透明</b>，scene/subject 纯字符串，非空即足，零行为耦合）与 {@code recipient}
+ * （{@link VerificationRecipient}——泛型多态密封，channel + 类型化地址，<b>通道判别栖身于此</b>）。
+ * <p>
+ * <b>载体化</b>（见 ADR-0026）：领域内无任何 channel 行为——{@code verify}/{@code use}/
+ * {@code isExpiredAt} 全通道同构；策略（{@link VerificationCodePolicy}）由调用方（工厂）显式传入，
+ * 聚合不做通道→策略映射；send 投递是投递侧职责（监听器按 recipient 类型匹配 sender）。
+ * 主体裁定：发送验证码的主体是用户（UCC/ULG/UPR；URG 无用户例外），Verification 是协助方聚合
+ * （码生命周期载体），「UserVerification」是用例概念（非类，见 ADR-0026）。
  * <p>
  * 封装验证码的完整生命周期与业务不变量：
  * <ul>
- *   <li>场景 ({@link VerificationScene})</li>
- *   <li>状态 ({@link VerificationStatus})</li>
+ *   <li>请求源 ({@link VerificationSource}，<b>恒非空</b>——非空即 Verification 对 source 的唯一要求)</li>
+ *   <li>状态 ({@link VerificationState})</li>
  *   <li>验证码 ({@link VerificationCode}) — 内含过期时间</li>
- *   <li>目标 ({@code T}) 与关联用户 ({@link LongId})</li>
+ *   <li>投递端点 ({@link VerificationRecipient}，泛型多态密封，构造边界校验)</li>
  * </ul>
  * <p>
- * 策略 ({@link VerificationCodePolicy}) 仅是创建时的输入参数（create 构造末位可空参数，
- * 缺省取子类静态 {@code DEFAULT_POLICY}；决定码长、过期时间与字符集），效果已物化进
- * {@link VerificationCode}，不作为聚合属性持久化。
+ * 策略 ({@link VerificationCodePolicy}) 是创建时的<b>必传</b>输入（默认值由调用方工厂按
+ * <b>场景方法</b>选择——UCC 专属策略：纯数字、短时效、双通道统一，见 ADR-0026；决定码长、
+ * 过期时间与字符集），效果物化进 {@link VerificationCode}，不作为聚合属性持久化。
  * <p>
- * <b>新增子类提醒</b>：{@code permits} 子句 + 新增类声明后，在新增类上添加 {@code @JsonTypeName} 注解指定类型标识；
- * 同步补充 {@link VerificationChannel} 枚举常量与一致性测试（ADR-0016）。
- * Jackson 3 从密封类 {@code permits} 子句自动发现子类，无需 {@code @JsonSubTypes}。
+ * 状态跃迁：INITIALIZED → PENDING（{@link #markSent()}，投递成功由监听器调用）→ VERIFIED
+ * → USED，或任一步过期。VERIFIED 为内存瞬态（消费流 verify→use 同事务完成，永不落库，
+ * 见 {@code CredentialChangeDomainService}；{@link VerificationState} 终态化）。采用可变命令风格，
+ * 与 {@link AuthAccount} 一致。
  * <p>
- * Jackson 序列化说明：{@link Entity 基类} 声明了 {@code @JsonAutoDetect(getterVisibility = NONE)}，
- * 因此序列化走字段可见性（field visibility ANY），反序列化走 {@code @JsonCreator(mode = Mode.PROPERTIES)} 构造器
- * + {@code @JsonProperty} 参数。
- * <p>
- * 状态跃迁：INITIALIZED → PENDING（发送验证码后）→ VERIFIED → USED，或任一步过期。
- * 采用可变命令风格，与 {@link AuthAccount} 一致。
+ * 投递：物理发送由投递侧监听器（AFTER_COMMIT）按 {@code recipient} 模式匹配 sender 执行
+ * （{@code SmsRecipient}→SmsSender、{@code EmailRecipient}→EmailSender），成功后调用
+ * {@link #markSent()} 并落库 PENDING（「PENDING 蕴含已送达」不变量，见 ADR-0011）。
  *
- * @param <T> 验证目标类型（{@link Mobile} 或 {@link Email}）
- * @see SmsVerification
- * @see EmailVerification
+ * @see VerificationSource
+ * @see VerificationRecipient
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "channel")
 @EqualsAndHashCode(callSuper = true)
 @Getter
-public abstract sealed class Verification<T extends Type> extends Entity<UUId>
-        permits SmsVerification, EmailVerification {
+public final class Verification extends Aggregate<UUId> {
 
-    private VerificationScene scene;
-    private VerificationStatus status;
+    private VerificationSource source;
+    private VerificationState state;
     private VerificationCode code;
-    private T target;
-    private LongId userId;
+    private VerificationRecipient<?> recipient;
 
     // ─── construction ───
 
     /**
-     * 手动设置 / 已有数据恢复（reconstitution）。
+     * 全参数恢复构造器 — 持久化恢复（convertor）与 JSON 反序列化唯一入口。
+     * <p>
+     * source 恒必填（Verification 对 source 的唯一要求：非空——不解析 scene/subject 语义）。
+     * 恢复路径非空字段（id、source、state、code、recipient）标 {@code required = true}——
+     * 缺字段在 Jackson 边界拒绝（framework-conventions「JSON 序列化契约」+ ADR-0015 双屏障）。
      */
-    protected Verification(UUId id,
-                           VerificationScene scene,
-                           VerificationStatus status,
-                           VerificationCode code,
-                           T target,
-                           LongId userId) {
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    @Builder
+    private Verification(
+            @JsonProperty(value = "id", required = true) UUId id,
+            @JsonProperty(value = "source", required = true) VerificationSource source,
+            @JsonProperty(value = "state", required = true) VerificationState state,
+            @JsonProperty(value = "code", required = true) VerificationCode code,
+            @JsonProperty(value = "recipient", required = true) VerificationRecipient<?> recipient) {
         super(id);
-        ValidateUtils.notNull(scene);
-        ValidateUtils.notNull(status);
+        ValidateUtils.notNull(source);
+        ValidateUtils.notNull(state);
         ValidateUtils.notNull(code);
-        ValidateUtils.notNull(target);
-        ValidateUtils.notNull(userId);
-        this.scene = scene;
-        this.status = status;
+        ValidateUtils.notNull(recipient);
+        this.source = source;
+        this.state = state;
         this.code = code;
-        this.target = target;
-        this.userId = userId;
+        this.recipient = recipient;
     }
 
-    // ─── queries ───
+    // ─── 创建 builder（public，只暴露业务字段）───
 
     /**
-     * 验证渠道 — 与子类 {@code @JsonTypeName} 判别值一致，构成 JSON 的 {@code channel} 属性。
-     * 与 {@link AuthAccount#getAccountType()} 同构。
+     * 创建验证实体（创建路径，ID 创建时生成）。
+     * <p>
+     * {@code policy} 为<b>必传</b>参数（聚合不做通道→策略映射——策略决策属调用方<b>场景</b>，
+     * 默认值由 {@code UserVerificationFactory} 按场景方法选择（UCC 专属：纯数字、短时效、
+     * 双通道统一，见 ADR-0026）），效果物化进 {@link VerificationCode}，不落验证实体。{@code source} 恒必填：UCC/ULG/UPR
+     * 的 subject = userId 裸键串（UCC 会话注入、ULG/UPR 端点反查），URG = 端点值串（见 ADR-0026）。
      */
-    public abstract VerificationChannel getChannel();
+    @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
+    private static Verification create(VerificationSource source,
+                                       VerificationRecipient<?> recipient,
+                                       RandomStringGenerator generator,
+                                       VerificationCodePolicy policy) {
+        ValidateUtils.notNull(generator);
+        ValidateUtils.notNull(policy);
+        var verificationCode = VerificationCode.from(
+                generator.generate(policy.codeLength(), policy.codeAlphabet()),
+                Instant.now().plus(policy.expiry()));
+        var verification = new Verification(
+                UUId.random(), source, VerificationState.I, verificationCode, recipient);
+        verification.registerEvent(new VerificationCreatedEvent(verification));
+        return verification;
+    }
 
     // ─── state checks ───
 
@@ -106,21 +127,22 @@ public abstract sealed class Verification<T extends Type> extends Entity<UUId>
      * 判断是否处于初始化状态（已创建、验证码尚未发送）。
      */
     public boolean isInitialized() {
-        return VerificationStatus.I.equals(status);
+        return VerificationState.I.equals(state);
     }
 
     /**
      * 判断是否处于待验证状态。
      */
     public boolean isPending() {
-        return VerificationStatus.P.equals(status);
+        return VerificationState.P.equals(state);
     }
 
     /**
-     * 判断是否已验证通过（含已使用状态）。
+     * 判断当前是否处于已验证状态——仅 VERIFIED：V 为内存瞬态（verify 后 use 前窗口成立）；
+     * USED 不是「已验证」，U 是持久化终态（见 {@link VerificationState}）。
      */
     public boolean isVerified() {
-        return VerificationStatus.V.equals(status) || VerificationStatus.U.equals(status);
+        return VerificationState.V.equals(state);
     }
 
     /**
@@ -151,19 +173,20 @@ public abstract sealed class Verification<T extends Type> extends Entity<UUId>
         Assert.isTrue(isPending(), "verification must be pending");
         Assert.isTrue(!isExpiredAt(at), "verification code must not be expired");
         Assert.isTrue(code.matches(inputCode), "Invalid verification code");
-        this.status = VerificationStatus.V;
+        this.state = VerificationState.V;
     }
 
     /**
      * 标记为已发送 — 状态从 INITIALIZED 变为 PENDING。
      * <p>
-     * 由子类 {@code send(sender)} 在发送动作成功完成后调用；仅允许从 INITIALIZED 状态转移。
+     * 由投递侧监听器在 sender 投递成功后调用（sender 分派按 {@code recipient} 模式匹配，
+     * 见 ADR-0026）；仅允许从 INITIALIZED 状态转移。
      *
      * @throws IllegalArgumentException 当前状态不是 INITIALIZED（业务状态前置）
      */
-    protected void markPending() {
-        Assert.isTrue(VerificationStatus.I.equals(status), "verification must be initialized before sending");
-        this.status = VerificationStatus.P;
+    public void markSent() {
+        Assert.isTrue(VerificationState.I.equals(state), "verification must be initialized before sending");
+        this.state = VerificationState.P;
     }
 
     /**
@@ -174,7 +197,7 @@ public abstract sealed class Verification<T extends Type> extends Entity<UUId>
      * @throws IllegalArgumentException 当前状态不是 VERIFIED（业务参数校验）
      */
     public void use() {
-        Assert.isTrue(VerificationStatus.V.equals(status), "verification must be verified");
-        this.status = VerificationStatus.U;
+        Assert.isTrue(VerificationState.V.equals(state), "verification must be verified");
+        this.state = VerificationState.U;
     }
 }

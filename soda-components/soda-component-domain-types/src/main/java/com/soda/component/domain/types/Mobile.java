@@ -1,6 +1,7 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.soda.component.domain.LiteralType;
 import com.soda.component.domain.Type;
 import com.soda.component.domain.util.ValidateUtils;
 
@@ -13,7 +14,7 @@ import java.util.regex.Pattern;
  *
  * @see Type
  */
-public record Mobile(String value) implements Type {
+public record Mobile(String value) implements LiteralType {
 
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 

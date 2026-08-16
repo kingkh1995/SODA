@@ -5,6 +5,7 @@ import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -136,6 +137,17 @@ public final class ValidateUtils {
         }
         if (!value.isAbsolute()) {
             throw new IllegalArgumentException("URI must be absolute: '" + value + "'");
+        }
+    }
+
+    /**
+     * 相等校验 — 校验值与期望值相等（{@link Objects#equals} 语义）。
+     * <p>
+     * 用于不变量中的值对象比较，如恒等校验 {@code requireEquals(active, Active.TRUE)}。
+     */
+    public static <T> void requireEquals(@Nullable T actual, T expected) {
+        if (!Objects.equals(actual, expected)) {
+            throw new IllegalArgumentException("must equal " + expected + ", got: " + actual);
         }
     }
 

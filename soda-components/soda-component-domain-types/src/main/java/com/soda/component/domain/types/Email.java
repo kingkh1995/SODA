@@ -2,6 +2,7 @@ package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.soda.component.domain.LiteralType;
 import com.soda.component.domain.Type;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
@@ -25,7 +26,7 @@ import java.util.regex.Pattern;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Getter
 @Accessors(fluent = true)
-public final class Email implements Type {
+public final class Email implements LiteralType {
 
     // 基础邮箱格式校验：local@domain.tld
     private static final Pattern EMAIL_PATTERN =

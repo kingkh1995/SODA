@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 用户 Controller — 接受 HTTP 请求，委托 {@link UserService} / {@link UserAuthService} 执行，返回统一信封。
  * <p>
  * CRUD + 状态变更 → {@link UserService}<br>
- * 凭证/验证码 → {@link UserAuthService}
+ * 凭证变更（发码 + 消费）→ {@link UserAuthService}（2026-08-16，见 ADR-0026）
  */
 @Slf4j
 @RequiredArgsConstructor

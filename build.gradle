@@ -29,7 +29,6 @@ subprojects {
     ext {
         set('springModulithVersion', "2.1.0")
         set('mapstructVersion', '1.6.3')
-        set('mybatisSpringBootVersion', "3.0.4")
     }
 
     dependencies {

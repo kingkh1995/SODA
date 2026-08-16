@@ -23,12 +23,20 @@ import java.util.Optional;
 public interface EntityGateway<T extends Entity<ID>, ID extends Identifier<?>> extends Gateway {
 
     /**
-     * 保存实体。
+     * 保存实体 — 统一入口（insert / put 全量更新 / 终态处理，见 ADR-0024）。
      * <p>
-     * 自动判断 insert / update：若 entity 已标识 (isIdentified()) 执行更新，
-     * 否则执行插入，并按生成策略返回 ID。
-     * <p>
-     * 客户端生成 ID（如 UUID）场景返回已有 ID。
+     * 全权委托 Spring Data JPA：PO 的 {@code isNew()} 为 {@code id == null} 判定——路由由
+     * {@code repository.save(toPersistence(entity))} 内建：
+     * <ul>
+     *   <li>id==null（服务端生成 id 创建路径）→ persist：INSERT 新行，生成 ID 经
+     *       {@code assignId} 回填并返回</li>
+     *   <li>id 已标识（客户端生成 id 聚合、既有行更新）→ merge 按行存在性统一路由：
+     *       无行 INSERT、有行 detached 状态全量拷贝（含 null——领域 null = 清空列）→ UPDATE</li>
+     *   <li>领域终态 → 基础设施按聚合策略裁决（本框架：写终态保留行，无 DELETE 契约，
+     *       见 ADR-0017/0023；remove 为演进路径）</li>
+     * </ul>
+     * 乐观锁：有 {@code @Version} 的聚合由 merge 自动校验（版本不一致 → 异常 → 事务整体回滚），
+     * 网关不做手动比对。客户端生成 ID（UUID）的聚合：save 前置必须已标识（{@code isIdentified()}）。
      *
      * @param entity 待保存实体，非 null
      * @return 实体标识符，总为非 null

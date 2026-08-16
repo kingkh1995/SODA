@@ -37,6 +37,17 @@ class UserStateTest {
         assertThat(UserState.of(name)).isEqualTo(UserState.valueOf(name));
     }
 
+    @ParameterizedTest(name = "{0}.terminal() = {1}")
+    @CsvSource(textBlock = """
+                E,     false
+                D,     false
+                R,     true
+            """)
+    @DisplayName("terminal() 终态判定（StateEnumType 契约，ADR-0023）")
+    void should_terminal(String name, boolean terminal) {
+        assertThat(UserState.valueOf(name).terminal()).isEqualTo(terminal);
+    }
+
     @Test
     @DisplayName("of(null) 抛出异常")
     void should_throw_when_null() {

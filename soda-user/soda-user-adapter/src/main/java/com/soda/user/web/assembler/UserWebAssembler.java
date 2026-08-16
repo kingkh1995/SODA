@@ -53,11 +53,21 @@ public interface UserWebAssembler {
 
     ChangePasswordCommand toChangePasswordCommand(Long userId, ChangePasswordRequest request);
 
-    RequestChangeMobileCodeCommand toRequestChangeMobileCodeCommand(Long userId, RequestChangeMobileCodeRequest request);
+    /**
+     * 换绑手机号发码：scene=UCC、channel=S 由方法语义决定，非 Request 数据；
+     * userId = 路径用户（认证会话解析的务实形态——仓库尚无认证主体机制，见 ADR-0026）。
+     */
+    RequestChangeMobileCodeCommand toRequestChangeMobileCodeCommand(
+            Long userId, RequestChangeMobileCodeRequest request);
 
     ChangeMobileCommand toChangeMobileCommand(Long userId, ChangeMobileRequest request);
 
-    RequestChangeEmailCodeCommand toRequestChangeEmailCodeCommand(Long userId, RequestChangeEmailCodeRequest request);
+    /**
+     * 换绑邮箱发码：scene=UCC、channel=E 由方法语义决定，非 Request 数据；
+     * userId = 路径用户（认证会话解析的务实形态——仓库尚无认证主体机制，见 ADR-0026）。
+     */
+    RequestChangeEmailCodeCommand toRequestChangeEmailCodeCommand(
+            Long userId, RequestChangeEmailCodeRequest request);
 
     ChangeEmailCommand toChangeEmailCommand(Long userId, ChangeEmailRequest request);
 

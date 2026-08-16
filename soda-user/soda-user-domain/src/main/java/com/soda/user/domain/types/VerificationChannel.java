@@ -13,10 +13,11 @@ import lombok.experimental.Accessors;
  * S(SMS) 短信
  * E(Email) 邮箱
  * <p>
- * 与 {@link com.soda.user.domain.Verification} 子类型一一对应的判别值——领域词汇 + 数据形态
- * （JSON {@code channel} 属性、持久化判别列）。<b>不持有任何 Class 引用</b>：
- * 实例侧编码由子类覆写 {@code Verification#getChannel()} 提供（编译期强制），
- * class→channel 反查归基础设施（ADR-0016 决策 2/3）。
+ * **普通枚举，不挂 Class 引用**（映射归基础设施，见 ADR-0016）。角色（2026-08-16，见 ADR-0026）：
+ * ① 预认证场景命令输入（ULG/UPR/URG 未来票）；② {@link VerificationRecipient} 判别属性
+ * （channel + target 双属性多属性 DP——<b>channel 只在 VerificationRecipient</b>，subject 不携带；
+ * 持久化 channel 独立列 + target 裸值，2026-08-16 修订）；③ 码形策略选择（{@code UserVerificationFactory} 按 {@code recipient.channel()}
+ * 内联选 {@code DEFAULT_SMS}/{@code DEFAULT_EMAIL}）。
  *
  * @see EnumType
  */

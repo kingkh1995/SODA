@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: soda-user
+  # 数据源：H2 内存库 MySQL 兼容模式（2026-08-11 决策：当前无 MySQL 实例，
+  # 主配置即内存 H2；Flyway 脚本按 MySQL 语法写，将来切真库时加 application-prod.yml profile。
+  # 开发阶段 db/migration 只保留 V1，schema 变更直改 create table，见 ADR-0022）
+  datasource:
+    # DATABASE_TO_LOWER=TRUE 必须保留：V1 反引号建小写表名（user），H2 MODE=MySQL 不会自动
+    # 小写化标识符——去掉后 H2 存大写 USER，JPA 带引号查询找不到表（评审 NIT 判断有误，2026-08-15 回滚）
+    url: jdbc:h2:mem:soda_user;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        # H2 MODE=MySQL 下 Hibernate 方言自动检测为 H2Dialect；SQL 兼容性由 MODE 保证
+        format_sql: true
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.soda: info

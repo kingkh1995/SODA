@@ -5,11 +5,12 @@ import java.util.List;
 /**
  * 领域事件来源标记接口。
  * <p>
- * {@link Entity} 实现此接口表明自身可作为领域事件来源。
+ * {@link Aggregate}（聚合根）实现此接口表明自身可作为领域事件来源——
+ * 领域事件是聚合根能力（普通实体如 {@code AuthAccount} 无事件）。
  * 调用方可通过 {@link #flushEvents()} 取出已注册但未发送的事件。
  * <p>
- * 对应 {@link Identifiable} 的设计模式：将 Entity 的某一能力抽象为接口，
- * 避免调用方直接依赖 Entity 具体类型。
+ * 对应 {@link Identifiable} 的设计模式：将聚合的某一能力抽象为接口，
+ * 避免调用方直接依赖 Aggregate 具体类型。
  *
  * @see DomainEventBus
  */

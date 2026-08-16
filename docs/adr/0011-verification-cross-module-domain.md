@@ -1,5 +1,11 @@
 # Verification — 跨模块通用验证领域
 
+> 再修订（2026-08-16）：主体裁定为 **User**（非 Verification）——`VerificationService.requestCode` 作废，发码用例回归 `UserAuthService`（per-use-case 命令，api 按用例拆分）；通道判别从 `Subject` 迁至 **`Recipient`**（多态投递端点，channel 只在 Recipient——`Subject` 密封层级删除，subject 降为 source 内裸键字符串）；`VerificationScene` → `UserVerificationScene`；策略决策移出聚合（create 必传，默认在 `UserVerificationFactory` 内联选择）。**机制保留**：I→P→V→U 状态机、AFTER_COMMIT 事件投递、`CredentialChangeDomainService` 消费编排、同事务双 save、`active_key` 唯一槽位。详见 ADR-0026。
+
+> 再修订（2026-08-15）：**Verification 塌缩为单类**——`SmsVerification`/`EmailVerification` 子类型删除（撤销 2026-08-05 类层次保留三理由与 2026-08-07 send 聚合行为定位）；通道判别栖身密封 `Subject`；send 分派移投递侧监听器（subject 模式匹配），聚合保留 `I → P` 迁移行为；`channel` 列、`VerificationChannels` 映射、JSON 判别属性删除；`VerificationChannel` 枚举仅命令输入判别。详见 ADR-0025。
+>
+> 修订（2026-08-12）：**验证码发起迁出 User 聚合**——`User.requestChangeMobileCode`/`requestChangeEmailCode` 删除，发码用例统一由 `VerificationService.requestCode` 编排；`Verification` 重分类为独立聚合根（`extends Aggregate<UUId>`）、`userId` 可空（RG 无 user）、CC 前置（启用态/target≠当前值）降级为应用层编排。其余机制不变：I→P→V→U 状态机、事件驱动 AFTER_COMMIT 投递、`CredentialChangeDomainService` 消费编排、同事务双 save 策略。详见 ADR-0021。
+>
 > 后续修订（2026-08-01）：`Verification` 重新分类为独立验证实体（无子实体，`extends Entity<UUId>`），与其子类 `SmsVerification`/`EmailVerification` 一并移至 `com.soda.user.domain`（soda-user-domain）。
 >
 > 同日再修订：`VerificationCode`/`VerificationPolicy`/`VerificationScene`/`VerificationStatus` 四个验证 DP 同步迁至 `com.soda.user.domain.types`（soda-user-domain）——验证不是通用业务类型，与 `Verification` 实体同域。其余决策（验证状态不内嵌 SmsAuthAccount、外部实体参数传递）保持不变。
@@ -36,6 +42,8 @@
 > 4. **失败语义**：sender 契约升级——`EmailSender`/`SmsSender` 类级 javadoc 声明"返回即已确认投递，实现层自行保证（内部重试/补偿）；抛异常视为未投递"。监听器**无重试无 catch**：send 抛异常（契约违反）→ 异常上抛、记录保持 INITIALIZED（无变更不落库），用户重发自愈。"PENDING 蕴含已送达"不变量不变（P 仅在 send 返回后落）。残余窗口（诚实记录）：发送成功后 P 落库失败 → 码作废、记录停 I，用户重发自愈——与旧窗口同源（发送后瞬间 DB 故障），非 outbox+MQ 不可消除；email/SMS 本质 at-most-once，投递层本无事务保证。
 > 5. **状态语义**：`I` = 已创建、待投递（原"已初始化未发送"扩展）；`P` 语义不变。并发双请求竞态（先查后建非原子）不变；孤儿 I 清理 job 与 DB 唯一约束列为基础设施 TODO。
 > 6. **命名**：RPC/AppService/Controller 全链路 `verifyMobile`/`verifyEmail` → `requestChangeMobileCode`/`requestChangeEmailCode`（`Verification.verify` 的校验语义无碰撞；Command/Request/URL 同步改）。
+>
+> 再修订（2026-08-13）：`VerificationStatus` 改名 `VerificationState`（对齐 ADR-0005 命名规则——状态机枚举用 `XxxState`）；状态属性统一 `state`：`Verification` 实体字段 `status`→`state`（getter `getState()`）、`VerificationQuery.status`→`state`、`user_verification.status` 列→`state`（含索引名 `idx_user_id_scene_state_expire_at`）、JSON 判别属性 `status`→`state`。本文正文及既往修订中的 `VerificationStatus`/`status` 为改名前的沿革表述，不改写。
 
 `Verification` 作为独立验证实体放在 `com.soda.user.domain`（soda-user-domain，2026-08-01 修订），支持多种验证方式（SMS、Email、Authenticator），与 `AuthAccount` 对称设计。User 的 `changeMobile` / `changeEmail` 接收对应 Verification 子类型作为参数，验证通过后执行领域行为。
 

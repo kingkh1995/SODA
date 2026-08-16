@@ -64,6 +64,8 @@ PATCH  /authAccounts/{id}
 
 > 注（2026-08-10）：示例动词随端点改名更新（原 `:verifyMobile` → `:requestChangeMobileCode`，见 ADR-0011 2026-08-10 修订）；约定本身（camelCase 自定义方法）不变。
 
+> 注（2026-08-16，见 ADR-0026）：**集合级自定义方法**新形态——预认证/无资源场景（ULG/UPR/URG 发码）用 `POST /collection:verb`（如 `POST /api/users:requestRegisterCode`），无 `{id}`（资源尚不存在，contact 在 body，不违反「资源标识符在路径上」——无资源可寻址）。依据：AIP-136「Custom methods can be associated with resources, collections, or services」+ 条件性 parent 规则（「If the collection's resource has a parent...」——顶层集合无父无此变量）+ Google 生产先例（Firebase Identity Toolkit `POST /v1/accounts:signUp`、`POST /v1/accounts:sendOobCode`）。
+
 ## Considered Options
 
 - **camelCase (AIP)** — 符合 Google AIP 规范，gRPC 兼容，但与主流 REST 惯例冲突。选择。

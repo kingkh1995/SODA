@@ -16,7 +16,7 @@ import java.util.Optional;
  * 扩展按业务字段查询的 {@code findByXxx} 抽象方法；{@code existsByXxx}
  * 为基于 findBy 的 default 组合。
  * <p>
- * 实现类位于基础设施层（{@code soda-user-infrastructure}），由基础设施层保证 select4update 语义，application层不感知。
+ * 实现类位于基础设施层（{@code soda-user-infrastructure}）。
  * <p>
  * 终态持久化：注销（{@link User#deregister()}）后状态 R 由 {@code save} 持久化（ADR-0017），
  * 表示（状态列 / 软删 / 删行）由基础设施层决定，领域不感知擦除。

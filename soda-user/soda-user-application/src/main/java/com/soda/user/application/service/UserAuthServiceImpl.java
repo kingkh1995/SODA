@@ -3,7 +3,6 @@ package com.soda.user.application.service;
 import com.soda.component.application.AbstractAppService;
 import com.soda.component.domain.DomainEventBus;
 import com.soda.component.domain.gateway.CredentialHasher;
-import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
@@ -14,142 +13,167 @@ import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
 import com.soda.user.api.command.RequestChangeEmailCodeCommand;
 import com.soda.user.api.command.RequestChangeMobileCodeCommand;
-import com.soda.user.domain.EmailVerification;
-import com.soda.user.domain.SmsVerification;
+import com.soda.user.application.factory.UserVerificationFactory;
 import com.soda.user.domain.User;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.gateway.VerificationGateway;
-import com.soda.user.domain.gateway.VerificationGateway.VerificationQuery;
 import com.soda.user.domain.service.CredentialChangeDomainService;
+import com.soda.user.domain.types.EmailRecipient;
+import com.soda.user.domain.types.VerificationRecipient;
+import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
-import com.soda.user.domain.types.VerificationScene;
-import com.soda.user.domain.types.VerificationStatus;
+import com.soda.user.domain.types.VerificationState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import java.time.Instant;
+import java.util.List;
 
 /**
- * 用户凭证相关的 ApplicationService 实现。
+ * 用户凭证相关的 ApplicationService 实现 — <b>UCC 发码与消费完整归位</b>
+ * （2026-08-16，见 ADR-0026——{@code VerificationService} 作废，0021 曾迁出的发码用例回归 User 侧，
+ * 主体裁定为 User，Verification 是协助方聚合）。
  * <p>
- * 仅做用例编排：加载主体聚合（{@code User}）→ 执行用例流程 → 持久化。
- * 发码用例（{@link #requestChangeMobileCode}/{@link #requestChangeEmailCode}）：
- * 查询前置（目标唯一、无未过期 PENDING）→ 委托 {@code User.requestChangeXxxCode}
- * （User 自检规则 + 创建 INITIALIZED 验证聚合并注册 {@code VerificationCreatedEvent}）
- * → save 验证聚合 → 发布事件；物理发送由投递侧监听器在事务提交后执行（见 ADR-0011）。
- * 跨聚合的消费流程（verify → change → use）委托 {@link CredentialChangeDomainService}
- * （见 framework-conventions「ApplicationService 编排规范」）。
+ * 发码（{@link #requestChangeMobileCode}/{@link #requestChangeEmailCode}）：前置
+ * （加载用户启用态 + 非终态 + target ≠ 当前值 + 目标全局唯一 + 无活跃验证）→
+ * {@link UserVerificationFactory#create} 构造 INITIALIZED 验证聚合 → 同事务惰性 DELETE 腾槽 →
+ * save → 发布 {@code VerificationCreatedEvent}（物理发送由投递侧监听器在事务提交后执行，见 ADR-0011）。
+ * <p>
+ * 消费（verify → change → use）委托 {@link CredentialChangeDomainService}，按 <b>source 键控</b>
+ * 反查（{@code VerificationSource.of(UCC, userId)}——命令不含 target，换绑的新联系方式隐含在
+ * 验证记录中，「按 source 加载」即主体匹配守卫；source 匹配守卫在 {@code User.changeMobile/changeEmail}
+ * 内保留为防御纵深，见 ADR-0026）。
  */
 @Slf4j
 @Transactional
 @Service
-public class UserAuthServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserAuthService {
+public class UserAuthServiceImpl
+        extends AbstractAppService<User, UserId, UserGateway>
+        implements UserAuthService {
 
     private final VerificationGateway verificationGateway;
     private final CredentialChangeDomainService credentialChangeService;
-    private final RandomStringGenerator randomStringGenerator;
     private final DomainEventBus domainEventBus;
     private final CredentialHasher credentialHasher;
+    private final UserVerificationFactory userVerificationFactory;
 
-    public UserAuthServiceImpl(UserGateway userGateway, VerificationGateway verificationGateway,
+    public UserAuthServiceImpl(UserGateway userGateway,
+                               VerificationGateway verificationGateway,
                                CredentialChangeDomainService credentialChangeService,
-                               RandomStringGenerator randomStringGenerator,
-                               DomainEventBus domainEventBus, CredentialHasher credentialHasher) {
+                               DomainEventBus domainEventBus,
+                               CredentialHasher credentialHasher,
+                               UserVerificationFactory userVerificationFactory) {
         super(User.class, userGateway);
         this.verificationGateway = verificationGateway;
         this.credentialChangeService = credentialChangeService;
-        this.randomStringGenerator = randomStringGenerator;
         this.domainEventBus = domainEventBus;
         this.credentialHasher = credentialHasher;
+        this.userVerificationFactory = userVerificationFactory;
     }
+
+    // ─── UCC 发码（2026-08-16 回归 User 侧，见 ADR-0026）───
+
+    @Override
+    public void requestChangeMobileCode(RequestChangeMobileCodeCommand command) {
+        log.info("requestChangeMobileCode: command={}", command);
+        var user = requireEnabled(new UserId(command.userId()));
+        var target = new Mobile(command.newMobile());
+        Assert.isTrue(!target.equals(user.getMobile().orElse(null)),
+                "cannot change to the same mobile");
+        Assert.isTrue(!gateway.existsByMobile(target),
+                "Mobile already exists: " + target.value());
+        requestCode(user.getId(), new SmsRecipient(target));
+    }
+
+    @Override
+    public void requestChangeEmailCode(RequestChangeEmailCodeCommand command) {
+        log.info("requestChangeEmailCode: command={}", command);
+        var user = requireEnabled(new UserId(command.userId()));
+        var target = new Email(command.newEmail());
+        Assert.isTrue(!target.equals(user.getEmail().orElse(null)),
+                "cannot change to the same email");
+        Assert.isTrue(!gateway.existsByEmail(target),
+                "Email already exists: " + target.value());
+        requestCode(user.getId(), new EmailRecipient(target));
+    }
+
+    // ─── 凭证变更消费 ───
 
     @Override
     public void changePassword(ChangePasswordCommand command) {
         log.info("changePassword: command={}", command);
-        var userId = new UserId(command.userId());
-        var user = require(userId);
+        var user = requireEnabled(new UserId(command.userId()));
         user.changePassword(new RawCredential(command.newPassword()), credentialHasher);
         gateway.save(user);
         domainEventBus.publishAll(user.flushEvents());
     }
 
     @Override
-    public void requestChangeMobileCode(RequestChangeMobileCodeCommand command) {
-        log.info("requestChangeMobileCode: command={}", command);
-        var userId = new UserId(command.userId());
-        var user = require(userId);
-        var target = new Mobile(command.newMobile());
-        Assert.isTrue(!target.equals(user.getMobile().orElse(null)), "cannot change to the same mobile");
-        Assert.isTrue(!gateway.existsByMobile(target), "Mobile already exists: " + command.newMobile());
-        if (verificationGateway.hasUnexpiredPending(userId.toLongId(), VerificationScene.CC)) {
-            throw new IllegalArgumentException("An unexpired pending verification already exists");
-        }
-        var verification = user.requestChangeMobileCode(target, randomStringGenerator);
-        verificationGateway.save(verification);
-        domainEventBus.publishAll(verification.flushEvents());
-    }
-
-    @Override
     public void changeMobile(ChangeMobileCommand command) {
         log.info("changeMobile: command={}", command);
-        var userId = new UserId(command.userId());
-        var user = require(userId);
-        var pendingVerification = requireLatestUnexpiredPending(userId, VerificationScene.CC, SmsVerification.class);
-        credentialChangeService.changeMobile(user, pendingVerification, new RandomString(command.code()));
+        var user = requireEnabled(new UserId(command.userId()));
+        var pendingVerification = requirePendingCredentialChangeVerification(user.getId());
+        credentialChangeService.change(user, pendingVerification, new RandomString(command.code()));
         gateway.save(user);
         verificationGateway.save(pendingVerification);
-    }
-
-    @Override
-    public void requestChangeEmailCode(RequestChangeEmailCodeCommand command) {
-        log.info("requestChangeEmailCode: command={}", command);
-        var userId = new UserId(command.userId());
-        var user = require(userId);
-        var target = new Email(command.newEmail());
-        Assert.isTrue(!target.equals(user.getEmail().orElse(null)), "cannot change to the same email");
-        Assert.isTrue(!gateway.existsByEmail(target), "Email already exists: " + command.newEmail());
-        if (verificationGateway.hasUnexpiredPending(userId.toLongId(), VerificationScene.CC)) {
-            throw new IllegalArgumentException("An unexpired pending verification already exists");
-        }
-        var verification = user.requestChangeEmailCode(target, randomStringGenerator);
-        verificationGateway.save(verification);
-        domainEventBus.publishAll(verification.flushEvents());
     }
 
     @Override
     public void changeEmail(ChangeEmailCommand command) {
         log.info("changeEmail: command={}", command);
-        var userId = new UserId(command.userId());
-        var user = require(userId);
-        var pendingVerification = requireLatestUnexpiredPending(userId, VerificationScene.CC, EmailVerification.class);
-        credentialChangeService.changeEmail(user, pendingVerification, new RandomString(command.code()));
+        var user = requireEnabled(new UserId(command.userId()));
+        var pendingVerification = requirePendingCredentialChangeVerification(user.getId());
+        credentialChangeService.change(user, pendingVerification, new RandomString(command.code()));
         gateway.save(user);
         verificationGateway.save(pendingVerification);
     }
 
+    // ─── private helpers ───
+
     /**
-     * 断言用户存在最新且未过期的 PENDING 验证并返回 — changeMobile / changeEmail 的公共查询。
+     * 发码公共尾部 — 先构造（source 取自已构造的验证实体，服务层零并行推导）→ 槽位预检
+     * （Assert 守卫，existsBy 键存在性契约——活跃/过期判定归基础设施，见 ADR-0026）→
+     * save（惰性 DELETE 过期 I/P 行收敛在 gateway 实现内，见 ADR-0026）→ 发布创建事件。
      * <p>
-     * 基于 {@code findLatestByUserId} 的便捷封装：场景由参数指定（换绑固定传
-     * {@link VerificationScene#CC}），{@code status} 固定为 {@link VerificationStatus#P}，
-     * 判定时刻固定为 {@link Instant#now()}；
-     * 类型收敛变体（ADR-0016）：判别值由 gateway 实现按 {@code type} 推导，
-     * 调用方零反查、零强转。
-     * 「必须存在」语义：无匹配时抛 {@link IllegalArgumentException}（属应用层校验职责，
-     * 对齐 {@link AbstractAppService#require}）。
-     *
-     * @param userId 用户 ID
-     * @param scene  验证场景（过滤条件，换绑为 {@link VerificationScene#CC}）
-     * @param type   验证实体类型（{@link SmsVerification} / {@link EmailVerification}）
-     * @return 匹配的最新且未过期的 PENDING 验证实体
-     * @throws IllegalArgumentException 无匹配验证时
+     * 并发撞 {@code uk_active_key}：预检 + DB 兜底（唯一索引仲裁）——异常<b>原样上抛</b>，
+     * 不翻译（基础设施异常语义即契约，2026-08-16 会话修订，见 ADR-0026）。
      */
-    private <T extends Verification<?>> T requireLatestUnexpiredPending(UserId userId, VerificationScene scene, Class<T> type) {
-        return verificationGateway.findLatestByUserId(userId.toLongId(),
-                        new VerificationQuery(scene, VerificationStatus.P, Instant.now()), type)
-                .orElseThrow(() -> new IllegalArgumentException("No pending verification of type " + type.getSimpleName()));
+    private void requestCode(UserId userId, VerificationRecipient<?> recipient) {
+        var verification = userVerificationFactory.newCredentialChangeVerification(userId, recipient);
+        Assert.isTrue(!verificationGateway.existsBySource(verification.getSource()),
+                "An active verification already exists for source " + verification.getSource().compositeKey());
+        verificationGateway.save(verification);
+        domainEventBus.publishAll(verification.flushEvents());
+    }
+
+    /**
+     * 加载用户并断言凭证用例前置（非终态 + 启用态）——发码与消费共用（2026-08-16，见 ADR-0026）：
+     * 发码不触发聚合变更，启用态无 {@code mustEnable} 兜底；消费路径聚合 {@code mustEnable} 仍兜底，
+     * 此处前置提前失败（R 态用户得到「terminal state」而非「must be enabled」的准确消息）。
+     * 组合领域守卫（{@code requireNotTerminal} + {@link User#mustEnable()}，单一规则来源）。
+     */
+    private User requireEnabled(UserId userId) {
+        var user = requireNotTerminal(userId);
+        user.mustEnable();
+        return user;
+    }
+
+    /**
+     * 断言该用户最新且未过期的 UCC（credential change）PENDING 验证并返回 —
+     * changeMobile / changeEmail 的公共查询（方法名即场景，2026-08-16 见 ADR-0026）。
+     * <p>
+     * 按 source 键控加载（{@code credentialChangeSource}——消费命令不含 target，换绑的
+     * 新联系方式隐含在验证记录中；source 匹配守卫在 {@code User.changeXxx} 保留为防御纵深）；
+     * 未过期过滤为基础设施实现细节。
+     */
+    private Verification requirePendingCredentialChangeVerification(UserId userId) {
+        return verificationGateway
+                .findLatestBySourceAndStateIn(
+                        userVerificationFactory.newCredentialChangeSource(userId),
+                        List.of(VerificationState.P))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No pending verification found for user " + userId.value()));
     }
 }
