@@ -35,10 +35,10 @@ class VerificationStateTest {
     @CsvSource(textBlock = """
                 I,     false
                 P,     false
-                V,     true
+                V,     false
                 U,     true
             """)
-    @DisplayName("terminal() 终态判定（StateEnumType 契约，ADR-0023；V 内存瞬态永不落库亦为终态）")
+    @DisplayName("terminal() 终态判定（StateEnumType 契约，ADR-0023；V 内存瞬态非终态——不落库不占槽）")
     void should_terminal(String name, boolean terminal) {
         assertThat(VerificationState.valueOf(name).terminal()).isEqualTo(terminal);
     }

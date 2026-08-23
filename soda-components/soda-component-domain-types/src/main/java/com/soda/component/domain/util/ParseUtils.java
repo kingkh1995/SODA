@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Base64;
 
 /**
  * 解析工具类 — 将不可靠 {@link Object} 输入解析为指定基础类型。
@@ -158,5 +159,29 @@ public final class ParseUtils {
     public static String cutPrefix(@Nullable String value, String prefix) {
         ValidateUtils.hasPrefix(value, prefix);
         return value.substring(prefix.length());
+    }
+
+    /**
+     * String → byte[]（标准 Base64，RFC 4648 §4）。格式非法时抛出 {@link IllegalArgumentException}。
+     */
+    public static byte[] parseBase64(@Nullable String value) {
+        ValidateUtils.hasText(value);
+        try {
+            return Base64.getDecoder().decode(value);
+        } catch (IllegalArgumentException e) {
+            throw invalidFormat(value);
+        }
+    }
+
+    /**
+     * String → byte[]（URL-safe Base64，RFC 4648 §5）。格式非法时抛出 {@link IllegalArgumentException}。
+     */
+    public static byte[] parseBase64Url(@Nullable String value) {
+        ValidateUtils.hasText(value);
+        try {
+            return Base64.getUrlDecoder().decode(value);
+        } catch (IllegalArgumentException e) {
+            throw invalidFormat(value);
+        }
     }
 }

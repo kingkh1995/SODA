@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.Type;
 import com.soda.component.domain.util.ValidateUtils;
 
@@ -13,14 +13,10 @@ import com.soda.component.domain.util.ValidateUtils;
  * @see Type
  * @see com.soda.component.domain.gateway.RandomStringGenerator
  */
-public record RandomString(String value) implements Type {
+public record RandomString(String value) implements StringLiteralType {
 
     public RandomString {
         ValidateUtils.hasText(value);
     }
 
-    @JsonValue
-    public String value() {
-        return value;
-    }
 }

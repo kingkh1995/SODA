@@ -31,8 +31,10 @@ import java.time.Instant;
  * {@code DateTimeProvider} 提供（{@code Instant.now()}）。
  * {@code created_date} 不可更新（{@code updatable=false}）；列无 DB 默认值（{@code CURRENT_TIMESTAMP}
  * 按会话时区生成会与 UTC 字面值约定漂移，2026-08-13 移除，值由应用恒填充）。
- * setter 供 convertor 更新路径搬运审计列（merge 基于既有行显式保留，见各 convertor {@code merge}，
- * 2026-08-15）——持久化行是可变表示，setter 不破坏「值由 auditing 填充」的契约（监听器仍覆盖写）。
+ * setter 存在以供 JPA 与测试使用；convertor 更新路径<b>不</b>搬运审计列（{@code toPersistence}
+ * 不构造，null 即可）——merge 全量拷贝不会覆盖审计列（2026-08-15 修订，见 ADR-0024；
+ * {@code created_date} 由 {@code updatable=false} 保护、{@code last_modified_date} 由
+ * {@code @PreUpdate} 刷新），setter 不破坏「值由 auditing 填充」的契约（监听器仍覆盖写）。
  * <p>
  * 命名：具体数据库模型类统一 {@code XxxPO}；本基类按所实现接口命名
  * （AbstractXxx implements Xxx 模式，2026-08-13，见 ADR-0023）。

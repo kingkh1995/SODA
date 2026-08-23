@@ -2,6 +2,8 @@
 
 User 聚合根的方法按业务意图命名（`changeXxx` / `disable` / `enable`），不暴露贫血 setter 或泛化的 `changeStatus`。REST API 遵循 Google AIP 标准：个人资料用 PATCH 标准方法，状态跃迁用 `:disable`/`:enable` 自定义方法。
 
+> 沿革说明（2026-08-16）：正文 Step 1/2 的发码示例（`SmsVerification` 子类、`scene=CC`、`verification.send(smsSender)`）为 2026-08-10 前的沿革表述——现状：`Verification` 单类（`source`/`recipient`）、发码归 `UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode`、投递由监听器按 recipient 分派（见 ADR-0026）。本文的 `changeXxx` 意图命名与 AIP 端点约定不变。
+
 ## 问题
 
 改造前 `User` 实体混用了两种风格：`changeUsername`/`changeStatus`（领域行为命名）和 `setNickname`/`setMobile`/`setEmail`/`setSex`/`setAvatar`（贫血 setter）。API 层面 `updateUser` 接收 5 个 nullable 字段，`updateStatus` 接收 `String status`，两者都迫使调用方处理不应知晓的内部状态枚举。
@@ -51,7 +53,7 @@ REST API 遵循 Google API Improvement Proposals 标准：
 | `POST` | `/users/{id}:enable` | 启用用户 — AIP-136 自定义方法 |
 | `POST` | ~~`/users/{id}:verifyMobile`~~ | ~~发送手机验证码 — body: { newMobile }~~ — 已更名 `:requestChangeMobileCode`（2026-08-10 修订，见 ADR-0011） |
 | `POST` | `/users/{id}:changeMobile` | 验证手机并修改 — body: { code } |
-| `POST` | `/users/{id}:changePassword` | 修改密码 — body: { newPassword }，委托到 PasswordAuthAccount.changePassword()（2026-08-11 决策：不实现旧密码校验——admin 重置场景无旧密码语义；用户自助改密时再评估） |
+| `POST` | `/users/{id}:changePassword` | 修改密码 — body: { oldPassword, newPassword }，校验原密码后委托到 PasswordAuthAccount.changePassword()（2026-08-11 决策：不实现旧密码校验——admin 重置场景无旧密码语义；2026-08-16 修订：自助改密路径实现原密码校验——域守卫在 User.changePassword，见 ADR-0027） |
 | `POST` | ~~`/users/{id}:verifyEmail`~~ | ~~发送邮箱验证码 — body: { newEmail }~~ — 已更名 `:requestChangeEmailCode`（2026-08-10 修订，见 ADR-0011） |
 | `POST` | `/users/{id}:changeEmail` | 验证邮箱并修改 — body: { code } |
 

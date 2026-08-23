@@ -3,6 +3,8 @@
 **Status**: accepted
 
 > 修订（2026-08-15）：`Verification` 多态塌缩为单类——本 ADR 的 verification 部分（class↔channel 映射 `VerificationChannels`、`@JsonTypeName` 判别、决策 8 类层次保留理由）**作废**；`VerificationChannel` 枚举仅保留命令输入判别；`AuthAccount` 侧不变。详见 ADR-0025。
+>
+> 修订（2026-08-16）：`VerificationChannel` 角色回归——① 预认证命令输入、② `VerificationRecipient` 判别/序列化属性（`channel` + `target` 双列持久化）；码形策略按场景而非通道选择（不引用通道默认，见 ADR-0026 §2/§6）。本 ADR verification 部分维持作废。
 
 **Context**:
 

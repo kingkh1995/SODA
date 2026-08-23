@@ -148,9 +148,9 @@ class EmailTest {
     class Debug {
 
         @Test
-        @DisplayName("toString 格式正确")
+        @DisplayName("toString 格式正确（脱敏）")
         void should_haveCorrectToString() {
-            assertThat(new Email("t@t.com")).hasToString("Email[value=t@t.com]");
+            assertThat(new Email("t@t.com")).hasToString("Email[masked=t***@t.com]");
         }
     }
 

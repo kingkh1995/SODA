@@ -1,6 +1,6 @@
 package com.soda.user.infrastructure.gateway.persistence;
 
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.types.VerificationSource;
@@ -42,7 +42,7 @@ public class VerificationGatewayImpl implements VerificationGateway {
 
     @Override
     @Transactional
-    public UUId save(Verification verification) {
+    public Uuid save(Verification verification) {
         // 客户端生成 id 聚合 save 前置：必须已标识（ADR-0024；无 id 即契约违反，fail-fast）
         // 防御编程：Objects.requireNonNull → NPE（调用方按契约调用，异常类型即语义）
         var id = Objects.requireNonNull(verification.getId());
@@ -61,8 +61,9 @@ public class VerificationGatewayImpl implements VerificationGateway {
             throw new IllegalStateException();
         }
         // 惰性腾槽（基础设施实现细节，2026-08-16 见 ADR-0026）：INSERT 前同事务删除
-        // 同活跃键过期未用（I/P）行——仅新占槽（I/P）需要腾槽；V/U 迁移清 NULL 无槽可腾。
-        // 过期垃圾行物理清理（不同于 ADR-0017「终态由 save 持久化」——终态 V/U 行保留）。
+        // 同活跃键过期未用（I/P）行——仅新占槽（I/P）需要腾槽；终态（U）迁移清 NULL 无槽可腾
+        // （V 内存瞬态不落库，不涉槽位）。
+        // 过期垃圾行物理清理（不同于 ADR-0017「终态由 save 持久化」——终态（U）行保留（V 内存瞬态不落库））。
         if (verification.isInitialized() || verification.isPending()) {
             verificationRepository.deleteExpiredByActiveKey(
                     verification.getSource().compositeKey(), Instant.now());
@@ -71,12 +72,12 @@ public class VerificationGatewayImpl implements VerificationGateway {
         // 存在性统一路由（无行 INSERT、有行 detached 状态全量拷贝），乐观锁/审计由框架
         // 自动处理（ADR-0024 决策 1：路由由 isNew + merge 内建，网关零判别逻辑）
         var po = VerificationConvertor.toPersistence(verification);
-        // 终态清理（2026-08-16 修订，见 ADR-0026 注记）：convertor 恒设 active_key，非活跃
-        // （V/U）在此清 NULL——V 为内存瞬态（verify→use 同事务，永不落库，见
-        // CredentialChangeDomainService）、U 为持久化终态，terminal() 覆盖两者
-        // （VerificationState V/U 均终态），不参与唯一（active_key 仅 I/P 行非空，
-        // uk_active_key 硬保证单活跃），状态语义收敛进网关。
-        if (verification.getState().terminal()) {
+        // 终态清理（2026-08-16 检视修订，见 ADR-0026 修订注记）：convertor 恒设 active_key，
+        // 终态（U）在此清 NULL——V 为内存瞬态（verify→use 同事务，永不落库，见
+        // CredentialChangeDomainService）非终态、不涉槽位释放；terminal() 仅覆盖 U，
+        // 不参与唯一（active_key 仅 I/P 行非空，uk_active_key 硬保证单活跃），
+        // 状态语义收敛进网关。
+        if (verification.isTerminal()) {
             po.setActiveKey(null);
         }
         verificationRepository.save(po);
@@ -84,14 +85,14 @@ public class VerificationGatewayImpl implements VerificationGateway {
     }
 
     @Override
-    public Optional<Verification> findById(UUId id) {
+    public Optional<Verification> findById(Uuid id) {
         return verificationRepository.findById(id.value()).map(VerificationConvertor::toDomain);
     }
 
     @Override
-    public List<Verification> findAllById(Iterable<UUId> ids) {
+    public List<Verification> findAllById(Iterable<Uuid> ids) {
         var values = StreamSupport.stream(ids.spliterator(), false)
-                .map(UUId::value)
+                .map(Uuid::value)
                 .toList();
         var entities = verificationRepository.findAllById(values);
         return entities.stream().map(VerificationConvertor::toDomain).toList();

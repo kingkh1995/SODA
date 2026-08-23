@@ -6,7 +6,9 @@
  * primitive 形状，scene/channel 由方法语义隐式；0021 修订的「api→domain 正式方案」悬案以
  * 消除需求的方式了结。
  */
+@NullMarked
 @ApplicationModule(type = ApplicationModule.Type.OPEN, allowedDependencies = {})
 package com.soda.user.api;
 
 import org.springframework.modulith.ApplicationModule;
+import org.jspecify.annotations.NullMarked;

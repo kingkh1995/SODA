@@ -1,9 +1,9 @@
 package com.soda.user.domain;
 
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.PasswordHash;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.UserId;
@@ -23,17 +23,44 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PasswordAuthAccountTest {
 
     private static final PasswordAuthAccountId ID = PasswordAuthAccountId.from(new UserId(1L));
-    private static final CredentialHash HASH = new CredentialHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+    private static final PasswordHash HASH = PasswordHash.of("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    private static final CredentialHasher STUB = new CredentialHasher() {
+    /** 升级产物 —— 与 HASH 同尾异前缀（成本 12），专供透明升级断言区分新旧哈希。 */
+    private static final PasswordHash REHASHED_HASH =
+            PasswordHash.of("$2a$12$" + HASH.value().substring(7));
+
+    private static final PasswordHasher STUB = new PasswordHasher() {
         @Override
-        public CredentialHash hash(RawCredential credential) {
+        public PasswordHash hash(SecretValue credential) {
             return HASH;
         }
 
         @Override
-        public boolean matches(RawCredential credential, CredentialHash hash) {
-            return "secret123".equals(credential.rawValue());
+        public boolean verify(PasswordHash stored, SecretValue candidate) {
+            return "secret123".equals(candidate.rawValue());
+        }
+
+        @Override
+        public boolean needsRehash(PasswordHash stored) {
+            return false;
+        }
+    };
+
+    /** needsRehash 恒真桩 —— hash 产出 {@link #REHASHED_HASH}，驱动透明升级路径。 */
+    private static final PasswordHasher REHASHING_STUB = new PasswordHasher() {
+        @Override
+        public PasswordHash hash(SecretValue credential) {
+            return REHASHED_HASH;
+        }
+
+        @Override
+        public boolean verify(PasswordHash stored, SecretValue candidate) {
+            return "secret123".equals(candidate.rawValue());
+        }
+
+        @Override
+        public boolean needsRehash(PasswordHash stored) {
+            return true;
         }
     };
 
@@ -85,21 +112,54 @@ class PasswordAuthAccountTest {
         @DisplayName("正确密码验证通过")
         void should_verifyTrue_when_correctPassword() {
             var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            assertThat(a.verify(new RawCredential("secret123"), STUB)).isTrue();
+            assertThat(a.verify(new SecretValue("secret123"), STUB)).isTrue();
         }
 
         @Test
         @DisplayName("错误密码验证失败")
         void should_verifyFalse_when_wrongPassword() {
             var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            assertThat(a.verify(new RawCredential("wrong"), STUB)).isFalse();
+            assertThat(a.verify(new SecretValue("wrong"), STUB)).isFalse();
         }
 
         @Test
         @DisplayName("更改密码更新哈希")
         void should_updateHash_when_changePassword() {
             var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            a.changePassword(new RawCredential("x"), STUB);
+            a.changePassword(new SecretValue("x"), STUB);
+            assertThat(a.getPasswordHash()).isEqualTo(HASH);
+        }
+    }
+
+    @Nested
+    @DisplayName("登录透明升级（ADR-0033 注记 7）")
+    class RehashOnLogin {
+
+        private PasswordAuthAccount account() {
+            return PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
+        }
+
+        @Test
+        @DisplayName("需升级且密码正确 —— 以新哈希替换并返回 true")
+        void should_rehash_when_matchedAndNeedsUpgrade() {
+            var a = account();
+            assertThat(a.verifyAndRehash(new SecretValue("secret123"), REHASHING_STUB)).isTrue();
+            assertThat(a.getPasswordHash()).isEqualTo(REHASHED_HASH);
+        }
+
+        @Test
+        @DisplayName("无需升级且密码正确 —— 哈希保持不变")
+        void should_keepHash_when_matchedButCurrentCost() {
+            var a = account();
+            assertThat(a.verifyAndRehash(new SecretValue("secret123"), STUB)).isTrue();
+            assertThat(a.getPasswordHash()).isEqualTo(HASH);
+        }
+
+        @Test
+        @DisplayName("密码错误 —— 返回 false 且哈希不变（安全不变量）")
+        void should_keepHash_when_wrongCandidate() {
+            var a = account();
+            assertThat(a.verifyAndRehash(new SecretValue("wrong"), REHASHING_STUB)).isFalse();
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
         }
     }
@@ -119,7 +179,7 @@ class PasswordAuthAccountTest {
         void should_rejectRestore_when_activeIsFalse() {
             assertThatThrownBy(() -> PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build())
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("must equal Active[value=true], got: Active[value=false]");
+                    .hasMessage("must equal 'Active[value=true]', got: 'Active[value=false]'");
         }
 
         @Test
@@ -168,7 +228,7 @@ class PasswordAuthAccountTest {
         void should_beEqual_when_sameFields() {
             var same = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
             var equal = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            var diffHash = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(new CredentialHash("$2a$10$different")).build();
+            var diffHash = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(PasswordHash.of("$2a$10$different")).build();
             var diffId = PasswordAuthAccount.builder().id(PasswordAuthAccountId.from(new UserId(2L))).active(Active.TRUE).passwordHash(HASH).build();
             assertThat(same).isEqualTo(equal);
             assertThat(same).isNotEqualTo(diffHash);

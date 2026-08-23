@@ -10,12 +10,12 @@ import org.jspecify.annotations.Nullable;
  * 不依赖具体调度框架，由适配器构造后传入 Job 方法。
  * <pre>
  * // Quartz 适配
- * var ctx = new JobContext&lt;&gt;("cleanTokens", 0, 1, new CleanTokenParam(30, 1000));
+ * var ctx = new JobContext&lt;&gt;("cleanTokens", 0, 1, new TokenCleanupParam(30, 1000));
  *
  * // XXL‑JOB 适配
  * var ctx = new JobContext&lt;&gt;("cleanTokens",
  *     XxlJobHelper.getShardIndex(), XxlJobHelper.getShardTotal(),
- *     JobParamCodec.decode(XxlJobHelper.getJobParam(), CleanTokenParam.class));
+ *     JobParamCodec.decode(XxlJobHelper.getJobParam(), TokenCleanupParam.class));
  * </pre>
  *
  * @param <T> 业务参数类型

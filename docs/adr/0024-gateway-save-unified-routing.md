@@ -19,7 +19,7 @@
 > `version` 跨读改写间隙携带），每次更新同事务 `findById` 取当前版本，PO 层版本对跨加载
 > 竞态**空转**（乐观锁永不触发）；Verification 的并发安全来自状态机单调迁移 + 源状态断言
 > （重复应用幂等，无反向迁移）+ changeMobile 同事务的 User 版本兜底。故 `@Version` 仅保留
-> 于 UserPO（领域令牌承重，`should_optimisticLockConflict` 原生通过），user_verification 无
+> 于 UserPO（领域令牌承重，`should_optimisticLockConflict` 原生通过），verification 无
 > version 列；未来出现「持有验证实体跨读改写间隙再 save」的用例（如 resend）时，再为领域
 > `Verification` 加 version（User 同款）。
 

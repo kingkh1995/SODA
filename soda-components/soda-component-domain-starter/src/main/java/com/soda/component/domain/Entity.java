@@ -3,8 +3,7 @@ package com.soda.component.domain;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
-
-import java.util.function.Supplier;
+import org.springframework.util.Assert;
 
 /**
  * 领域实体的抽象基类 — 身份标识载体。
@@ -14,7 +13,7 @@ import java.util.function.Supplier;
  * 是**聚合根**能力，见 {@link Aggregate}——普通实体（如 {@code AuthAccount}，仅业务属性、
  * 无生命周期状态枚举、无领域事件）不实现。
  * <p>
- * 构造器按场景三选一：
+ * 构造器按场景二选一：
  * <ul>
  *   <li><b>手动设置 &amp; 已有数据恢复</b> — {@link #Entity(Identifier)} 传入 ID</li>
  *   <li><b>服务端生成</b> — {@link #Entity()} 无 ID，由 Repository 调用 {@link #assignId(Identifier)}</li>
@@ -45,6 +44,7 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
      * 手动设置 / 已有数据恢复（reconstitution）。
      */
     protected Entity(ID id) {
+        Assert.notNull(id, "id must not be null");
         this.id = id;
     }
 

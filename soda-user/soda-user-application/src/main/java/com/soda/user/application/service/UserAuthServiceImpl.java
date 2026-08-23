@@ -2,11 +2,11 @@ package com.soda.user.application.service;
 
 import com.soda.component.application.AbstractAppService;
 import com.soda.component.domain.DomainEventBus;
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.user.api.UserAuthService;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
@@ -20,9 +20,9 @@ import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.service.CredentialChangeDomainService;
 import com.soda.user.domain.types.EmailRecipient;
-import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
+import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,20 +56,20 @@ public class UserAuthServiceImpl
     private final VerificationGateway verificationGateway;
     private final CredentialChangeDomainService credentialChangeService;
     private final DomainEventBus domainEventBus;
-    private final CredentialHasher credentialHasher;
+    private final PasswordHasher passwordHasher;
     private final UserVerificationFactory userVerificationFactory;
 
     public UserAuthServiceImpl(UserGateway userGateway,
                                VerificationGateway verificationGateway,
                                CredentialChangeDomainService credentialChangeService,
                                DomainEventBus domainEventBus,
-                               CredentialHasher credentialHasher,
+                               PasswordHasher passwordHasher,
                                UserVerificationFactory userVerificationFactory) {
         super(User.class, userGateway);
         this.verificationGateway = verificationGateway;
         this.credentialChangeService = credentialChangeService;
         this.domainEventBus = domainEventBus;
-        this.credentialHasher = credentialHasher;
+        this.passwordHasher = passwordHasher;
         this.userVerificationFactory = userVerificationFactory;
     }
 
@@ -81,7 +81,7 @@ public class UserAuthServiceImpl
         var user = requireEnabled(new UserId(command.userId()));
         var target = new Mobile(command.newMobile());
         Assert.isTrue(!target.equals(user.getMobile().orElse(null)),
-                "cannot change to the same mobile");
+                "Cannot change to the same mobile");
         Assert.isTrue(!gateway.existsByMobile(target),
                 "Mobile already exists: " + target.value());
         requestCode(user.getId(), new SmsRecipient(target));
@@ -93,7 +93,7 @@ public class UserAuthServiceImpl
         var user = requireEnabled(new UserId(command.userId()));
         var target = new Email(command.newEmail());
         Assert.isTrue(!target.equals(user.getEmail().orElse(null)),
-                "cannot change to the same email");
+                "Cannot change to the same email");
         Assert.isTrue(!gateway.existsByEmail(target),
                 "Email already exists: " + target.value());
         requestCode(user.getId(), new EmailRecipient(target));
@@ -103,9 +103,10 @@ public class UserAuthServiceImpl
 
     @Override
     public void changePassword(ChangePasswordCommand command) {
-        log.info("changePassword: command={}", command);
+        log.info("changePassword: userId={}", command.userId());
         var user = requireEnabled(new UserId(command.userId()));
-        user.changePassword(new RawCredential(command.newPassword()), credentialHasher);
+        user.changePassword(new SecretValue(command.oldPassword()),
+                new SecretValue(command.newPassword()), passwordHasher);
         gateway.save(user);
         domainEventBus.publishAll(user.flushEvents());
     }

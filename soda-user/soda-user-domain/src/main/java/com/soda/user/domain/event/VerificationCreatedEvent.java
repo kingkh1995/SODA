@@ -1,7 +1,7 @@
 package com.soda.user.domain.event;
 
 import com.soda.component.domain.DomainEvent;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
 
 import java.time.Instant;
@@ -15,14 +15,14 @@ import java.time.Instant;
  * 并落库 PENDING（channel 只在 VerificationRecipient，2026-08-16 见 ADR-0026）——记录先于发送持久化，
  * 且 DB 事务不跨外部投递通道持有。
  * <p>
- * 实体引用为单一载荷：创建路径 ID 由客户端生成（{@code UUId.random()}），发布时已可用，
+ * 实体引用为单一载荷：创建路径 ID 由客户端生成（{@code Uuid.random()}），发布时已可用，
  * 监听器直接调用实体行为，无需反查。
  *
  * @param verification 已创建的验证实体（INITIALIZED）
  * @param occurredAt   事件发生时间
  */
 public record VerificationCreatedEvent(Verification verification, Instant occurredAt)
-        implements DomainEvent<UUId> {
+        implements DomainEvent<Uuid> {
 
     /**
      * 默认使用当前时间。
@@ -32,7 +32,7 @@ public record VerificationCreatedEvent(Verification verification, Instant occurr
     }
 
     @Override
-    public UUId entityId() {
+    public Uuid entityId() {
         return verification.getId();
     }
 }

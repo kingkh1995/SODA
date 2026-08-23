@@ -21,6 +21,6 @@ public class EmailSenderImpl implements EmailSender {
 
     @Override
     public void send(Email to, EmailContent content) {
-        log.info("Email deliver (log stub): to={}, subject={}", to.value(), content.subject());
+        log.info("send: to={}, subject={}", to.value(), content.subject());
     }
 }

@@ -1,55 +1,42 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.experimental.Accessors;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 人民币万元 DP — 不可变、自校验。
+ * 人民币万元 DP — 不可变、自校验，extends {@link DecimalLiteralType}（缓存不变量见基类，ADR-0031）。
  * <p>
- * 规范值是对 {@link BigDecimal#toPlainString()} 的字符串，作为 {@link JsonValue JSON 序列化} 和
- * {@link Object#equals(Object) equals}/{@link Object#hashCode() hashCode} 的依据。
- * {@link BigDecimal} 作为派生缓存值，不参与序列化和相等性判断。
+ * 规范值为 {@link BigDecimal#toPlainString()} 的 String（{@code @JsonValue}，继承自
+ * {@link StringLiteralType}，见 ADR-0028），{@link BigDecimal} 派生缓存。
  * <p>
  * 通过 {@link #fromYuan(BigDecimal)} 从元转换，精度到百元（最多 2 位小数），可为负。
  *
  * @see Type
+ * @see DecimalLiteralType
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Accessors(fluent = true)
-public final class WanYuan implements Type {
+@EqualsAndHashCode(callSuper = true)
+public final class WanYuan extends DecimalLiteralType implements Comparable<WanYuan> {
 
     private static final BigDecimal WAN = BigDecimal.valueOf(10000);
     private static final int SCALE = Math.clamp(TypeConfig.PROVIDER.wanYuanScale(), 0, 4);
 
-    @EqualsAndHashCode.Include
-    private final String value;
-    @Getter
-    private final BigDecimal bigDecimalValue;
-
     private WanYuan(BigDecimal raw) {
-        ValidateUtils.notNull(raw);
-        ValidateUtils.maxScale(raw, SCALE);
-        var normalized = raw.setScale(SCALE, RoundingMode.UNNECESSARY);
-        this.value = normalized.toPlainString();
-        this.bigDecimalValue = normalized;
+        super(raw, SCALE);
     }
 
     /**
      * JSON 反序列化入口。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static WanYuan of(String jsonValue) {
-        var bd = ParseUtils.parseBigDecimal(jsonValue);
+    public static WanYuan of(String value) {
+        var bd = ParseUtils.parseBigDecimal(value);
         return new WanYuan(bd);
     }
 
@@ -75,27 +62,30 @@ public final class WanYuan implements Type {
         return new WanYuan(result);
     }
 
-    @JsonValue
-    public String value() {
-        return value;
-    }
-
     /**
      * 转换为元（乘以 10000），结果不保留小数。
      */
     public BigDecimal toYuan() {
-        return bigDecimalValue.multiply(WAN).setScale(0, RoundingMode.UNNECESSARY);
+        return decimalValue().multiply(WAN).setScale(0, RoundingMode.UNNECESSARY);
     }
 
     /**
      * 展示文本。格式：{@code 111.11万元}。
      */
     public String toDisplayString() {
-        return bigDecimalValue.toPlainString() + "万元";
+        return decimalValue().toPlainString() + "万元";
+    }
+
+    /**
+     * 数值序比较（按十进制值）。
+     */
+    @Override
+    public int compareTo(WanYuan other) {
+        return decimalValue().compareTo(other.decimalValue());
     }
 
     @Override
     public String toString() {
-        return "WanYuan[value=" + value + "]";
+        return "WanYuan[value=" + value() + "]";
     }
 }

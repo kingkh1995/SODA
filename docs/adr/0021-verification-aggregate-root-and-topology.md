@@ -3,6 +3,8 @@
 **Status**: accepted（2026-08-12，grill-with-docs 会话，用户逐项确认）
 
 > 被 ADR-0026（2026-08-16）取代：`VerificationService.requestCode` 统一入口**作废**——主体裁定为 User（非 Verification），发码用例按场景归属用户侧应用服务（UCC → `UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode`）；`RequestCodeCommand` 删除，api 按用例拆分（per-use-case 命令，scene/channel 隐式，api→domain 临时依赖解除）；「发送主体是 Verification，User 是协助方」措辞撤销——Verification 为协助方聚合。保留：Verification 聚合根判据（URG 独立存在）、AFTER_COMMIT 事件投递、`CredentialChangeDomainService` 消费编排、同事务双 save 策略。
+>
+> 再修订（2026-08-16，检视后用户确认）：决策 1 的 `userId` 可空 / 构造器按 scene 归一化 / `verification.user_id` 列 NULL 化**全部撤销**——`source.subject` 必填（UCC/ULG/UPR = userId 裸键串、URG = 端点值），无 `user_id` 列（见 ADR-0026 §1/§10）。
 
 > 修订（2026-08-12，用户决定）：**Command 携带领域枚举**——`RequestCodeCommand.scene`/`channel` 由 String 短名改为 `VerificationScene`/`VerificationChannel` 枚举（JSON 线格式不变，枚举按 name() 短名序列化）；api 模块临时声明 `soda-user-domain` 依赖（`api` config 传递可见），web 模块 `allowedDependencies` 增加 `domain`。代价：触发「api→domain 正式方案」悬案提前，用户确认临时接受，正式方案落地后复核（见决策 6 与被否定方案）。
 

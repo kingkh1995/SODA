@@ -1,9 +1,8 @@
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.Type;
 import com.soda.component.domain.util.ValidateUtils;
-import org.springframework.util.Assert;
 
 /**
  * 字符集 DP — 包装任意字符集字符串（开集，非枚举），供随机字符串生成限定输出字符池。
@@ -19,7 +18,7 @@ import org.springframework.util.Assert;
  * @see Type
  * @see com.soda.component.domain.gateway.RandomStringGenerator
  */
-public record Alphabet(String value) implements Type {
+public record Alphabet(String value) implements StringLiteralType {
 
     /**
      * 纯数字字符集：0-9。
@@ -53,12 +52,8 @@ public record Alphabet(String value) implements Type {
      * 生成器侧应使用无偏的 {@code SecureRandom.nextInt(size())} 产生索引后调用本方法。
      */
     public char charAt(int index) {
-        Assert.isTrue(index >= 0 && index < value.length(), "index out of bounds: " + index);
+        ValidateUtils.range(index, 0, size() - 1);
         return value.charAt(index);
     }
 
-    @JsonValue
-    public String value() {
-        return value;
-    }
 }

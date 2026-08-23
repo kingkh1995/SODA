@@ -63,8 +63,6 @@ public class VerificationCreatedEventHandler {
                     new SmsContent(verification.getCode().code()));
             case EmailRecipient email -> emailSender.send(email.target(),
                     new EmailContent("验证码", "您的验证码: " + verification.getCode().code()));
-            default -> throw new IllegalStateException(
-                    "Unsupported delivery recipient: " + verification.getRecipient());
         }
         verification.markSent();
         verificationGateway.save(verification);

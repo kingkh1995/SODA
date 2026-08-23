@@ -1,8 +1,7 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
@@ -22,7 +21,7 @@ import java.util.regex.Pattern;
  */
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Accessors(fluent = true)
-public final class SoftwareVersion implements Type, Comparable<SoftwareVersion> {
+public final class SoftwareVersion implements StringLiteralType, Comparable<SoftwareVersion> {
 
     /**
      * 单段上限。
@@ -76,12 +75,12 @@ public final class SoftwareVersion implements Type, Comparable<SoftwareVersion> 
      * 前导 0 自动归一化。非法格式或越界时抛 IAE。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static SoftwareVersion of(String s) {
-        ValidateUtils.matches(s, FORMAT);
-        var parts = s.substring(1).split("\\.");
-        int m = ParseUtils.parseInt(parts[0]);
-        int n = ParseUtils.parseInt(parts[1]);
-        int p = ParseUtils.parseInt(parts[2]);
+    public static SoftwareVersion of(String value) {
+        ValidateUtils.matches(value, FORMAT);
+        var parts = value.substring(1).split("\\.");
+        var m = ParseUtils.parseInt(parts[0]);
+        var n = ParseUtils.parseInt(parts[1]);
+        var p = ParseUtils.parseInt(parts[2]);
         return new SoftwareVersion("v" + m + "." + n + "." + p, m, n, p);
     }
 
@@ -110,9 +109,8 @@ public final class SoftwareVersion implements Type, Comparable<SoftwareVersion> 
     }
 
     /**
-     * 序列化出口 — 规范字符串，如 {@code "v2.1.3"}。
+     * 规范值访问器 — {@code @JsonValue} 继承自 {@link StringLiteralType}（ADR-0028）。
      */
-    @JsonValue
     public String value() {
         return value;
     }

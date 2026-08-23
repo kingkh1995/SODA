@@ -2,13 +2,13 @@ package com.soda.user.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.soda.component.domain.LiteralType;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.Type;
 
 /**
  * 投递端点多态 DP（2026-08-16，见 ADR-0026）— 验证码的投递目标（channel + 地址）。
  * <p>
- * <b>泛型多态</b>：类型参数 {@code T extends LiteralType}（组件层单属性字面量契约，见 ADR-0026 修订六）
+ * <b>泛型多态</b>：类型参数 {@code T extends StringLiteralType}（组件层字符串字面量契约，见 ADR-0028）
  * 由子类型以各自地址 DP 特化——{@code SmsRecipient} → {@code Mobile}、{@code EmailRecipient} → {@code Email}；
  * {@link #target()} 返回类型化地址（record 组件即 target，隐式访问器满足接口方法），投递侧直接
  * {@code sms.target()} 取 {@code Mobile}，基础设施可直接 {@code target().value()} 落裸串（免判别）。
@@ -32,20 +32,8 @@ import com.soda.component.domain.Type;
  * @see SmsRecipient
  * @see EmailRecipient
  */
-public sealed interface VerificationRecipient<T extends LiteralType> extends Type
+public sealed interface VerificationRecipient<T extends StringLiteralType> extends Type
         permits SmsRecipient, EmailRecipient {
-
-    /**
-     * 投递通道（{@code S}/{@code E}）——按子类型派生，构造无冗余参数。
-     */
-    @JsonProperty("channel")
-    VerificationChannel channel();
-
-    /**
-     * 类型化投递地址（泛型多态）——子类型以各自地址 DP 特化：{@code SmsRecipient.target()} = {@code Mobile}、
-     * {@code EmailRecipient.target()} = {@code Email}；record 组件即 target，隐式访问器满足本方法。
-     */
-    T target();
 
     /**
      * 反序列化（{@code @JsonCreator}）— JSON 对象 {@code {"channel","target"}} 按通道枚举分派：
@@ -60,4 +48,16 @@ public sealed interface VerificationRecipient<T extends LiteralType> extends Typ
             case E -> EmailRecipient.of(target);
         };
     }
+
+    /**
+     * 投递通道（{@code S}/{@code E}）——按子类型派生，构造无冗余参数。
+     */
+    @JsonProperty("channel")
+    VerificationChannel channel();
+
+    /**
+     * 类型化投递地址（泛型多态）——子类型以各自地址 DP 特化：{@code SmsRecipient.target()} = {@code Mobile}、
+     * {@code EmailRecipient.target()} = {@code Email}；record 组件即 target，隐式访问器满足本方法。
+     */
+    T target();
 }

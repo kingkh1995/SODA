@@ -67,6 +67,14 @@ class VerificationCodeTest {
         }
 
         @Test
+        @DisplayName("恰好 expireAt 时刻未过期（严格 after 判定），+1ns 过期")
+        void should_notExpired_when_atExpireAt() {
+            var code = VerificationCode.from(CODE, EXPIRE_AT);
+            assertThat(code.expiredAt(EXPIRE_AT)).isFalse();
+            assertThat(code.expiredAt(EXPIRE_AT.plusNanos(1))).isTrue();
+        }
+
+        @Test
         @DisplayName("过期后已过期")
         void should_expired_when_afterExpireAt() {
             assertThat(VerificationCode.from(CODE, EXPIRE_AT).expiredAt(EXPIRE_AT.plusSeconds(1))).isTrue();

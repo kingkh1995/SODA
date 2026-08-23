@@ -2,7 +2,7 @@ package com.soda.user.api;
 
 import com.soda.user.api.command.ChangeUsernameCommand;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.DeleteUserCommand;
+import com.soda.user.api.command.DeregisterUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.api.command.UpdateUserCommand;
@@ -23,7 +23,7 @@ public interface UserService {
 
     void updateUser(UpdateUserCommand command);
 
-    void deleteUser(DeleteUserCommand command);
+    void deregisterUser(DeregisterUserCommand command);
 
     void disableUser(DisableUserCommand command);
 

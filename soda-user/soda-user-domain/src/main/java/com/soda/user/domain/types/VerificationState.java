@@ -16,8 +16,10 @@ import lombok.experimental.Accessors;
  * （{@code CredentialChangeDomainService}），V 永不落库
  * U(Used) 已使用（持久化终态；过期是派生判断，不落状态，见 ADR-0011）
  * <p>
- * 终态标记为构造器注入字段（record 风格）：V/U 均为终态（{@link #terminal()}）——
- * 终态不占活跃槽、持久化行不可写（基础设施兜底，ADR-0023）；U 是唯一可落库的终态。
+ * 终态以覆写 {@code terminal()} 标记：仅 U 覆写返回 true——
+ * 终态不占活跃槽、持久化行不可写（基础设施兜底，ADR-0023）。V 为<b>内存瞬态</b>
+ * （verify→use 同事务完成，永不落库）——不落库故不涉槽位释放，非终态
+ * （见 ADR-0026 修订注记）。
  * {@code terminal()} 与 {@code UserState} 同契约（{@link StateEnumType}）。
  *
  * @see StateEnumType
@@ -27,13 +29,17 @@ import lombok.experimental.Accessors;
 @RequiredArgsConstructor
 public enum VerificationState implements StateEnumType {
 
-    I("initialized", false),
-    P("pending", false),
-    V("verified", true),
-    U("used", true);
+    I("initialized"),
+    P("pending"),
+    V("verified"),
+    U("used") {
+        @Override
+        public boolean terminal() {
+            return true;
+        }
+    };
 
     private final String desc;
-    private final boolean terminal;
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static VerificationState of(String name) {

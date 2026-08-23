@@ -1,8 +1,8 @@
 package com.soda.user.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
@@ -12,7 +12,9 @@ import lombok.experimental.Accessors;
 /**
  * 认证账户标识符密封基类 — 所有 AuthAccountId 统一为 {@link Identifier}{@code <String>}。
  * <p>
- * 序列化格式：{@code "{AuthAccountType短名}:{业务键}"}（如 {@code "P:42"}、{@code "S:13800138000"}）。
+ * 序列化格式：{@code "{AuthAccountType短名}:{业务键}"}（如 {@code "P:42"}、{@code "S:13800138000"}）——
+ * 单属性 String 字面量，实现 {@link StringLiteralType}（{@code @JsonValue} 继承自家族接口，
+ * 见 ADR-0028；自描述编码与字面量契约正交，编码理由见 ADR-0007）。
  * 反序列化由各子类的 {@code of(String)} 完成，Jackson 需声明具体子类类型。
  * <p>
  * 子类可通过 {@link #of(String)} 传入带前缀的字符串完成构造。
@@ -22,10 +24,10 @@ import lombok.experimental.Accessors;
  * @see EmailAuthAccountId
  * @see SocialAuthAccountId
  */
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Getter
 @Accessors(fluent = true)
-public abstract sealed class AuthAccountId implements Identifier<String>
+public abstract sealed class AuthAccountId implements Identifier<String>, StringLiteralType
         permits PasswordAuthAccountId, SmsAuthAccountId, EmailAuthAccountId, SocialAuthAccountId {
 
     /**
@@ -33,7 +35,7 @@ public abstract sealed class AuthAccountId implements Identifier<String>
      */
     protected static final String DELIMITER = ":";
 
-    @JsonValue
+    @EqualsAndHashCode.Include
     private final String value;
 
     protected AuthAccountId(String value) {

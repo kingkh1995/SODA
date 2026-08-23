@@ -1,7 +1,7 @@
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.soda.component.domain.Identifier;
+import com.soda.component.domain.LongLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
@@ -16,7 +16,7 @@ import com.soda.component.domain.util.ValidateUtils;
  *
  * @see Identifier
  */
-public record LongId(long value) implements Identifier<Long>, Comparable<LongId> {
+public record LongId(long value) implements Identifier<Long>, LongLiteralType, Comparable<LongId> {
 
     public LongId {
         ValidateUtils.minValue(value, 0, false);
@@ -24,14 +24,6 @@ public record LongId(long value) implements Identifier<Long>, Comparable<LongId>
 
     public static LongId parse(String s) {
         return new LongId(ParseUtils.parseLong(s));
-    }
-
-    /**
-     * 从字符串解析构造。格式同 {@link ParseUtils#parseLong}。
-     */
-    @JsonValue
-    public long value() {
-        return value;
     }
 
     @Override

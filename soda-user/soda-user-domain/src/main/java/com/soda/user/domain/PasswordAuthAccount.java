@@ -3,10 +3,10 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.PasswordHash;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
@@ -26,7 +26,7 @@ import lombok.Getter;
 @EqualsAndHashCode(callSuper = true)
 public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId> {
 
-    private CredentialHash passwordHash;
+    private PasswordHash passwordHash;
 
     // ─── construction ───
 
@@ -42,7 +42,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     private PasswordAuthAccount(
             @JsonProperty(value = "id", required = true) PasswordAuthAccountId id,
             @JsonProperty(value = "active", required = true) Active active,
-            @JsonProperty(value = "passwordHash", required = true) CredentialHash passwordHash) {
+            @JsonProperty(value = "passwordHash", required = true) PasswordHash passwordHash) {
         this(active, passwordHash);
         assignId(id);
     }
@@ -52,11 +52,11 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * <p>
      * 字段初始化唯一存在处，全参数恢复构造器委托本构造器。
      */
-    private PasswordAuthAccount(Active active, CredentialHash passwordHash) {
+    private PasswordAuthAccount(Active active, PasswordHash passwordHash) {
         super(active);
         ValidateUtils.notNull(passwordHash);
         // 恒启用不变量（ADR-0004）：密码账户不允许禁用——创建路径强制 TRUE、恢复路径拒绝 FALSE
-        ValidateUtils.requireEquals(active, Active.TRUE);
+        ValidateUtils.equals(active, Active.TRUE);
         this.passwordHash = passwordHash;
     }
 
@@ -66,7 +66,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * 创建新密码账户 — active 默认 TRUE，ID 由 Gateway 在持久化后通过 {@link #assignId} 补充。
      */
     @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
-    private static PasswordAuthAccount create(CredentialHash passwordHash) {
+    private static PasswordAuthAccount create(PasswordHash passwordHash) {
         return new PasswordAuthAccount(Active.TRUE, passwordHash);
     }
 
@@ -89,8 +89,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * @param hasher     凭证哈希器
      * @return true 若匹配
      */
-    public boolean verify(RawCredential credential, CredentialHasher hasher) {
-        return hasher.matches(credential, passwordHash);
+    public boolean verify(SecretValue credential, PasswordHasher hasher) {
+        return hasher.verify(passwordHash, credential);
     }
 
     // ─── commands ───
@@ -103,8 +103,26 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * @implNote 不在此处注册 PasswordChangedEvent（泛型 ID 不匹配，事件需 {@code UserId}）；
      * 事件由 {@code User.changePassword} 在调用本方法后注册。
      */
-    public void changePassword(RawCredential credential, CredentialHasher hasher) {
+    public void changePassword(SecretValue credential, PasswordHasher hasher) {
         this.passwordHash = hasher.hash(credential);
+    }
+
+    /**
+     * 登录透明升级 —— 验证候选凭证，通过且存储哈希低于当前配置时以候选凭证重哈希
+     * （ADR-0033 注记 7；ULG 登录路径的落点）。
+     * 错误候选返回 false 且不动 {@code passwordHash}（安全不变量：绝不用未经
+     * 验证的凭证覆盖哈希）；调用方负责持久化以使新哈希落库（与 changePassword 同约定）。
+     *
+     * @return 候选凭证是否匹配
+     */
+    public boolean verifyAndRehash(SecretValue credential, PasswordHasher hasher) {
+        if (!hasher.verify(passwordHash, credential)) {
+            return false;
+        }
+        if (hasher.needsRehash(passwordHash)) {
+            this.passwordHash = hasher.hash(credential);
+        }
+        return true;
     }
 
     /**

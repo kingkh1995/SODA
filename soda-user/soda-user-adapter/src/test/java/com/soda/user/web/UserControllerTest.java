@@ -88,8 +88,8 @@ class UserControllerTest {
 
         @Test
         @DisplayName("删除成功返回空 data")
-        void should_returnSuccess_when_deleteUser() {
-            var response = controller.deleteUser(1L);
+        void should_returnSuccess_when_deregisterUser() {
+            var response = controller.deregisterUser(1L);
 
             assertThat(response.code()).isZero();
             assertThat(response.data()).isNull();
@@ -147,7 +147,7 @@ class UserControllerTest {
         @Test
         @DisplayName("修改密码成功返回空 data")
         void should_returnSuccess_when_changePassword() {
-            var request = new ChangePasswordRequest("newPass123");
+            var request = new ChangePasswordRequest("oldPass123", "newPass123");
             var response = controller.changePassword(1L, request);
 
             assertThat(response.code()).isZero();
@@ -157,7 +157,7 @@ class UserControllerTest {
         @Test
         @DisplayName("委托 UserAuthService.changePassword 执行")
         void should_delegateToUserAuthService_when_changePassword() {
-            var request = new ChangePasswordRequest("newPass123");
+            var request = new ChangePasswordRequest("oldPass123", "newPass123");
 
             controller.changePassword(42L, request);
 

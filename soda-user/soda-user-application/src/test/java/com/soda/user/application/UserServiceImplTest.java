@@ -1,13 +1,13 @@
 package com.soda.user.application;
 
 import com.soda.component.domain.DomainEventBus;
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.PasswordHash;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Version;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.DeleteUserCommand;
+import com.soda.user.api.command.DeregisterUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.application.convertor.UserDTOConvertor;
@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
 class UserServiceImplTest {
 
     private static final UserId USER_ID = new UserId(1L);
-    private static final CredentialHash STUB_HASH = new CredentialHash(
+    private static final PasswordHash STUB_HASH = PasswordHash.of(
             "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
     @Mock
@@ -53,7 +53,7 @@ class UserServiceImplTest {
     @Mock
     private DomainEventBus domainEventBus;
     @Mock
-    private CredentialHasher credentialHasher;
+    private PasswordHasher passwordHasher;
     private UserServiceImpl service;
     private UserDTOConvertor userDTOConvertor;
 
@@ -77,7 +77,7 @@ class UserServiceImplTest {
     @BeforeEach
     void setUp() {
         userDTOConvertor = new UserDTOConvertor();
-        service = new UserServiceImpl(userGateway, userDTOConvertor, domainEventBus, credentialHasher);
+        service = new UserServiceImpl(userGateway, userDTOConvertor, domainEventBus, passwordHasher);
     }
 
     @Nested
@@ -91,7 +91,7 @@ class UserServiceImplTest {
                     "testuser", "password123", "Test_User",
                     null, null, null, null);
 
-            when(credentialHasher.hash(any(RawCredential.class))).thenReturn(STUB_HASH);
+            when(passwordHasher.hash(any(SecretValue.class))).thenReturn(STUB_HASH);
             when(userGateway.save(any(User.class)))
                     .thenAnswer(invocation -> {
                         User user = invocation.getArgument(0);
@@ -244,7 +244,7 @@ class UserServiceImplTest {
                     .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
-            service.deleteUser(new DeleteUserCommand(USER_ID.value()));
+            service.deregisterUser(new DeregisterUserCommand(USER_ID.value()));
 
             assertThat(user.getState()).isEqualTo(UserState.R);
             verify(userGateway).save(user);
@@ -257,7 +257,7 @@ class UserServiceImplTest {
             var user = createEnabledUser();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+            assertThatThrownBy(() -> service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only disabled user can be deregistered");
 
@@ -271,7 +271,7 @@ class UserServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+                    service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -293,7 +293,7 @@ class UserServiceImplTest {
                     .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> service.deleteUser(new DeleteUserCommand(USER_ID.value())))
+            assertThatThrownBy(() -> service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only disabled user can be deregistered");
 

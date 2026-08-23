@@ -3,11 +3,11 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
-import com.soda.component.domain.gateway.CredentialHasher;
-import com.soda.component.domain.types.CredentialHash;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.PasswordHash;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Sex;
 import com.soda.component.domain.types.Version;
 import com.soda.component.domain.util.ValidateUtils;
@@ -18,14 +18,14 @@ import com.soda.user.domain.event.UserStateChangedEvent;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.EmailAuthAccountId;
+import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.Nickname;
 import com.soda.user.domain.types.SmsAuthAccountId;
+import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
-import com.soda.user.domain.types.Username;
-import com.soda.user.domain.types.EmailRecipient;
-import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserVerificationScene;
+import com.soda.user.domain.types.Username;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -135,7 +135,7 @@ public class User extends Aggregate<UserId> {
      * @param passwordHash 必传密码哈希，自动创建 {@link PasswordAuthAccount}
      */
     @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
-    private static User create(Username username, Nickname nickname, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, CredentialHash passwordHash) {
+    private static User create(Username username, Nickname nickname, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, PasswordHash passwordHash) {
         var user = new User(username, nickname, UserState.E, mobile, email, sex, avatar,
                 PasswordAuthAccount.createBuilder().passwordHash(passwordHash).build(), null);
         if (mobile != null) {
@@ -234,16 +234,21 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 修改密码 — 委托到 {@link PasswordAuthAccount#changePassword}，注册 {@link PasswordChangedEvent}。
+     * 修改密码 — 校验原密码后委托 {@link PasswordAuthAccount#changePassword}，注册 {@link PasswordChangedEvent}。
      * <p>
-     * 密码账户为构造期必填字段（ADR-0004 类型化），此处直接委托，无查找无守卫。
+     * 密码账户为构造期必填字段（ADR-0004 类型化），此处直接委托，无查找。
+     * <p>
+     * 原密码比对为域守卫（不变量单一来源）：通过 {@link PasswordAuthAccount#verify} 校验
+     * 旧凭证与当前哈希，不匹配抛 {@link IllegalArgumentException}，不产生任何变更与事件。
      *
-     * @param credential 原始密码
-     * @param hasher     凭证哈希器
+     * @param oldCredential 原密码（校验对应用户当前凭证）
+     * @param newCredential 新密码
+     * @param hasher        口令哈希器
      */
-    public void changePassword(RawCredential credential, CredentialHasher hasher) {
+    public void changePassword(SecretValue oldCredential, SecretValue newCredential, PasswordHasher hasher) {
         mustEnable();
-        passwordAccount.changePassword(credential, hasher);
+        Assert.isTrue(passwordAccount.verify(oldCredential, hasher), "Invalid old password");
+        passwordAccount.changePassword(newCredential, hasher);
         registerEvent(new PasswordChangedEvent(getId()));
     }
 
@@ -278,7 +283,7 @@ public class User extends Aggregate<UserId> {
                     "verification recipient must be a mobile, but was " + recipient.channel() + ":" + recipient.target());
         }
         Assert.isTrue(!Objects.equals(mobile, newMobile),
-                "cannot change to the same mobile: " + newMobile.value());
+                "Cannot change to the same mobile: " + newMobile.value());
         this.mobile = newMobile;
         // 替换 SmsAuthAccount：移除旧账户，添加新账户
         removeAccount(SmsAuthAccountId.ACCOUNT_TYPE);
@@ -315,7 +320,7 @@ public class User extends Aggregate<UserId> {
                     "verification recipient must be an email, but was " + recipient.channel() + ":" + recipient.target());
         }
         Assert.isTrue(!Objects.equals(email, newEmail),
-                "cannot change to the same email: " + newEmail.value());
+                "Cannot change to the same email: " + newEmail.value());
         this.email = newEmail;
         // 替换 EmailAuthAccount：移除旧账户，添加新账户
         removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);

@@ -5,6 +5,7 @@ import com.soda.component.api.command.Command;
 
 public record ChangePasswordCommand(
         @JsonProperty("userId") Long userId,
+        @JsonProperty("oldPassword") String oldPassword,
         @JsonProperty("newPassword") String newPassword
 ) implements Command {
 }

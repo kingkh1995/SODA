@@ -1,9 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.LiteralType;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.SensitiveValue;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -13,49 +10,39 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * 电子邮箱 DP — 不可变、自校验、可比较。
+ * 电子邮箱 DP —— 格式校验（{@code local@domain}），不可变、自校验。
  * <p>
- * 校验规则：非空、格式匹配 {@code local@domain}，域名至少包含一个 {@code .}。
- * 值归一化为小写。{@link #localPart()} 和 {@link #domain()} 在构造时预计算并缓存。
- * <p>
- * 使用 class+Lombok 实现（非 record）：{@link JsonValue} 在字段上，{@link JsonCreator} 在构造器上，
- * 与项目内基于 {@code Type} 的 DP（如 {@link Mobile}）保持一致的 Jackson 集成方式。
+ * 值归一化为小写；{@code localPart()} 与 {@code domain()} 为派生字段（Lombok 流式访问器）；
+ * {@code maskedValue()} 由 {@link MaskedEmail} 的掩码算法即时生成。
  *
- * @see Type
+ * @see SensitiveValue
+ * @see MaskedEmail 掩码权威实现
+ * @see Ciphertext 可逆加密信封
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Getter
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 @Accessors(fluent = true)
-public final class Email implements LiteralType {
+public final class Email extends SensitiveValue {
 
-    // 基础邮箱格式校验：local@domain.tld
-    private static final Pattern EMAIL_PATTERN =
+    private static final Pattern PATTERN =
             Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
-    @EqualsAndHashCode.Include
-    private final String value;
-
+    @Getter
     private final String localPart;
+
+    @Getter
     private final String domain;
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public Email(String value) {
-        ValidateUtils.hasText(value);
-        ValidateUtils.matches(value, EMAIL_PATTERN);
-        value = value.toLowerCase(Locale.ROOT);
-        var at = value.indexOf('@');
-        this.value = value;
-        this.localPart = value.substring(0, at);
-        this.domain = value.substring(at + 1);
-    }
-
-    @JsonValue
-    public String value() {
-        return value;
+        super(value == null ? null : value.toLowerCase(Locale.ROOT));
+        ValidateUtils.matches(value(), PATTERN);
+        var v = value();
+        var at = v.indexOf('@');
+        this.localPart = v.substring(0, at);
+        this.domain = v.substring(at + 1);
     }
 
     @Override
-    public String toString() {
-        return "Email[value=" + value + "]";
+    public String maskedValue() {
+        return MaskedEmail.from(this).value();
     }
 }

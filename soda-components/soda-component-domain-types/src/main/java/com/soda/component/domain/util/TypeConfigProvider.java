@@ -33,10 +33,10 @@ public interface TypeConfigProvider {
     }
 
     /**
-     * 凭证哈希值最大长度。默认 255，至少 128。
+     * 口令哈希串最大长度。默认 200（对齐 user 表 password_hash 列 VARCHAR(200)），至少 128。
      */
-    default int credentialHashMaxLength() {
-        return 255;
+    default int passwordHashMaxLength() {
+        return 200;
     }
 
     /**

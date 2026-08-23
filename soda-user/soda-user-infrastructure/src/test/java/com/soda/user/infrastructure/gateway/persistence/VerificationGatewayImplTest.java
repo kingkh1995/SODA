@@ -1,7 +1,7 @@
 package com.soda.user.infrastructure.gateway.persistence;
 
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.VerificationCode;
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link VerificationGatewayImpl#save} 单测 — active_key 终态清理（2026-08-16 修订，见 ADR-0026 注记）：
- * convertor 恒设 active_key，V/U 迁移在 save 清 NULL（终态不参与唯一，uk_active_key 硬保证单活跃）；
+ * convertor 恒设 active_key，U 终态迁移在 save 清 NULL（V 非终态，保留 active_key；uk_active_key 硬保证单活跃）；
  * 终态守卫（同 UserGatewayImpl.save，ADR-0023）：持久化行已为 U（吸收态）时任何写入被拒。
  */
 @ExtendWith(MockitoExtension.class)
@@ -47,19 +47,19 @@ class VerificationGatewayImplTest {
 
     private VerificationGatewayImpl gateway;
 
-    @BeforeEach
-    void setUp() {
-        gateway = new VerificationGatewayImpl(verificationRepository);
-    }
-
     private static Verification uccVerification(VerificationState state) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(state)
                 .code(new VerificationCode("123456", EXPIRE_AT))
                 .recipient(new SmsRecipient(MOBILE))
                 .build();
+    }
+
+    @BeforeEach
+    void setUp() {
+        gateway = new VerificationGatewayImpl(verificationRepository);
     }
 
     @Test
@@ -73,11 +73,11 @@ class VerificationGatewayImplTest {
     }
 
     @Test
-    @DisplayName("终态 V：save 清 active_key（终态不参与唯一）")
-    void shouldClearActiveKey_forVerified() {
+    @DisplayName("V：非终态——save 保留 active_key（V 内存瞬态不落库；若被持久化仍占槽，2026-08-16 检视修订）")
+    void shouldKeepActiveKey_forVerified() {
         gateway.save(uccVerification(VerificationState.V));
 
-        assertThat(captured().getActiveKey()).isNull();
+        assertThat(captured().getActiveKey()).isEqualTo("UCC:1");
         verify(verificationRepository, never()).deleteExpiredByActiveKey(any(), any());
     }
 

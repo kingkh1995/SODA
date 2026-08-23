@@ -1,7 +1,7 @@
 package com.soda.user.job;
 
 import com.soda.component.job.JobContext;
-import com.soda.user.job.param.CleanTokenParam;
+import com.soda.user.job.param.TokenCleanupParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class TokenCleanupJob {
 
-    public void cleanExpiredTokens(JobContext<CleanTokenParam> ctx) {
+    public void cleanExpiredTokens(JobContext<TokenCleanupParam> ctx) {
         // 目前仅输出日志，后续接入调度框架后实现业务逻辑
         var param = ctx.param();
-        log.info("CleanExpiredTokens job executed: daysBefore={}, batchSize={}, shard={}",
+        log.info("cleanExpiredTokens: daysBefore={}, batchSize={}, shard={}",
                 param.daysBefore(), param.batchSize(), ctx.shardIndex());
     }
 }

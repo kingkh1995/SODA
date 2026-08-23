@@ -18,7 +18,7 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 >
 > 再修订（2026-08-15）：`VerificationScene` 取值改为**扁平助记码** `UCC/UPR/ULG/URG`（领域前缀，跨领域共享枚举时隔离，SocialType 先例；列宽 2→4）；`VerificationChannel` 定位修订——**仅保留命令输入判别**（2026-08-15 多态塌缩后无持久化列、无聚合访问器、无查询参数；通道判别单一源栖身 `Subject` 密封类型），`channel` 列与 class↔channel 映射删除——见 ADR-0025。
 >
-> 再修订（2026-08-16）：`VerificationScene` → **`UserVerificationScene`**（调用方词汇，Verification 只存场景字符串；`code()` 返回助记码串 = `VerificationSource.scene` 值）；`VerificationChannel` 角色扩为三项（① 预认证命令输入、② `Recipient` 判别/序列化属性、③ 工厂策略选择）——**channel 只在 Recipient**（subject 不携带、无独立 channel 列），`Subject` 密封层级删除——见 ADR-0026。
+> 再修订（2026-08-16）：`VerificationScene` → **`UserVerificationScene`**（调用方词汇，Verification 只存场景字符串；`name()` 返回助记码串 = `VerificationSource.scene` 值——2026-08-16 检视修订：原措辞 `code()` 与实现不符）；`VerificationChannel` 角色（① 预认证命令输入、② `VerificationRecipient` 判别/序列化属性——持久化 `channel` + `target` 双列，2026-08-16 检视修订：『无独立 channel 列』作废，见 ADR-0026 §2/§10）；码形策略按**场景**而非通道选择（UCC 专属策略双通道统一，不引用通道默认，见 ADR-0026 §6）；`Subject` 密封层级删除——见 ADR-0026。
 
 随着 DTO/VO 层确认不直接引用枚举类型（使用 `String` 传递），`soda-user-common` 模块失去存在意义，枚举需要重新设计。
 
@@ -50,7 +50,7 @@ soda-user 模块需要一组领域枚举（Sex、UserState、AuthAccountType、S
 
 | 术语 | 含义 | 示例 |
 |---|---|---|
-| `state` | 状态集合/状态机，表示实体的生命周期阶段 | `UserState`（用户生命周期：E/D） |
+| `state` | 状态集合/状态机，表示实体的生命周期阶段 | `UserState`（用户生命周期：E/D/R，ADR-0023） |
 | `status` | 具体某个状态值，通常是外部可观测的 | HTTP status（200, 404） |
 
 枚举命名时，表示状态机的用 `XxxState`（如 `UserState`），表示具体状态值的用 `XxxStatus`（如 `HttpStatus`）。

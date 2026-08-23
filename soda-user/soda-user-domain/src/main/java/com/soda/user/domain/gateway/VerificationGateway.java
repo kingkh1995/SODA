@@ -1,7 +1,7 @@
 package com.soda.user.domain.gateway;
 
 import com.soda.component.domain.EntityGateway;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
@@ -26,7 +26,7 @@ import java.util.Optional;
  * @see Verification
  * @see VerificationSource
  */
-public interface VerificationGateway extends EntityGateway<Verification, UUId> {
+public interface VerificationGateway extends EntityGateway<Verification, Uuid> {
 
     /**
      * 契约：该 source 是否存在占用活跃键的行（所有场景统一——source 即唯一索引的槽位身份：

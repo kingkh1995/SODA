@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * 聚合根的抽象基类 — 聚合根能力：身份（{@link Entity}）+ 状态机对象（{@link Stateful}）+

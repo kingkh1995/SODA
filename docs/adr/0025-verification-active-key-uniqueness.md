@@ -4,7 +4,9 @@
 
 > 实施修订（2026-08-15）：**消费反查改按 subject 键控**——`findFirstBySubjectAndScene(subject, scene, states)` 取代 `findFirstBySceneAndTarget`（消费命令 changeMobile/changeEmail 不含 target——换绑的新联系方式隐含在验证记录中，「按 subject 加载」即主体匹配守卫）；查询索引随之改为 `idx_subject_scene_state_expire_at (subject, scene, state, expire_at)`。原「按 (scene, target) 键控」基于「命令携带 target」的错误假设。
 
-> 部分决策被 ADR-0026（2026-08-16）取代：通道判别从 `Subject` 迁至 `Recipient`（多态投递端点）；subject 降为 source 内裸键字符串（`Subject` 密封层级删除）；`VerificationScene` → `UserVerificationScene`（调用方词汇）；Gateway 契约改 source 键控（`existsBySource`/`findFirstBySource`）。保留：`active_key` 机制、惰性 DELETE、终态不占唯一键、无 E 态。另：主体裁定（User，非 Verification）、`VerificationService` 作废、ULG/UPR subject=userId（仅 URG 保留端点值）、「端点场景 subject 即 target」仅 URG 适用——见 ADR-0026。
+> 部分决策被 ADR-0026（2026-08-16）取代：通道判别从 `Subject` 迁至 `Recipient`（多态投递端点）；subject 降为 source 内裸键字符串（`Subject` 密封层级删除）；`VerificationScene` → `UserVerificationScene`（调用方词汇）；Gateway 契约改 source 键控（`existsBySource`/`findLatestBySourceAndStateIn`）。保留：`active_key` 机制、惰性 DELETE、终态不占唯一键、无 E 态。另：主体裁定（User，非 Verification）、`VerificationService` 作废、ULG/UPR subject=userId（仅 URG 保留端点值）、「端点场景 subject 即 target」仅 URG 适用——见 ADR-0026。
+>
+> 再修订（2026-08-16，检视后用户确认）：① **并发裁决改为原样上抛**——§1「翻译为领域错误」作废（ADR-0026 §7：预检 + DB 兜底，无翻译，`DataIntegrityViolationException` 原样传播）；② **V 终态标记撤回**——`active_key` 清 NULL 仅 U 终态（V 内存瞬态不落库、不涉槽位，见 ADR-0026 检视修订）；③ 消费反查命名以现状为准（`findLatestBySourceAndStateIn`，本文件 Consequences 中的 `findFirstBySceneAndTarget`/`findFirstBySubjectAndScene` 为沿革表述）。
 
 ## Context
 
@@ -29,7 +31,7 @@
 - `UNIQUE KEY uk_active_key (active_key)`。
 - **占槽**：`state ∈ {I, P}` 且未过期（I/P 均占——AFTER_COMMIT 投递窗口与 send 失败滞留的 I 同样拒绝重发，与 2026-08-11「计入 I 态」决策一致）。
 - **释放**：`V`/`U` 迁移时 convertor 推导置 NULL（`toPersistence` 全量构造，ADR-0024）；**过期 I/P 行由 requestCode 同事务 DELETE 整行**（`WHERE active_key = :key AND expire_at < :now`——行删除即释放槽位，且不积累过期垃圾）。
-- **并发裁决**：唯一索引是最终仲裁——无论间隙锁行为如何，同键并发 INSERT 至多一个成功；失败方 `DataIntegrityViolationException` → 翻译为领域错误（`uk_username` 既定「预检 + DB 兜底」模式）。
+- **并发裁决**：唯一索引是最终仲裁——无论间隙锁行为如何，同键并发 INSERT 至多一个成功；失败方 `DataIntegrityViolationException` **原样上抛**（预检 + DB 兜底，无翻译——2026-08-16 会话修订，见 ADR-0026 §7）。
 - **requestCode 同事务形状**：前置预检（`existsBySubjectAndScene`，fail-fast 友好错误）→ 惰性 DELETE（按本次键）→ INSERT（convertor 设 `active_key`）→ 撞 `uk_active_key` → 领域错误。
 - **无 E 态**：状态机 `I → P → V → U` 不动，ADR-0011「过期是派生判断」不反转——过期行不物化状态，靠惰性 DELETE 释放。
 - **应用维护**（非生成列）：无 E 态下生成列不可行——生成列写时求值、时间不可入键，过期 P 行永不改状态则永占槽；值由 convertor 单点推导（I/P → compose，否则 NULL）+ 惰性 DELETE，反同步风险由单点 + 集成测试锁定。
@@ -99,9 +101,9 @@ CREATE TABLE `verification` (
     `code`        VARCHAR(10)  NOT NULL COMMENT '验证码',
     `state`       VARCHAR(1)   NOT NULL COMMENT '验证状态（I/P/V/U，无 E 态，过期派生判断）',
     `expire_at`   DATETIME     NOT NULL COMMENT '过期时间（UTC）',
-    `active_key`  VARCHAR(160) NULL COMMENT '活跃键（scene:subject 序列化；I/P 且未过期占槽，V/U 迁移清 NULL、过期 I/P 行 DELETE 释放；uk_active_key 硬保证单活跃）',
-    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `active_key`  VARCHAR(160) NULL COMMENT '活跃键（scene:subject 序列化；I/P 且未过期占槽，U 终态迁移清 NULL（V 内存瞬态不落库不涉槽位）、过期 I/P 行 DELETE 释放；uk_active_key 硬保证单活跃）',
+    `created_date`       DATETIME     NOT NULL COMMENT '创建时间（审计，Spring Data auditing 维护，UTC 字面值；无 DB 默认值，见 ADR-0022）',
+    `last_modified_date` DATETIME     NOT NULL COMMENT '最后更新时间（审计，Spring Data auditing 维护，UTC 字面值；无 DB 默认值/ON UPDATE，见 ADR-0022）',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_active_key` (`active_key`),
     KEY `idx_subject_scene_state_expire_at` (`subject`, `scene`, `state`, `expire_at`)
@@ -130,8 +132,8 @@ CREATE TABLE `verification` (
 ## Consequences
 
 - **V1 直改**（ADR-0022）：表更名 `verification`、`user_id` 列 → `subject` 列（通用序列化）、加 `active_key` + `uk_active_key`、`scene` 列宽 2→4、新查询索引（旧 `idx_user_id_scene_status_expire_at` 删除——消费改 subject 键控，`idx_subject_scene_state_expire_at`）。
-- **代码**：领域 `Verification` 塌缩为**单类**（`subject: Subject` 非空、`target: Type`——`Mobile`/`Email` 构造边界校验；`verify/use/isExpiredAt` 同构；send 分派移监听器——投递侧按投递端点（target 类型）匹配 `SmsSender`/`EmailSender`，聚合保留 `I→P` 迁移行为；`Subject` 密封 `UserSubject`/`MobileSubject`/`EmailSubject` 序列化带类型前缀，AuthAccountId 同构；构造归一化：UCC 注入 `UserSubject`、端点场景由 channel+target 构造——subject 恒非空）；`VerificationPO` 映射 `subject`/`target`/`active_key`（无 channel 列）；`VerificationConvertor.toPersistence` 推导 `active_key`（I/P → `compose(scene, subject)`，否则 NULL；ADR-0024 全量构造）——`compose` 为 infra 单点函数；`VerificationGateway` 契约重写（`existsBySubjectAndScene`/`deleteExpiredBySubjectAndScene`/`findFirstBySceneAndTarget`，删 VerificationQuery/findLatestByUserId/类型收敛重载/VerificationChannels）；`VerificationServiceImpl` 主体 `AbstractAppService<Verification<?>, UUId, VerificationGateway>`（UCC 发起走本服务——发送主体是 Verification，User 为协助方：UCC 分支经 UserGateway 协作者加载用户做场景前置；subject 由 adapter 从会话注入命令）；`UserAuthServiceImpl` 消费按 (scene, target) 键控 + subject 匹配守卫；`VerificationChannel` 枚举仅命令输入判别（无持久化/聚合访问器/查询参数）。
-- **V 态保留且永不落库**：原子流 verify→change→use 单事务，save 只写 U；V 是「码已核对」事实的唯一载体（`use()` 前置、changeMobile 守卫 VERIFIED 承重），且为未来拆分流（verify 一步/confirm 一步）预留。V 行 `active_key=NULL` 不占槽；未来拆分流持久化 V 时，过期 V 行 DELETE 谓词扩展含 V（接缝）。
+- **代码**：领域 `Verification` 塌缩为**单类**（`subject: Subject` 非空、`target: Type`——`Mobile`/`Email` 构造边界校验；`verify/use/isExpiredAt` 同构；send 分派移监听器——投递侧按投递端点（target 类型）匹配 `SmsSender`/`EmailSender`，聚合保留 `I→P` 迁移行为；`Subject` 密封 `UserSubject`/`MobileSubject`/`EmailSubject` 序列化带类型前缀，AuthAccountId 同构；构造归一化：UCC 注入 `UserSubject`、端点场景由 channel+target 构造——subject 恒非空）；`VerificationPO` 映射 `subject`/`target`/`active_key`（无 channel 列）；`VerificationConvertor.toPersistence` 推导 `active_key`（I/P → `compose(scene, subject)`，否则 NULL；ADR-0024 全量构造）——`compose` 为 infra 单点函数；`VerificationGateway` 契约重写（`existsBySubjectAndScene`/`deleteExpiredBySubjectAndScene`/`findFirstBySceneAndTarget`（沿革名——现状为 source 键控 `findLatestBySourceAndStateIn`，见 ADR-0026 §8），删 VerificationQuery/findLatestByUserId/类型收敛重载/VerificationChannels）；`VerificationServiceImpl` 主体 `AbstractAppService<Verification<?>, UUId, VerificationGateway>`（UCC 发起走本服务——发送主体是 Verification，User 为协助方：UCC 分支经 UserGateway 协作者加载用户做场景前置；subject 由 adapter 从会话注入命令）；`UserAuthServiceImpl` 消费按 (scene, target) 键控 + subject 匹配守卫；`VerificationChannel` 枚举仅命令输入判别（无持久化/聚合访问器/查询参数）。
+- **V 态保留且永不落库**：原子流 verify→change→use 单事务，save 只写 U；V 是「码已核对」事实的唯一载体（`use()` 前置、changeMobile 守卫 VERIFIED 承重），且为未来拆分流（verify 一步/confirm 一步）预留。V 为内存瞬态、不落库不占槽（2026-08-16 检视修订：V 终态标记撤回，`active_key` 清 NULL 仅 U 终态；若未来拆分流持久化 V，V 行将保持占槽直至 U，过期 V 行 DELETE 谓词届时扩展含 V——接缝）。
 - **测试**：`PersistenceEndToEndTest`/`VerificationFailureResendTest` 扩展——并发同键双发（唯一索引拒后发）、过期重发（惰性 DELETE 腾槽）、verify→use 槽位释放、跨场景同 target 共存（UCC vs URG）、同主体多 target UCC 拒绝（subject 维度）、跨主体同 target UCC 允许（持码凭证）、终态行 `active_key=NULL` 恢复；convertor 单测（compose 三态 + subject 构造归一化）；gateway 契约测试。
 - **文档**：ADR-0005 修订注记（VerificationScene 新短名 + VerificationChannel 定位）；CONTEXT.md 更新（subject 必填、活跃验证词汇、scene:subject 统一键、existsBy 契约）；framework-conventions 增 existsBy 命名规范。
 - **接缝（未来票）**：跨领域共享服务（`Subject` 密封层级扩展 `SysUserSubject`、场景单枚举 `S*` 前缀）、每手机号限流（yudao todayIndex）、时钟一致性统一设计、拆分流 V 落库与 DELETE 谓词扩展。

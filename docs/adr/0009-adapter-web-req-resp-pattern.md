@@ -71,9 +71,9 @@ public Result<UserResponse> createUser(@RequestBody @Valid CreateUserRequest req
 }
 
 @DeleteMapping("/{id}")
-public Result<Void> deleteUser(@PathVariable("id") Long id) {
-    DeleteUserCommand cmd = assembler.toDeleteCommand(id);
-    userService.deleteUser(cmd);
+public Result<Void> deregisterUser(@PathVariable("id") Long id) {
+    DeregisterUserCommand cmd = assembler.toDeregisterCommand(id);
+    userService.deregisterUser(cmd);
     return Result.success();
 }
 ```

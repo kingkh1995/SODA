@@ -17,8 +17,8 @@ public record SmsRecipient(Mobile target) implements VerificationRecipient<Mobil
         ValidateUtils.notNull(target);
     }
 
-    public static SmsRecipient of(String value) {
-        return new SmsRecipient(new Mobile(value));
+    public static SmsRecipient of(String target) {
+        return new SmsRecipient(new Mobile(target));
     }
 
     @Override

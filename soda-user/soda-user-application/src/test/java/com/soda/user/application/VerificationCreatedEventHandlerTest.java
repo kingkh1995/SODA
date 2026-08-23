@@ -6,7 +6,7 @@ import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.EmailContent;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.SmsContent;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.application.event.VerificationCreatedEventHandler;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.event.VerificationCreatedEvent;
@@ -64,7 +64,7 @@ class VerificationCreatedEventHandlerTest {
 
     private static Verification initializedVerification(Mobile target) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(VerificationSource.of("UCC", "1"))
                 .state(VerificationState.I)
                 .recipient(new SmsRecipient(target))
@@ -74,7 +74,7 @@ class VerificationCreatedEventHandlerTest {
 
     private static Verification initializedVerification(Email target) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(VerificationSource.of("UCC", "1"))
                 .state(VerificationState.I)
                 .recipient(new EmailRecipient(target))

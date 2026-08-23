@@ -89,9 +89,9 @@ class MobileTest {
     class Debug {
 
         @Test
-        @DisplayName("toString 格式正确")
+        @DisplayName("toString 格式正确（脱敏）")
         void should_haveCorrectToString() {
-            assertThat(new Mobile(VALID_MOBILE)).hasToString("Mobile[value=13800138000]");
+            assertThat(new Mobile(VALID_MOBILE)).hasToString("Mobile[masked=138****8000]");
         }
     }
 

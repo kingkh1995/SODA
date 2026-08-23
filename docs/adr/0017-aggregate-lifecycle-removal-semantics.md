@@ -50,7 +50,7 @@
 
 - 代码改造范围（待实施）：
   - `User`：`UserState` 增加 `R`；`remove()` → `deregister()`（D→R 严格，前置 D，发 `UserDeregisteredEvent`）；删除 `removed` flag / `assertNotRemoved()` / `isRemoved()`；`mustEnable()` 保持（覆盖 R）；`disable()` / `enable()` 增加 R → IAE。
-  - `UserServiceImpl.deleteUser`：`require → deregister() → save`（不再 `gateway.remove`）。
+  - `UserServiceImpl.deregisterUser`：`require → deregister() → save`（不再 `gateway.remove`）。
   - `UserGateway`：删除 `remove(user)` 与 isRemoved javadoc 契约；`save` 承载终态持久化。共享基类 `EntityGateway.remove()` 一并删除（重构后零调用方，领域层无删除契约）。
   - 读侧（query-server）：正常查询过滤 `state != R`；管理端可见。
   - 测试：`UserTest` / `UserServiceImplTest` 断言同步（`isRemoved()` → state == R 语义、remove → deregister、R 吸收态断言）。

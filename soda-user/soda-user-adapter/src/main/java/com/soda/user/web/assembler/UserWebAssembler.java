@@ -5,7 +5,7 @@ import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
 import com.soda.user.api.command.ChangeUsernameCommand;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.DeleteUserCommand;
+import com.soda.user.api.command.DeregisterUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.api.command.RequestChangeEmailCodeCommand;
@@ -22,6 +22,7 @@ import com.soda.user.web.request.RequestChangeMobileCodeRequest;
 import com.soda.user.web.request.UpdateUserRequest;
 import com.soda.user.web.response.UserResponse;
 import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
 
@@ -34,7 +35,7 @@ import java.util.List;
  * <p>
  * 由 MapStruct 在编译期生成实现，{@code componentModel = "spring"} 使实现为 Spring Bean。
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface UserWebAssembler {
 
     // ========== Request → Command ==========
@@ -43,7 +44,7 @@ public interface UserWebAssembler {
 
     UpdateUserCommand toUpdateCommand(Long userId, UpdateUserRequest request);
 
-    DeleteUserCommand toDeleteCommand(Long userId);
+    DeregisterUserCommand toDeregisterCommand(Long userId);
 
     DisableUserCommand toDisableCommand(Long userId);
 

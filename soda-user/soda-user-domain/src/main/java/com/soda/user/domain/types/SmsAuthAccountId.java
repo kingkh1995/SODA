@@ -15,7 +15,7 @@ import lombok.experimental.Accessors;
  *
  * @see AuthAccountId
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 @Getter
 @Accessors(fluent = true)
 public final class SmsAuthAccountId extends AuthAccountId implements Comparable<SmsAuthAccountId> {

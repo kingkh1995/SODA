@@ -1,6 +1,8 @@
 # Verification — 跨模块通用验证领域
 
 > 再修订（2026-08-16）：主体裁定为 **User**（非 Verification）——`VerificationService.requestCode` 作废，发码用例回归 `UserAuthService`（per-use-case 命令，api 按用例拆分）；通道判别从 `Subject` 迁至 **`Recipient`**（多态投递端点，channel 只在 Recipient——`Subject` 密封层级删除，subject 降为 source 内裸键字符串）；`VerificationScene` → `UserVerificationScene`；策略决策移出聚合（create 必传，默认在 `UserVerificationFactory` 内联选择）。**机制保留**：I→P→V→U 状态机、AFTER_COMMIT 事件投递、`CredentialChangeDomainService` 消费编排、同事务双 save、`active_key` 唯一槽位。详见 ADR-0026。
+>
+> 沿革说明（2026-08-16 检视修订）：本文正文（决策/编排示例）仍为密封子类层次 + `VerificationScene`/`VerificationStatus` + `VerificationService` 编排的沿革表述，**不改写**——现状以顶部 2026-08-15（单类塌缩）与 2026-08-16（source/recipient 重构、主体裁定、发码回归）修订注记及 ADR-0025/0026 为准。
 
 > 再修订（2026-08-15）：**Verification 塌缩为单类**——`SmsVerification`/`EmailVerification` 子类型删除（撤销 2026-08-05 类层次保留三理由与 2026-08-07 send 聚合行为定位）；通道判别栖身密封 `Subject`；send 分派移投递侧监听器（subject 模式匹配），聚合保留 `I → P` 迁移行为；`channel` 列、`VerificationChannels` 映射、JSON 判别属性删除；`VerificationChannel` 枚举仅命令输入判别。详见 ADR-0025。
 >

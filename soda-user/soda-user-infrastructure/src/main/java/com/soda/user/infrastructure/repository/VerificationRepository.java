@@ -33,7 +33,9 @@ public interface VerificationRepository extends JpaRepository<VerificationPO, St
      * 惰性腾槽：删除该活跃键下过期未用（I/P）行。
      * <p>
      * {@code clearAutomatically}：批量删除绕过持久化上下文，清空一级缓存防同事务后续
-     * INSERT/merge 读到旧状态。
+     * INSERT/merge 读到旧状态。代价：清空后 merge 前多一次 SELECT（save 路径唯一额外查询，
+     * 与 ADR-0024「同事务加载 ctx 命中零额外 SQL」的用户路径不同——验证 save 是客户端生成
+     * id + 恒 merge，此处为惰性腾槽的显式取舍）。
      */
     @Modifying(clearAutomatically = true)
     @Query("delete from VerificationPO v where v.activeKey = :activeKey and v.expireAt < :before")

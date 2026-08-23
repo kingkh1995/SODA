@@ -38,8 +38,8 @@ public record VerificationCode(
     /**
      * 在指定时刻检查是否已过期（纯函数，无隐式时钟依赖）。
      */
-    public boolean expiredAt(Instant instant) {
-        return instant.isAfter(expireAt);
+    public boolean expiredAt(Instant at) {
+        return at.isAfter(expireAt);
     }
 
     /**

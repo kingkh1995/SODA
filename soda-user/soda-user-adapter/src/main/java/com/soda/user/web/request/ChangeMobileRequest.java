@@ -5,8 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ChangeMobileRequest(
-        @NotBlank
-        @Size(min = 6, max = 6)
+        @NotBlank @Size(min = 6, max = 6)
         @JsonProperty("code") String code
 ) {
 }

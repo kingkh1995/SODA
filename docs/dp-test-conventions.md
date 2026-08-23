@@ -40,13 +40,13 @@ BigDecimal DP（`WanYuan`）规范值为 `String`（`toPlainString()` 格式）�
 | **路由** | 基类 `of("P:42")` 返回 `PasswordAuthAccountId` 实例、反序列化 JSON 路由到正确子类 |
 | **调试** | toString 格式由基类 `getSimpleName + [value=...]` 生成 |
 
-### 1.4 Secret（RawCredential）
+### 1.4 SecretValue
 
 | 分组 | 必须覆盖的测试 |
 |---|---|
 | **身份** | 不同实例不等（identity-based） |
-| **脱敏** | toString 输出 `ClassName[***]` |
-| **序列化** | 序列化拒绝、反序列化拒绝 |
+| **脱敏** | toString 输出 `SecretValue[***]` |
+| **序列化** | 序列化输出 `{}`（无可检测属性）、反序列化拒绝 |
 
 ### 1.5 枚举 DP
 
@@ -124,7 +124,7 @@ class LongIdTest {
 |---|---|---|
 | `Constructor` | 所有 DP | 合法值创建、parse（如有） |
 | `Validation` | 所有 DP | null/blank/边界/异常 |
-| `Equality` | 所有 DP（除 Secret） | 相等、不等、hashCode |
+| `Equality` | 所有 DP（除 SecretValue） | 相等、不等、hashCode |
 | `Debug` | 所有 DP | toString 格式 |
 | `Serialization` | 所有 DP | Jackson round-trip、非法 JSON 拒绝 |
 | `ComparableTest` | 仅 `Comparable` DP | compareTo 与 equals 一致 |
@@ -415,9 +415,9 @@ class VerificationCodePolicyTest {
     }
 }
 
-### 4.3 Secret（RawCredential）
+### 4.3 SecretValue
 
-Secret 使用 identity-based 相等、toString 脱敏、序列化/反序列化拒绝。
+SecretValue 使用 identity-based 相等、toString 脱敏、序列化输出 `{}`、反序列化拒绝。
 
 ```java
 import static org.assertj.core.api.Assertions.assertThat;
@@ -428,34 +428,34 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("RawCredential 敏感值对象")
-class RawCredentialTest {
+@DisplayName("SecretValue 敏感值对象")
+class SecretValueTest {
 
     @Test
     @DisplayName("不同实例不等（identity-based）")
     void should_notBeEqual_when_differentInstance() {
-        assertThat(new RawCredential("secret")).isNotEqualTo(new RawCredential("secret"));
+        assertThat(new SecretValue("secret")).isNotEqualTo(new SecretValue("secret"));
     }
 
     @Test
     @DisplayName("toString 脱敏")
     void should_maskToString() {
-        assertThat(new RawCredential("my-secret")).hasToString("RawCredential[***]");
+        assertThat(new SecretValue("my-secret")).hasToString("SecretValue[***]");
     }
 
     @Nested
     @DisplayName("序列化")
     class Serialization {
         @Test
-        @DisplayName("序列化拒绝")
-        void should_throw_when_serialize() {
-            assertThatThrownBy(() -> MAPPER.writeValueAsString(new RawCredential("s")))
-                    .isInstanceOf(JacksonException.class);
+        @DisplayName("序列化无可检测属性，输出空对象")
+        void should_serializeToEmpty_when_serialize() throws Exception {
+            var json = MAPPER.writeValueAsString(new SecretValue("s"));
+            assertThat(json).isEqualTo("{}");
         }
         @Test
         @DisplayName("反序列化拒绝")
         void should_throw_when_deserialize() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"secret\"", RawCredential.class))
+            assertThatThrownBy(() -> MAPPER.readValue("\"secret\"", SecretValue.class))
                     .isInstanceOf(JacksonException.class);
         }
     }

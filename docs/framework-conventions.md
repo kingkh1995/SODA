@@ -9,7 +9,7 @@
 
 **字面值语义**：DP 的内部字段以基本数据类型为主（`String`、`BigDecimal`、`Date/LocalDate/LocalDateTime`、`int`、`long`、`boolean` 等可直接对应数据库列类型的值），**允许嵌套持有其他 DP 作为字段**（值对象组合——Evans 蓝皮书/Vernon IDDD 主流模式，如 `VerificationCodePolicy` 持有 `Alphabet`/`PositiveInt`，见 ADR-0018）。前提：组合消除重复校验与基本类型↔DP 转换，不为包装而包装。单字段 DP 映射到单数据库列，多字段 DP 映射到多数据库列，不做序列化编码或 JSON 合并入单列。嵌套 DP 在 JSON 中经各自 `@JsonValue`/creator 表现为基本类型值（见 ADR-0018）。
 
-**例外**：Identifier 类 DP 可使用自描述编码格式（如 `AuthAccountId` 的 `"{短名}:{业务键}"`），此类设计必须在 ADR 中显式记录理由。非 Identifier 的投递端点 DP `VerificationRecipient`（`SmsRecipient`/`EmailRecipient`）同样使用通道前缀自描述格式（`S:13800138000`/`E:user@x.com`——channel 内嵌、restore 前缀路由，channel 只在 VerificationRecipient、无独立判别列）——理由记录于 ADR-0026 §2（AuthAccountId 同构）。
+**例外**：Identifier 类 DP 可使用自描述编码格式（如 `AuthAccountId` 的 `"{短名}:{业务键}"`），此类设计必须在 ADR 中显式记录理由。（投递端点 DP `VerificationRecipient` 为多属性 DP，走主规则多列映射——曾误作自描述格式例外，2026-08-16 检视修订作废，见 ADR-0026 §2/§10。）
 
 ### Entity
 具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。使用 Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)` 继承父类字段。
@@ -17,7 +17,7 @@
 **JSON 序列化契约**：序列化走 `Entity` 基类字段可见性（`@JsonAutoDetect(fieldVisibility = ANY)`），属性名即字段名；反序列化唯一入口为**全参数恢复构造器**——`@JsonCreator(mode = PROPERTIES)` + `@JsonProperty` + `@Builder`（restoreBuilder）统一挂在全参数构造器上，确保 JSON 反序列化与手动恢复路径一致。创建路径使用独立的无 id 构造器（`User` 拆双构造器；其余实体 id 非空由 `Entity` 构造器链路保证）。`id` 参数标 `@JsonProperty(required = true)`，缺 id 由 Jackson `required` + `Entity.assignId` 非空校验双重拦截（双构造器实体的恢复构造器委托后经 `assignId` 补 id；单构造器实体由 `Entity` 构造器链路保证），JSON 缺 `id` 视为非法输入（实体 JSON 只表达已持久化状态）。新增字段必须同步补充构造器参数，round-trip 全等断言测试（`assertEquals(restored, original)` + 非法 JSON 拒绝）兜底防字段/参数漂移。
 **多态实体分派（type↔class 规则，见 ADR-0016）**：子类层次用 sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句自动发现，无需 `@JsonSubTypes`）。完整规则：
 - **何时用类**：种类间有行为或字段差异（含前瞻差异）→ sealed class 层次。调用方逻辑（构造、按类型查询、分派、领域方法传参）一律用 class。
-- **何时用枚举**：纯标签/状态/元数据（无行为差异）→ 枚举（数据枚举，如 `VerificationState`/`VerificationScene`）；判别值作为边界合同（DB 列、JSON 判别串、ID 前缀）→ 短名判别枚举（`AuthAccountType`/`VerificationChannel`）。枚举是"数据形态"词汇，**不参与行为决策**——在 domain/app 逻辑中按判别枚举判断分支即反模式（用模式匹配拿具体子类）。
+- **何时用枚举**：纯标签/状态/元数据（无行为差异）→ 枚举（数据枚举，如 `UserState`/`VerificationState`/`UserVerificationScene`）；判别值作为边界合同（DB 列、JSON 判别串、ID 前缀）→ 短名判别枚举（`AuthAccountType`/`VerificationChannel`）。枚举是"数据形态"词汇，**不参与行为决策**——在 domain/app 逻辑中按判别枚举判断分支即反模式（用模式匹配拿具体子类）。
 - **实例侧编码**：判别值由子类覆写抽象方法提供（`getChannel()` / `getAccountType()`），编译器强制每个子类实现。
 - **枚举不持 Class 引用**：禁止 Type Object 注册表式反查（`of(Class)`）——`types` 包不反向依赖 `domain` 包。
 - **反查归基础设施**：`class→判别值` 推导只存在于 gateway 实现（infra 解析类，如 `VerificationChannels`）；domain/app 零反查。
@@ -35,11 +35,14 @@
 ### Type
 所有领域原语的根标记接口。扩展 `Serializable`。类型安全的可比较性由子类各自实现 `Comparable<Self>` 保证。
 
+### 字面量家族（StringLiteralType / LongLiteralType / IntLiteralType / BooleanLiteralType / DoubleLiteralType）
+单属性字面量 DP 契约（`com.soda.component.domain.*LiteralType`，见 ADR-0028）——包装一个不可变基本类型字面量（String/原语），暴露 `value()` 裸值（原语，免装箱/拆箱）。五家族互不关联（IntSupplier 式，无共享根），各 `extends Type`。`@JsonValue` 声明于家族接口的 `value()` 上，实现类继承即获标量 JSON 序列化与反序列化（Jackson 3.1.4 实证双向）：record 与单 public 构造器 class 零 Jackson 代码；private 构造器 + 工厂（缓存/单例/解析）保留 `@JsonCreator(DELEGATING)`（构造入口不可继承）。`EnumType` 与五家族平行（枚举是封闭常量集，常量自身即值，不包装字面量——ADR-0028 修订注记）。
+
 ### EnumType
-枚举类型的根标记接口（`com.soda.component.domain.EnumType`），继承 `Type`，同时也是 Domain Primitive。提供 `desc()` 返回英文描述。序列化使用枚举 `name()` 短名，各枚举额外提供 `of(String)`（`@JsonCreator` 入口）。
+枚举类型的契约接口（`com.soda.component.domain.EnumType`），继承 `Type`，同时也是 Domain Primitive（ADR-0005）。提供 `desc()` 返回英文描述。序列化：Jackson 原生输出 `name()` 短名（与持久化短名一致），各枚举提供 `of(String)`（`@JsonCreator` 入口）。与字面量家族（`StringLiteralType` 等）平行，不参与家族契约（ADR-0028 修订注记）。
 
 ### StateEnumType
-状态机枚举标记接口（`com.soda.component.domain.StateEnumType`），继承 `EnumType`。状态机形态 = 单一维度枚举 + 聚合根命令迁移方法（ADR-0017）。提供实例谓词 `terminal()` 终态（吸收态）判定，供领域守卫与基础设施兜底统一消费——终态行不可写守卫按 `terminal()` 泛化，新增终态只需枚举成员标记，守卫零改动（ADR-0023）。实现约定：状态属性（如 `terminal`）用**构造器注入字段**（record 风格，与 `desc` 字段一致），常量声明处自文档；谓词用实例方法（多态分派是接口价值所在，静态方法无法按枚举分派）；**不提供** `isInitial()`/`isNew()`：初始态语义随状态机而异（未来「待激活」态会使创建态不再是初始态）；`isNew` 与 Spring `Persistable#isNew()`（持久化状态检测）同名异义。
+状态机枚举标记接口（`com.soda.component.domain.StateEnumType`），继承 `EnumType`。状态机形态 = 单一维度枚举 + 聚合根命令迁移方法（ADR-0017）。提供实例谓词 `terminal()` 终态（吸收态）判定，供领域守卫与基础设施兜底统一消费——终态行不可写守卫按 `terminal()` 泛化，新增终态只需枚举成员标记，守卫零改动（ADR-0023）。实现约定：终态以常量子类覆写 `terminal()` 标记（仅终态成员覆写返回 `true`，声明处自文档）；谓词用实例方法（多态分派是接口价值所在，静态方法无法按枚举分派）；**不提供** `isInitial()`/`isNew()`：初始态语义随状态机而异（未来「待激活」态会使创建态不再是初始态）；`isNew` 与 Spring `Persistable#isNew()`（持久化状态检测）同名异义。
 
 ### Identifier
 不可变的领域原语，扩展 `Type`，在限界上下文内唯一标识一个实体。底层值类型是泛型的（`Identifier<T extends Comparable<T>>`）。子类自行实现 `Comparable<Self>`。实现类需提供 `identifier()` 返回类型化值，以及基于值的 `equals()`/`hashCode()`。
@@ -47,8 +50,8 @@
 ### LongId
 通用长整型标识符 DP（`domain.types.LongId`），实现 `Identifier<Long>`，位于可选模块 `soda-component-domain-types`。提供 `parse(String)`。默认使用服务端生成策略。
 
-### UUId
-UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`。校验规则：格式匹配 `8-4-4-4-12` 十六进制，归一化为小写。提供 `random()` 随机生成。默认使用客户端生成策略。
+### Uuid
+UUID 格式标识符 DP（`domain.types.Uuid`），实现 `Identifier<String>`。校验规则：格式匹配 `8-4-4-4-12` 十六进制，归一化为小写。提供 `random()` 随机生成。默认使用客户端生成策略。
 
 ### Version
 乐观锁版本号 DP（`domain.types.Version`），实现 `Type`。基于 `int`，带内部缓存（[0, 99]）。提供 `of(int)`、`parse(String)`、`next()`。初始版本 `INITIAL = 0`。
@@ -62,14 +65,17 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 ### Alphabet
 字符集 DP（`domain.types.Alphabet`），实现 `Type`。包装任意字符集字符串（开集，非枚举）——`RandomStringGenerator` 以它为输入决定输出字符池。不变量：非空、字符唯一（集合语义，重复 = 隐式加权）、size ≥ 2（熵下限）。提供 `size()` 与严格索引 `charAt(int)`（0 ≤ index < size，越界 IAE）；随机源由生成器负责（`SecureRandom.nextInt(size)`，见 ADR-0018）。常用字符集常量：`DIGITS`、`UNAMBIGUOUS_ALPHANUMERIC`（去混淆数字+大写字母，剔除 0/1/I/O）。
 
-### Secret
-秘密值基类（`domain.Secret`），`Type` 的子类型，用于敏感数据。自动脱敏 toString（`Xxx[***]`），通过私有构造器 + 非标准访问器命名拒绝序列化。
+### SecretValue
+秘密值 DP（`domain.types.SecretValue`），`Type` 的子类型。通用载体，不绑定算法。用于传递密码、API Key、Token 等长期有效凭证的原始值给 `PasswordHasher`。安全姿态：不实现 `StringLiteralType`（无 `@JsonValue value()`），访问器命名 `rawValue()` 规避序列化框架发现，toString 全遮蔽（`SecretValue[***]`），引用级相等——不可 JSON 序列化，瞬态使用后丢弃。
 
-### RawCredential
-原始凭证（`domain.types.RawCredential`），继承 `Secret`。通用载体，不绑定算法。用于传递密码、API Key、Token 等长期有效凭证的原始值给 `CredentialHasher`。不可 JSON 序列化。
+### PasswordHash
+口令哈希 DP（`domain.types.PasswordHash`），`SensitiveValue` 子类（ADR-0033 哈希族唯一敏感特例）。PHC 自描述格式，前缀白名单：argon2id/i/d、bcrypt `$2[abcy]$`、scrypt、pbkdf2(-sha256/-sha512)?。toString 强制遮蔽；`maskedValue()` 格式感知截断，保留至盐段之前。长度上限经 `TypeConfigProvider.passwordHashMaxLength()` 配置（默认 200，至少 128）。
 
-### CredentialHash
-凭证哈希 DP（`domain.types.CredentialHash`），实现 `Type`。算法无关，不校验格式，仅约束非 blank。
+### Ciphertext
+可逆加密信封 DP（`domain.types.Ciphertext`），record 实现 `StringLiteralType`。JWE compact 五段式自验证：alg=dir + enc=A256GCM + kid 非空（无需钥匙即可解析的明文头白名单）。类型擦除——解密由调用方提供目标字面量类型。无钥惰性、非攻击素材，无遮蔽义务。
+
+### Digest
+等值摘要 DP（`domain.types.Digest`），record 实现 `StringLiteralType`。恰好 32 字节，hex 或标准 base64（RFC 4648 §4 含 padding；base64url 不接受）。
 
 ### Active
 激活状态 DP（`domain.types.Active`），实现 `Type`。通用 boolean 值封装，缓存 `TRUE`/`FALSE` 单例。提供 `negate()` 取反。
@@ -130,11 +136,14 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 - **语义 = 键存在性 + 唯一性约定**：`existsBy*` 与 DB 唯一索引成对出现（应用层预检 + DB 兜底，如 `uk_username`、`uk_active_key`）；过滤语义（活跃/未过期/状态等）在契约 javadoc 声明、**实现细节归基础设施**——契约名不拼过滤措辞（例：`existsBySceneAndChannelAndTarget` 的活跃/过期判定由基础设施实现，见 ADR-0025）。
 - **消费/检索用 `findBy`/`findFirstBy` + 显式参数**；固定形状查询不用查询对象（`VerificationQuery` 已删除，ADR-0025）——查询对象/规格模式只用于开放过滤（管理端任意筛选组合）。
 
-### CredentialHasher
-凭证哈希器契约（`domain.gateway.CredentialHasher`），继承 `Gateway`。提供 `hash(RawCredential) → CredentialHash` 和 `matches(RawCredential, CredentialHash)`。实现层可对接 BCrypt、Argon2、SCrypt 等。
+### PasswordHasher
+口令哈希器契约（`domain.gateway.PasswordHasher`），继承 `Gateway`（ADR-0033）。`hash(SecretValue) → PasswordHash` 与 `verify(PasswordHash, SecretValue) → boolean`；慢 KDF 与成本参数由实现层配置。参考实现 `PasswordHasherImpl`（BCrypt，spring-security-crypto 独立依赖）。
 
-### RandomStringGenerator
-随机字符串生成器契约（`domain.gateway.RandomStringGenerator`），继承 `Gateway`。提供 `generate(PositiveInt, Alphabet) → RandomString`——长度与字符集由调用方指定，实现层只负责随机源与装配。通用能力，不绑定任何业务场景（见 ADR-0018）。
+### Digester
+等值摘要器契约（`domain.gateway.Digester`），继承 `Gateway`。`digest(SecretValue)` 高熵令牌无钥快摘要 + `index(SensitiveValue)` 盲索引（归一化 + 字段级派生钥 HMAC），同产 32 字节 `Digest`。
+
+### Encryptor / Decryptor
+加密/解密契约（`domain.gateway.Encryptor`/`Decryptor`），各继承 `Gateway`，ISP 分离读写侧。`encrypt(StringLiteralType) → Ciphertext`；`decrypt(Ciphertext, Class<T>) → T` 类型擦除解密与 `decryptGeneric(Ciphertext) → String`。
 
 ### SmsSender
 短信发送器契约（`domain.gateway.SmsSender`），继承 `Gateway`。提供 `send(Mobile, SmsContent)`。
@@ -151,7 +160,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 领域事件总线接口，继承 `Gateway`。提供 `publish(DomainEvent<?>)` 和 `publishAll(Iterable<? extends DomainEvent<?>>)`。
 
 ### EventSource
-领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。`Entity` 实现此接口表明自身可作为领域事件来源。通过 `flushEvents()` 取出已注册事件。
+领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。`Aggregate`（聚合根）实现此接口表明自身可作为领域事件来源（2026-08-16 事件源能力从 `Entity` 迁至 `Aggregate`，普通实体如 `AuthAccount` 不实现）。通过 `flushEvents()` 取出已注册事件。
 
 ### DomainService
 
@@ -169,7 +178,7 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 - 实现 `DomainService` 标记接口（`com.soda.component.domain.DomainService`，类似 `Gateway` 的定位：供 IOC 扫描 / AOP 识别）
 - 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
 
-**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起由 `VerificationService.requestCode` 编排（CC 前置查询拦截 + Verification 工厂构造 INITIALIZED 聚合、注册 `VerificationCreatedEvent`，见 ADR-0021），物理发送由投递侧监听器在事务提交后执行（见 ADR-0011）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
+**示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify → user.changeXxx → use）；验证码发起（UCC）由 `UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode` 编排（前置查询拦截 → `UserVerificationFactory.newCredentialChangeVerification` 构造 INITIALIZED 聚合、注册 `VerificationCreatedEvent`，见 ADR-0026），物理发送由投递侧监听器在事务提交后按 recipient 分派（见 ADR-0011/0026）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
 
 ### ApplicationService 编排规范
 
@@ -185,8 +194,8 @@ UUID 格式标识符 DP（`domain.types.UUId`），实现 `Identifier<String>`�
 2. **外部 domain（其他聚合）的 action 方法禁止在 AppService 中直接调用**（get/读取除外）
 3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的**参数**传入，逻辑封装进主体聚合内部
 4. 若用例**修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
-5. **流程副作用**（发送验证码/通知等）随流程所在层执行：单聚合创建流程中，发送类副作用封装为聚合行为方法（`SmsVerification.send(SmsSender)` / `EmailVerification.send(EmailSender)`），**投递时机在事务提交后**——创建工厂注册 `VerificationCreatedEvent`，AppService 持久化后发布，投递侧监听器（`@TransactionalEventListener(AFTER_COMMIT)`）调用聚合 `send(sender)` 并落库（DB 事务不跨外部投递通道持有；sender 契约保证投递成功才返回，见 ADR-0011）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
-6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（发码用例：`VerificationService.requestCode`——CC 前置（跨实例查询拦截）→ Verification 工厂构造 INITIALIZED 验证聚合（scene=CC）→ save → 发布 `VerificationCreatedEvent` → 提交后由监听器 `verification.send(sender)`（发送 + 转 PENDING）。主体聚合自检规则可收进聚合行为方法，跨实例查询必须留在 AppService；2026-08-12 决策：发码的主体聚合 = Verification（`User.requestChangeXxxCode` 已删除，见 ADR-0021））
+5. **流程副作用**（发送验证码/通知等）随流程所在层执行：发送类副作用在**投递侧**执行（**投递时机在事务提交后**）——创建工厂注册 `VerificationCreatedEvent`，AppService 持久化后发布，投递侧监听器（`@TransactionalEventListener(AFTER_COMMIT)`）按 recipient 类型分派 `SmsSender`/`EmailSender` 并 `markSent` 落库（DB 事务不跨外部投递通道持有；sender 契约保证投递成功才返回，见 ADR-0011/0026）；跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
+6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（发码用例：`UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode`——UCC 前置（跨实例查询拦截：启用态 + target ≠ 当前值 + 目标全局唯一 + `existsBySource` 无活跃验证）→ `UserVerificationFactory.newCredentialChangeVerification` 构造 INITIALIZED 验证聚合（scene=UCC 方法内写死）→ save（convertor 设 active_key；惰性 DELETE 过期行收敛在 gateway 实现内）→ 发布 `VerificationCreatedEvent` → 提交后由监听器按 recipient 分派 sender 并 markSent。主体聚合自检规则可收进聚合行为方法，跨实例查询必须留在 AppService；2026-08-16 决策：发码的主体 = User，Verification 为协助方聚合（见 ADR-0026 §7））
 
 **终态守卫（Stateful）**：`Aggregate` 基类实现 `Stateful`（聚合根自动具备状态机契约——`getState()` 暴露状态枚举（非空）、`isTerminal()` 委托 `StateEnumType.terminal()` 判定终态，单一事实源在枚举；聚合的 `getState()` 由 `@Getter` 生成即满足，无需显式方法/泛型；普通实体如 AuthAccount 不实现本契约）；加载后经 `AbstractAppService.requireNotTerminal(id)` 统一守卫——终态（吸收态）实体禁止一切写，抛 IAE（业务拒绝，与领域 R 吸收态 IAE 一致；持久层兜底为网关 save 内行终态判定裸抛的 ISE，防御编程不携消息）。用例级状态前置（如 CC 发码要求启用态）仍为用例业务断言，不进通用守卫。新增状态机聚合：状态枚举实现 `StateEnumType` + 聚合的 `getState()` 返回它（@Getter 即满足），零额外样板（术语见 CONTEXT.md）。
 
@@ -212,7 +221,7 @@ public class UserController {
 
 ### 模块依赖与 build.gradle 声明规则
 
-**api → domain（待定）**：`api` 依赖 `domain` 的正式方案未定。当前 `soda-xxx-api` 只临时直接声明 `soda-component-domain-types`（契约使用其枚举，如 Sex），**不**声明 `domain` 模块；`soda-component-api-starter` 也**不**依赖 `domain-starter`（api 层框架与 domain 框架解耦）。临时例外（2026-08-12）：`soda-user-api` 声明 `soda-user-domain`——`RequestCodeCommand` 携带 `VerificationScene`/`VerificationChannel` 领域枚举（用户决定替代字符串短名，正式方案落地后复核，见 ADR-0021 修订）。
+**api → domain（待定）**：`api` 依赖 `domain` 的正式方案未定。当前 `soda-xxx-api` 只临时直接声明 `soda-component-domain-types`（契约使用其枚举，如 Sex），**不**声明 `domain` 模块；`soda-component-api-starter` 也**不**依赖 `domain-starter`（api 层框架与 domain 框架解耦）。~~临时例外（2026-08-12）~~：`soda-user-api` 曾临时声明 `soda-user-domain`——`RequestCodeCommand` 携带 `VerificationScene`/`VerificationChannel` 领域枚举（用户决定替代字符串短名）——2026-08-16 以消除需求的方式了结：`RequestCodeCommand` 删除、api 按用例拆分（scene/channel 隐式，方法即场景），api→domain 临时依赖解除（见 ADR-0026 §7）。
 
 **声明规则**：
 
@@ -245,7 +254,7 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 
 **分拆/合并规则**：一个聚合根一个 Service，方法数不超过 10 个。当方法超过 10 个或出现复杂编排时，从 `service/` 的 ServiceImpl 按 Command 拆出 `command/*Processor`（COLA 风格），但对外接口保持一个。
 
-> 例外（既有实践）：按关注点拆分服务——`UserService`（身份 CRUD）与 `UserAuthService`（凭证变更）同属 User 聚合根的双服务先例；新聚合根服务仍按一聚合根一服务建立（`Verification` → `VerificationService`，见 ADR-0021）。
+> 例外（既有实践）：按关注点拆分服务——`UserService`（身份 CRUD）与 `UserAuthService`（凭证变更）同属 User 聚合根的双服务先例。协助方聚合（如 `Verification`）无独立 AppService——发码用例按主体归属用户侧服务（UCC 在 `UserAuthService`，见 ADR-0026 §7）。
 
 **Entity 创建**：使用 `XxxEntity.createBuilder()` / `builder()` 双 Builder 模式。当构建逻辑涉及跨聚合引用或需要依赖注入时，引入 `factory/*Factory`，但当前 Builder 模式已足够。
 
@@ -282,6 +291,12 @@ com.soda.xxx.application/         ← @ApplicationModule(CLOSED, deps: {api, dom
 - 不返回 `Optional<@Nullable T>`——Optional 本身表达可空返回
 - 瞬态字段（如 `Entity.id`）标 `@Nullable`，使用点由调用方保证非空（方法路径无运行时窄化守卫）
 - **构造器校验 + 方法零守卫**（2026-08-07 三次修订）：null 契约在构造器由 `ValidateUtils.notNull` 拦截（与 DP 一致），方法路径由注解声明 + 调用方遵守；恢复路径 JSON 非空字段 `@JsonProperty(required = true)`；编译期 checker（NullAway + Error Prone）未来引入，路线见 ADR-0015
+
+## Logging（入口日志）
+
+- **web 入口**：controller 打印方法名 + request（`log.info("方法名: request={}", request)`），现行格式
+- **application 入口**：AppService 打印 command（`log.info("方法名: command={}", command)`）——两层层级不同，各自打印一次，不互相替代，也不出现第三处重复
+- **已知债务**：request/command 含敏感字段（密码、验证码等）时 record toString 会明文入日志——脱敏方案为遗留项，暂缓处理
 
 ## Database（开发阶段）
 

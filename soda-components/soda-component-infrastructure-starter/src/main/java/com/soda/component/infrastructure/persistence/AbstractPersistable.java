@@ -20,7 +20,7 @@ import java.io.Serializable;
  * {@code id == null} 判定，作为所有 PO 的统一基类（ADR-0023 命名惯例：
  * AbstractXxx implements Xxx）。
  * <p>
- * 不声明 {@code @Id} 字段（PO 主键策略异构：服务端自增/客户端 UUId/分配式），由各 PO
+ * 不声明 {@code @Id} 字段（PO 主键策略异构：服务端自增/客户端 Uuid/分配式），由各 PO
  * 自行声明；{@code Persistable.getId()} 由 PO 的 {@code @Getter} 生成（字段名与列名一致，
  * 仅下划线/驼峰形式差异）。
  * 不实现 {@code toString()}/{@code equals()}/{@code hashCode()}——PO 不参与业务相等性

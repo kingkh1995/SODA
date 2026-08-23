@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.math.BigDecimal;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -168,20 +169,38 @@ class ValidateUtilsTest {
         assertThrows(IllegalArgumentException.class, () -> ValidateUtils.maxScale(new BigDecimal("10.555"), 2));
     }
 
-    // ——— requireEquals ———
+    // ——— equals ———
 
     @Test
-    void requireEquals_equal_passes() {
-        ValidateUtils.requireEquals("a", "a");
+    void equals_equal_passes() {
+        ValidateUtils.equals("a", "a");
     }
 
     @Test
-    void requireEquals_notEqual_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.requireEquals("a", "b"));
+    void equals_notEqual_throws() {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.equals("a", "b"));
     }
 
     @Test
-    void requireEquals_nullActual_throws() {
-        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.requireEquals(null, "a"));
+    void equals_nullActual_throws() {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.equals(null, "a"));
     }
+
+    @Test
+    void equals_bothNull_passes() {
+        // Objects.equals(null, null) 语义（javadoc 契约）：双 null 视为相等
+        ValidateUtils.equals(null, null);
+    }
+
+    @Test
+    void equals_nullExpected_throws() {
+        assertThrows(IllegalArgumentException.class, () -> ValidateUtils.equals("a", null));
+    }
+
+    @Test
+    void equals_messageQuotesOperands() {
+        var ex = assertThrows(IllegalArgumentException.class, () -> ValidateUtils.equals("a", "b"));
+        assertEquals("must equal 'b', got: 'a'", ex.getMessage());
+    }
+
 }

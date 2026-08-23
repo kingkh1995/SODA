@@ -4,12 +4,12 @@ import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.types.EmailRecipient;
-import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
+import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +59,7 @@ class VerificationTest {
 
     private static Verification restoredSms(VerificationState state, Instant expireAt) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(state)
                 .code(new VerificationCode(VALID_CODE, expireAt))

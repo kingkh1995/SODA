@@ -1,9 +1,9 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Sex;
 import com.soda.component.domain.types.Version;
 import com.soda.user.domain.AuthAccount;
@@ -55,7 +55,7 @@ public final class UserConvertor {
         var passwordAccount = PasswordAuthAccount.builder()
                 .id(PasswordAuthAccountId.from(userId))
                 .active(Active.TRUE)
-                .passwordHash(new CredentialHash(e.getPasswordHash()))
+                .passwordHash(PasswordHash.of(e.getPasswordHash()))
                 .build();
         var accounts = new ArrayList<AuthAccount<?>>();
         if (e.getMobile() != null) {

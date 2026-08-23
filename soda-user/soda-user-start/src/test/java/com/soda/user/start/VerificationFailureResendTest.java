@@ -6,7 +6,6 @@ import com.soda.user.api.UserService;
 import com.soda.user.api.command.CreateUserCommand;
 import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 import com.soda.user.domain.gateway.VerificationGateway;
-import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,16 +53,16 @@ class VerificationFailureResendTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private static RequestChangeMobileCodeCommand codeCommand(long userId, String target) {
+        return new RequestChangeMobileCodeCommand(userId, target);
+    }
+
     @BeforeEach
     void cleanTables() {
         jdbcTemplate.update("DELETE FROM verification");
         jdbcTemplate.update("DELETE FROM `user`");
         // 注销归档（同内存库跨测试类复用，防未来归档断言隔离陷阱）
         jdbcTemplate.update("DELETE FROM user_archive");
-    }
-
-    private static RequestChangeMobileCodeCommand codeCommand(long userId, String target) {
-        return new RequestChangeMobileCodeCommand(userId, target);
     }
 
     @Test

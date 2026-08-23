@@ -1,56 +1,44 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.experimental.Accessors;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 百分比 DP — 不可变、自校验。字面值语义，例如 {@code 12.34} 表示 12.34%。
+ * 百分比 DP — 不可变、自校验，extends {@link DecimalLiteralType}（缓存不变量见基类，ADR-0031）。
+ * 字面值语义，例如 {@code 12.34} 表示 12.34%。
  * <p>
- * 规范值是对 {@link BigDecimal#toPlainString()} 的字符串，作为 {@link JsonValue JSON 序列化} 和
- * {@link Object#equals(Object) equals}/{@link Object#hashCode() hashCode} 的依据。
- * {@link BigDecimal} 作为派生缓存值，不参与序列化和相等性判断。
+ * 规范值为 {@link BigDecimal#toPlainString()} 的 String（{@code @JsonValue}，继承自
+ * {@link StringLiteralType}，见 ADR-0028），{@link BigDecimal} 派生缓存。
  * <p>
- * 取值范围 {@code [0, 100]}，最多 2 位小数。需要舍入时使用 {@link #from(BigDecimal, RoundingMode)}。
+ * 取值范围 {@code [0, 100]}（见 {@link #validate(BigDecimal)}），最多 2 位小数。
+ * 需要舍入时使用 {@link #from(BigDecimal, RoundingMode)}。
  *
  * @see Type
+ * @see DecimalLiteralType
  */
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Accessors(fluent = true)
-public final class Percentage implements Type, Comparable<Percentage> {
+@EqualsAndHashCode(callSuper = true)
+public final class Percentage extends DecimalLiteralType implements Comparable<Percentage> {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final int SCALE = Math.clamp(TypeConfig.PROVIDER.percentageScale(), 0, 4);
 
-    @EqualsAndHashCode.Include
-    private final String value;
-    @Getter
-    private final BigDecimal bigDecimalValue;
-
     private Percentage(BigDecimal raw) {
-        ValidateUtils.notNull(raw);
-        ValidateUtils.maxScale(raw, SCALE);
-        var normalized = raw.setScale(SCALE, RoundingMode.UNNECESSARY);
-        ValidateUtils.range(normalized, BigDecimal.ZERO, HUNDRED);
-        this.value = normalized.toPlainString();
-        this.bigDecimalValue = normalized;
+        super(raw, SCALE);
     }
 
     /**
      * JSON 反序列化入口。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static Percentage of(String jsonValue) {
-        var bd = ParseUtils.parseBigDecimal(jsonValue);
+    public static Percentage of(String value) {
+        var bd = ParseUtils.parseBigDecimal(value);
         return new Percentage(bd);
     }
 
@@ -72,32 +60,35 @@ public final class Percentage implements Type, Comparable<Percentage> {
         return new Percentage(rounded);
     }
 
-    @JsonValue
-    public String value() {
-        return value;
+    /**
+     * 不变量：{@code [0, 100]} range 校验（在 {@code setScale} 后、赋值前）。
+     */
+    @Override
+    protected void validate(BigDecimal normalized) {
+        ValidateUtils.range(normalized, BigDecimal.ZERO, HUNDRED);
     }
 
     /**
      * 转换为小数。例如 12.34% → {@code 0.1234}。
      */
     public BigDecimal toFraction() {
-        return bigDecimalValue.divide(HUNDRED, 4, RoundingMode.HALF_UP);
+        return decimalValue().divide(HUNDRED, 4, RoundingMode.HALF_UP);
     }
 
     /**
      * 展示文本。格式：{@code 12.34%}。
      */
     public String toDisplayString() {
-        return bigDecimalValue.toPlainString() + "%";
+        return decimalValue().toPlainString() + "%";
     }
 
     @Override
     public int compareTo(Percentage other) {
-        return this.bigDecimalValue.compareTo(other.bigDecimalValue);
+        return decimalValue().compareTo(other.decimalValue());
     }
 
     @Override
     public String toString() {
-        return "Percentage[value=" + value + "]";
+        return "Percentage[value=" + value() + "]";
     }
 }

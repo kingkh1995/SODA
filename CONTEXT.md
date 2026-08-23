@@ -117,7 +117,7 @@ class ModulithTest {
 - `changeEmail(Email)` — 修改邮箱
 - `changeSex(Sex)` — 修改性别
 - `changeAvatar(Avatar)` — 修改头像
-- `changePassword(RawCredential, CredentialHasher)` — 修改密码（委托到 PasswordAuthAccount；密码账户为构造期必填字段，无查找无守卫）
+- `changePassword(SecretValue, SecretValue, PasswordHasher)` — 修改密码：校验原密码后重哈希（原密码比对为域守卫，不匹配抛 IAE，见 ADR-0027；委托到 PasswordAuthAccount；密码账户为构造期必填字段，无查找）
 - ~~`requestChangeMobileCode(Mobile, RandomStringGenerator)` / `requestChangeEmailCode(Email, RandomStringGenerator)`~~ — 已删除（2026-08-12，见 ADR-0021）：发码用例迁至 `VerificationService.requestCode`（2026-08-16 回归 `UserAuthService`，见 ADR-0026）
 - `disable()` — 禁用用户。E→D 发 UserStateChangedEvent；已是 D 则 no-op；R → IAE（吸收态，见 ADR-0017）
 - `enable()` — 启用用户。D→E 发 UserStateChangedEvent；已是 E 则 no-op；R → IAE（吸收态，见 ADR-0017）
@@ -144,7 +144,7 @@ _Avoid_: 名称、显示名
 
 ### UserState
 用户状态枚举。取值：`E`（Enabled）、`D`（Disabled）、`R`（Removed / 注销，吸收态终态）。
-实现 `StateEnumType`（框架状态机枚举契约）：终态标记为构造器注入字段（`R("deregistered", true)`），`terminal()` 供基础设施兜底守卫消费——终态行不可写按 terminal 泛化，新增终态只需枚举成员标记（ADR-0023）。实体侧状态机契约见 `Stateful` 术语。
+实现 `StateEnumType`（框架状态机枚举契约）：终态以常量子类覆写 `terminal()` 标记（仅 `R` 覆写返回 true），`terminal()` 供基础设施兜底守卫消费——终态行不可写按 terminal 泛化，新增终态只需枚举成员标记（ADR-0023）。实体侧状态机契约见 `Stateful` 术语。
 状态跃迁通过 User 的方法 `disable()` / `enable()` / `deregister()` 表达，不暴露泛化的 changeState。
 - `disable()`: state=E → 切换为 D, 触发 `UserStateChangedEvent`; 已是 D → no-op, 不发事件; R → IAE（吸收态，见 ADR-0017）
 - `enable()`: state=D → 切换为 E, 触发 `UserStateChangedEvent`; 已是 E → no-op, 不发事件; R → IAE（吸收态，见 ADR-0017）
@@ -168,7 +168,7 @@ _Avoid_: 把键释放建模为领域行为（表示决策归基础设施，ADR-0
 _Avoid_: 认证信息、登录方式、Account
 
 ### PasswordAuthAccount
-密码认证账号。持有 `passwordHash`（`CredentialHash`）。提供 `verify(RawCredential, CredentialHasher)` 和 `changePassword(RawCredential, CredentialHasher)`。
+密码认证账号。持有 `passwordHash`（`PasswordHash`，PHC 格式口令哈希）。提供 `verify(SecretValue, PasswordHasher)` 和 `changePassword(SecretValue, PasswordHasher)`。
 
 ### SmsAuthAccount
 短信认证账号。不再持有验证码策略配置——码形是通道级规则，`VerificationCodePolicy` 仅作通道常量载体与 `Verification.create` 输入（2026-08-09 移除字段，见 ADR-0011/0018）；验证码状态由独立的 `Verification` 实体管理（见 ADR-0011）。
@@ -241,10 +241,11 @@ _Avoid_: 把「活跃」当作状态（无 E 态——过期是派生判断，�
 ### VerificationSource
 请求源 DP（`com.soda.user.domain.types.VerificationSource`，位于 soda-user-domain；2026-08-16，见 ADR-0026）。`{scene: String, subject: String}`——scene = 扁平助记码（`UCC`/`UPR`/`ULG`/`URG`，来自 `UserVerificationScene.code()`）；subject = **裸业务键**（无类型前缀：userId 数字串 / 手机号 / 邮箱）。两属性均**非空**（Verification 对 source 的唯一要求——不透明，零行为耦合）。`compositeKey()` = `scene + ":" + subject`——`active_key` 单一事实源（取代 0025 的 infra `compose` 单点函数；复合键推导非序列化——串从不解析回 DP，单向派生的槽位唯一键）。
 支撑不变量：**同一 scene 内 subject 语义类型恒定**——subject 即唯一索引的**槽位占用者**：UCC/ULG/UPR = userId 裸键串（UCC 会话注入、ULG/UPR 端点反查推导）、URG = 端点值串（无用户）——裸键安全的前提（跨场景由 scene 消歧、同场景内类型由场景语义固定）。
+端点承载（ADR-0034）：当场景的 subject 即投递端点本身（URG），该值以**盲索引**形态进入槽位键——等值判定可用而原文不可还原（带随机 IV 的密文会使槽位唯一性防重与消费反查双双失效）。
 _Avoid_: 给 subject 加类型前缀（通道语义归 `VerificationRecipient`，见 ADR-0026）；在 Verification 内解析 scene/subject 语义
 
 ### VerificationRecipient
-投递端点多态 DP（`com.soda.user.domain.types.VerificationRecipient`，位于 soda-user-domain；2026-08-16，见 ADR-0026）。密封层级：`SmsRecipient(Mobile)` / `EmailRecipient(Email)`——**channel 只在 VerificationRecipient**。**泛型多态**（修订四/六）：类型参数 `T extends LiteralType`（组件层单属性字面量契约，`String value()`，与 `EnumType` 平行），`target()` 返回类型化地址 DP（`SmsRecipient.target()` = `Mobile`、`EmailRecipient.target()` = `Email`——record 组件即 target，隐式访问器满足接口方法，投递侧直接取类型化地址，基础设施直接 `target().value()` 落裸串免判别）；多属性输出：`channel()`（派生 `S`/`E`，构造无冗余参数）+ `target()`，JSON 对象形式 `{"channel":"S","target":"13800138000"}`（`channel()` 根访问器 `@JsonProperty`、组件 target 经地址 DP `@JsonValue` 序列化为裸串），反序列化经双参 `@JsonCreator`——**无规范字符串/无前缀路由**（`value()`/`of(String)` 删除，修订三/四）；持久化拆 `channel` + `target` 两列（2026-08-16 修订：替代 recipient 自描述单列），restore 经 `of(String, String)` 双参工厂按枚举分派（channel 枚举解析在工厂内单点，修订五）。消费：投递侧监听器按 recipient 类型匹配 sender（`SmsRecipient`→`SmsSender`、`EmailRecipient`→`EmailSender`）；码形策略经 `channel()` 选择（见 `VerificationCodePolicy`）。
+投递端点多态 DP（`com.soda.user.domain.types.VerificationRecipient`，位于 soda-user-domain；2026-08-16，见 ADR-0026）。密封层级：`SmsRecipient(Mobile)` / `EmailRecipient(Email)`——**channel 只在 VerificationRecipient**。**泛型多态**（修订四/六，2026-08-16 起边界为 `T extends StringLiteralType`，见 ADR-0028）：类型参数 `T extends StringLiteralType`（组件层字符串字面量契约，`String value()`，`@JsonValue` 继承自家族接口；与 `EnumType` 平行——枚举是封闭常量集，不包装字面量），`target()` 返回类型化地址 DP（`SmsRecipient.target()` = `Mobile`、`EmailRecipient.target()` = `Email`——record 组件即 target，隐式访问器满足接口方法，投递侧直接取类型化地址，基础设施直接 `target().value()` 落裸串免判别）；多属性输出：`channel()`（派生 `S`/`E`，构造无冗余参数）+ `target()`，JSON 对象形式 `{"channel":"S","target":"13800138000"}`（`channel()` 根访问器 `@JsonProperty`、组件 target 经地址 DP `@JsonValue` 序列化为裸串），反序列化经双参 `@JsonCreator`——**无规范字符串/无前缀路由**（`value()`/`of(String)` 删除，修订三/四）；持久化拆 `channel` + `target` 两列（2026-08-16 修订：替代 recipient 自描述单列），restore 经 `of(String, String)` 双参工厂按枚举分派（channel 枚举解析在工厂内单点，修订五）。消费：投递侧监听器按 recipient 类型匹配 sender（`SmsRecipient`→`SmsSender`、`EmailRecipient`→`EmailSender`）；码形策略经 `channel()` 选择（见 `VerificationCodePolicy`）。
 
 
 ### UserAuthService
@@ -260,11 +261,19 @@ _Avoid_: 把物理发送写进服务编排（发送是 AFTER_COMMIT 投递职责
 _Avoid_: 策略（与 `VerificationCodePolicy` 冲突）、charset（与 `java.nio.charset.Charset` 混淆）、把字符池散落进生成器实现
 
 ### Percentage
-百分比 DP（`com.soda.component.domain.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。取值范围 `[0, 100]`，最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
+百分比 DP（`com.soda.component.domain.types.Percentage`）。不可变、自校验，字面值语义（12.34 表示 12.34%）。`extends DecimalLiteralType`（小数字面量基类，契约与缓存不变量同类，见 ADR-0031；`@JsonValue` 继承自 `StringLiteralType`，见 ADR-0028）。取值范围 `[0, 100]`（`validate` 钩子），最多 2 位小数。提供 `toFraction()`（转小数 0.1234）和 `toDisplayString()`（输出 "12.34%"）。
 
 
 ### Fen
 分 DP（`com.soda.component.domain.types.Fen`）。通用金额值对象，以分记，int 存储（1 元 = 100 分）。值域覆盖整个 int 范围（约 ±2147 万元），负值合法，用于退款、冲正等负向金额；超出范围请用 `WanYuan`。提供 `fromYuan(BigDecimal[, RoundingMode])`（元转分）、`toYuan()`（分转元，精确）、`toDisplayString()`（输出 "15.00元"）。
+
+### WanYuan
+人民币万元 DP（`com.soda.component.domain.types.WanYuan`，位于 soda-components）。`BigDecimal` 后端，规范值为 `String`（`toPlainString()`，`@JsonValue`，`equals`/`hashCode` 依据），BigDecimal 为派生缓存。精度到百元（最多 2 位小数），可为负。`extends DecimalLiteralType`（小数字面量基类，契约与缓存不变量同类，见 ADR-0031；`@JsonValue` 继承自 `StringLiteralType`，见 ADR-0028）。提供 `fromYuan(BigDecimal[, RoundingMode])`、`toYuan()`、`toDisplayString()`（输出 "111.11万元"）。超出 `Fen` 值域（约 ±2147 万元）的金额用本 DP。
+_Avoid_: 元（单位混乱，用 `Fen`/`WanYuan` 明示单位）
+
+### EpochMilli
+绝对时间点 DP（`com.soda.component.domain.types.EpochMilli`，位于 soda-components）。`long value`（epoch 毫秒，规范值，`@JsonValue` 继承自 `LongLiteralType`，见 ADR-0028）+ 派生 `Instant instant()`（`Instant.ofEpochMilli` 毫秒精度互逆，亚毫秒截断——毫秒单位契约）。单位毫秒（主流 `System.currentTimeMillis`/JS `Date.now`/Go `UnixMilli`、保亚秒精度），覆盖 Jackson 3 裸 `Instant` 的 ISO-8601 字符串默认（见 ADR-0031）。当前契约就位、暂无生产消费方（现有裸 `Instant` 迁移另开一轮）；用于领域绝对时间字段（事件 `occurredAt`、`expireAt` 等）；审计列属基础设施、保持裸 `Instant`。
+_Avoid_: Timestamp（JDBC 类型歧义）、裸 `Instant` 作领域字段（线上格式不受 DP 边界保护、Jackson 默认 ISO 串）
 
 
 ### SoftwareVersion
@@ -306,3 +315,31 @@ Adapter 层转换器，负责 `Request → Command`（入站）和 `DTO → Resp
 支持依赖注入（`@Component`），可单独单元测试。
 方法命名规则：同参数个数的方法名必须不同，使用 `to{Action}Command`（如 `toCreateCommand`、`toUpdateCommand`），避免重载歧义。出站用 `toResponse`（单体）/ `toResponseList`（集合）。
 _Avoid_: 在 Request/Response 上定义静态转换方法；同一类中用 `toCommand`/`toResponse` 做多个重载
+
+### SensitiveValue
+敏感值父型：toString 恒为脱敏形式的敏感数据 DP（Mobile/Email 等）基类概念。
+_Avoid_: 与 SecretValue 混淆、裸值进日志
+
+### SecretValue
+瞬态凭证载体（密码/API Key/Token）：永不序列化、引用级相等、toString 全遮蔽；与 SensitiveValue 构成防御栈两层。
+_Avoid_: 当可序列化值对象、持久化
+
+### Masked*
+已脱敏存储形态家族（MaskedMobile/MaskedEmail/MaskedIdCard/MaskedBankCard/MaskedRealName）：展示场景落库的脱敏值，格式自校验，由原始值 DP 经 from() 派生。
+_Avoid_: 与原始值 DP 混淆、对掩码值再次脱敏
+
+### Ciphertext
+可逆加密信封字面量（JWE compact：alg=dir + enc=A256GCM + kid）。类型擦除——不携带原始类型信息，解密由调用方显式提供目标字面量类型。无钥惰性、非攻击素材，无遮蔽义务。
+_Avoid_: 从密文推断原文类型、把它当需脱敏的敏感值
+
+### Digest
+32 字节等值摘要字面量（hex 或标准 base64，url-safe 不接受）。高熵令牌查找（无钥快哈希）与低熵 PII 盲索引（keyed HMAC）共用的单向指纹——它是敏感原值的替代品，删除即丧失等值能力。
+_Avoid_: 与 PasswordHash 混淆（PHC 口令串）、当作可还原凭证
+
+### PasswordHash
+口令哈希字面量（PHC 自描述格式：argon2/bcrypt/scrypt/pbkdf2 前缀白名单）。哈希族唯一 SensitiveValue 特例——toString 强制遮蔽，遮蔽保留至盐段之前。长度上限经 TypeConfigProvider.passwordHashMaxLength() 配置（默认 200）。
+_Avoid_: 与 Digest 混淆、日志输出完整 PHC 串
+
+### 盲索引（Blind Index）
+低熵敏感字面量（手机号/邮箱）的等值查询指纹：归一化后以独立主钥做 keyed 摘要——确定性、不可还原，泄露面仅等值关系与频次。与密文列组成两列模式（ct 还原 + bidx 等值查询）。
+_Avoid_: 用明文列建唯一索引、把盲索引当还原依据、对低熵值做无钥哈希（可被秒爆）

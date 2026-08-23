@@ -23,5 +23,7 @@ public interface StateEnumType extends EnumType {
      *
      * @return 终态返回 {@code true}
      */
-    boolean terminal();
+    default boolean terminal() {
+        return false;
+    }
 }

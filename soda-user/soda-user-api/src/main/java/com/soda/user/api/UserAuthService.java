@@ -37,7 +37,7 @@ public interface UserAuthService {
     void requestChangeEmailCode(RequestChangeEmailCodeCommand command);
 
     /**
-     * 修改密码（单步）。
+     * 修改密码（单步，校验原密码）。
      */
     void changePassword(ChangePasswordCommand command);
 

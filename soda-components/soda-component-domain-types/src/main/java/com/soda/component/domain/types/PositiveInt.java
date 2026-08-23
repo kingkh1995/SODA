@@ -1,13 +1,11 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.IntLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
 
 
 /**
@@ -23,8 +21,7 @@ import lombok.experimental.Accessors;
  * @see ArrayTypeCache
  */
 @EqualsAndHashCode
-@Accessors(fluent = true)
-public final class PositiveInt implements Type, Comparable<PositiveInt> {
+public final class PositiveInt implements IntLiteralType, Comparable<PositiveInt> {
 
     private static final int CACHE_HIGH = Math.max(100, TypeConfig.PROVIDER.positiveIntCacheHigh());
     private static final ArrayTypeCache<PositiveInt> CACHE =
@@ -55,7 +52,9 @@ public final class PositiveInt implements Type, Comparable<PositiveInt> {
         return of(ParseUtils.parseInt(s));
     }
 
-    @JsonValue
+    /**
+     * 规范值访问器 — {@code @JsonValue} 继承自 {@link IntLiteralType}（ADR-0028）。
+     */
     public int value() {
         return value;
     }

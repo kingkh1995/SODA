@@ -11,11 +11,11 @@ package com.soda.component.domain;
  * </ul>
  * <p>
  * 由于 {@code Identifier<T>} 中 {@code T extends Comparable<T>}，
- * 使用示例（record 风格，JDK 16+）：
+ * 使用示例（record 风格，JDK 16+；字面量标识符叠加字面量家族接口，见 ADR-0028）：
  * <pre>{@code
- * public record UserId(@JsonValue Long value) implements Identifier<Long>, Comparable<UserId> {
+ * public record UserId(long value) implements Identifier<Long>, LongLiteralType, Comparable<UserId> {
  *     public UserId {
- *         Objects.requireNonNull(value);
+ *         ValidateUtils.minValue(value, 0, false);
  *     }
  *     @Override
  *     public Long identifier() {
@@ -23,6 +23,8 @@ package com.soda.component.domain;
  *     }
  * }
  * }</pre>
+ * 序列化：字面量家族接口声明 {@code @JsonValue}（标量 JSON 自动获得，record 零 Jackson 代码）；
+ * 字符串字面量标识符（如 {@code Uuid}）实现 {@link StringLiteralType}。
  *
  * @param <T> 底层值的类型，必须实现 {@link Comparable}
  * @see Type

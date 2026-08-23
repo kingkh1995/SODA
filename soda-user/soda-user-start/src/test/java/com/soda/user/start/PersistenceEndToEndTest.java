@@ -1,12 +1,12 @@
 package com.soda.user.start;
 
-import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.user.api.UserAuthService;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.DeleteUserCommand;
+import com.soda.user.api.command.DeregisterUserCommand;
 import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.SmsAuthAccount;
@@ -14,8 +14,8 @@ import com.soda.user.domain.User;
 import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.types.Nickname;
-import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.SmsRecipient;
+import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
 import com.soda.user.domain.types.VerificationSource;
@@ -29,7 +29,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
-import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -148,7 +147,7 @@ class PersistenceEndToEndTest {
                 "dave", "Passw0rd!", "Dave", "13900139004", null, null, null));
 
         userService.disableUser(new com.soda.user.api.command.DisableUserCommand(created.id()));
-        userService.deleteUser(new DeleteUserCommand(created.id()));
+        userService.deregisterUser(new DeregisterUserCommand(created.id()));
 
         // R 态可恢复，username 为领域默认值 REMOVED（键释放，ADR-0023）
         var removed = userGateway.findById(new UserId(created.id())).orElseThrow();
@@ -184,14 +183,14 @@ class PersistenceEndToEndTest {
         var first = User.createBuilder()
                 .username(new Username("evelyn"))
                 .nickname(new Nickname("Eve"))
-                .passwordHash(new com.soda.component.domain.types.CredentialHash("$2a$10$stub"))
+                .passwordHash(PasswordHash.of("$2a$10$stub"))
                 .build();
         userGateway.save(first);
 
         var duplicate = User.createBuilder()
                 .username(new Username("evelyn"))
                 .nickname(new Nickname("Eve2"))
-                .passwordHash(new com.soda.component.domain.types.CredentialHash("$2a$10$stub"))
+                .passwordHash(PasswordHash.of("$2a$10$stub"))
                 .build();
         assertThatThrownBy(() -> userGateway.save(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -207,7 +206,7 @@ class PersistenceEndToEndTest {
                 .username(new Username("mallory2"))
                 .nickname(new Nickname("Mallory2"))
                 .mobile(new Mobile("13900139005"))
-                .passwordHash(new com.soda.component.domain.types.CredentialHash("$2a$10$stub"))
+                .passwordHash(PasswordHash.of("$2a$10$stub"))
                 .build();
         assertThatThrownBy(() -> userGateway.save(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -223,7 +222,7 @@ class PersistenceEndToEndTest {
                 .username(new Username("nancy2"))
                 .nickname(new Nickname("Nancy2"))
                 .email(new com.soda.component.domain.types.Email("nancy@test.com"))
-                .passwordHash(new com.soda.component.domain.types.CredentialHash("$2a$10$stub"))
+                .passwordHash(PasswordHash.of("$2a$10$stub"))
                 .build();
         assertThatThrownBy(() -> userGateway.save(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -319,6 +318,31 @@ class PersistenceEndToEndTest {
         assertThatCode(() -> userAuthService.requestChangeMobileCode(
                 new RequestChangeMobileCodeCommand(other.id(), "13900139112")))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("过期 PENDING 不阻塞重发：惰性 DELETE 腾槽后同 source 可再占（ADR-0026）")
+    void should_resend_when_pendingExpired() {
+        var created = userService.createUser(new CreateUserCommand(
+                "ivys", "Passw0rd!", "Ivy", "13900139009", null, null, null));
+        var userId = created.id();
+
+        userAuthService.requestChangeMobileCode(new RequestChangeMobileCodeCommand(userId, "13900139114"));
+
+        // 过期化：直改库（expire_at 置过去时刻——DATETIME 秒精度，H2 MODE=MySQL）
+        jdbcTemplate.update("UPDATE `verification` SET expire_at = '2020-01-01 00:00:00' WHERE subject = ?",
+                Long.toString(userId));
+
+        // 过期 P 不阻塞：existsBySource（active_key + expire_at 残余过滤）放过 → save 内惰性 DELETE 腾槽
+        assertThatCode(() -> userAuthService.requestChangeMobileCode(
+                new RequestChangeMobileCodeCommand(userId, "13900139115")))
+                .doesNotThrowAnyException();
+
+        // 旧过期行已被惰性 DELETE 物理删除，仅剩新行（target 为新值）
+        var rows = jdbcTemplate.queryForList(
+                "SELECT target FROM `verification` WHERE subject = ?", Long.toString(userId));
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("target")).isEqualTo("13900139115");
     }
 
     @Test

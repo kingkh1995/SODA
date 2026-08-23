@@ -1,8 +1,8 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Version;
 import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.PasswordAuthAccount;
@@ -31,7 +31,7 @@ class UserConvertorTest {
                 .username(new Username("alice"))
                 .nickname(new Nickname("Alice"))
                 .mobile(new Mobile("13900139000"))
-                .passwordHash(new CredentialHash("$2a$10$hash"))
+                .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(42L));
 
@@ -50,7 +50,7 @@ class UserConvertorTest {
         assertThat(restored.getAccounts()).hasSize(1);
         assertThat(restored.getAccounts().get(0)).isInstanceOf(SmsAuthAccount.class);
         assertThat(restored.getPasswordAccount().getPasswordHash())
-                .isEqualTo(new CredentialHash("$2a$10$hash"));
+                .isEqualTo(PasswordHash.of("$2a$10$hash"));
         assertThat(restored.getState()).isEqualTo(UserState.E);
         assertThat(restored.getVersion().value()).isZero();
     }
@@ -62,7 +62,7 @@ class UserConvertorTest {
                 .username(new Username("bobby"))
                 .nickname(new Nickname("Bobby"))
                 .mobile(new Mobile("13900139001"))
-                .passwordHash(new CredentialHash("$2a$10$hash"))
+                .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(43L));
         var sms = (SmsAuthAccount) user.getAccounts().get(0);
@@ -82,7 +82,7 @@ class UserConvertorTest {
                 .username(new Username("carol"))
                 .nickname(new Nickname("Carol"))
                 .email(new com.soda.component.domain.types.Email("carol@test.com"))
-                .passwordHash(new CredentialHash("$2a$10$hash"))
+                .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(44L));
 
@@ -101,7 +101,7 @@ class UserConvertorTest {
         var user = User.createBuilder()
                 .username(new Username("dave"))
                 .nickname(new Nickname("Dave"))
-                .passwordHash(new CredentialHash("$2a$10$hash"))
+                .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         // 恢复路径 version 由基础设施层递增后回填（JPA @Version 更新 entity），
         // convertor 只负责原样搬运——这里验证创建路径 INITIAL=0
@@ -121,7 +121,7 @@ class UserConvertorTest {
                 .passwordAccount(PasswordAuthAccount.builder()
                         .id(PasswordAuthAccountId.from(new UserId(43L)))
                         .active(Active.TRUE)
-                        .passwordHash(new CredentialHash("$2a$10$hash"))
+                        .passwordHash(PasswordHash.of("$2a$10$hash"))
                         .build())
                 .build();
 

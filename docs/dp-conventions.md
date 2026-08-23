@@ -11,16 +11,14 @@
 - [ ] **value-based identity**：`equals`/`hashCode` 基于规范值字段；
 - [ ] **非空类型**：可选场景用 `Optional<DP>`，工厂方法对 `null` 零容忍；
 - [ ] **不修理输入**：不自动 trim、不舍入、不修复非法输入；
-- [ ] **实现形态**：简单 DP 用 record；需缓存/派生字段/私有构造器时用 `final class` + Lombok；
+- [ ] **实现形态**：简单 DP 用 record；需缓存/派生字段/私有构造器时用 `final class` + Lombok；**例外——敏感数据 DP 必须继承 `SensitiveValue` 基类（class），以获得编译期 toString 脱敏保证，见 ADR-0032**；
 *15:- [ ] **工厂命名**：`of(T)`（@JsonCreator + 唯一公开字符串入口；参数即底层规范值）、`from(T)`／`fromXxx(T)`（跨类型转换，委托构造器）。`parse(String)` 仅在 `of`/构造器参数不是 `String` 时出现；
 - [ ] **单一入口点**：所有业务校验集中在构造器（private 或 record 紧凑构造器）中。所有静态工厂方法只做类型转换/预处理后委托给构造器，不自含校验逻辑。`@JsonCreator` 方法也不例外——解析输入后调用构造器，不重复构造器已有的校验。
 - [ ] **可比较性**：只在有自然顺序时实现 `Comparable<Self>`；
 - [ ] **序列化**：默认不实现 `Serializable`，需要时显式实现；
-- [ ] **JSON**：显式声明 `@JsonValue` + `@JsonCreator`，不依赖 Jackson 推断；`@JsonValue` 必须在 public 方法上（Jackson 3 忽略 private/字段级别）；Jackson 3 RecordDeserializer 自动处理 record 反序列化，`@JsonCreator(PROPERTIES)` + `@JsonProperty` 对 record 冗余；sealed class 无需 `@JsonSubTypes`（Jackson 3 从 `permits` 子句自动发现）；
+- [ ] **JSON（字面量家族）**：单属性字面量 DP 实现字面量家族接口（`StringLiteralType`/`LongLiteralType`/`IntLiteralType`/`BooleanLiteralType`/`DoubleLiteralType`，见 ADR-0028）——`@JsonValue` 继承自家族接口的 `value()`，标量序列化与反序列化自动获得（Jackson 3.1.4 实证双向）：record 与单 public 构造器 class **零 Jackson 代码**；private 构造器 + 工厂（缓存/单例/解析）保留 `@JsonCreator(mode = DELEGATING)` 在 `of(T)` 上（构造入口不可继承）；枚举经 `EnumType` 继承（`value()` = `name()`）；多属性 DP 用 `@JsonCreator(PROPERTIES)` + `@JsonProperty`（record 可省略）；sealed class 无需 `@JsonSubTypes`（Jackson 3 从 `permits` 子句自动发现）；
 - [ ] **富血方法**：自包含领域方法用 JDK 风格命名（`withXxx`、`plusXxx`、`isXxx`、`toXxx`、`next`），不调用 gateway/service；
 - [ ] **缓存**：class DP、值域小、有明确性能收益时才做透明缓存，禁止依赖 `==`。
-
-- [ ] **JSON**：显式声明 `@JsonValue` + `@JsonCreator`，不依赖 Jackson 推断；`@JsonValue` 必须在 public 方法上（Jackson 3 忽略 private 方法上的 `@JsonValue`，字段级别仍有效）；Jackson 3 RecordDeserializer 自动处理 record 反序列化，`@JsonCreator(PROPERTIES)` + `@JsonProperty` 对 record 冗余；sealed class 无需 `@JsonSubTypes`（Jackson 3 从 `permits` 子句自动发现）；
 
 ## 1. 核心行为契约
 
@@ -32,7 +30,7 @@
 | class-aware identity | `equals`/`hashCode` 包含运行时类型检查 | 不同 DP 类型之间永不相等 |
 | 非空类型 | DP 实例代表有效值 | 可选场景用 `Optional<DP>`；工厂对 `null` 零容忍 |
 | 不修理输入 | 只归一化格式，不修复非法值 | 不自动 trim、不舍入、不把非法值改成合法值 |
-| 可读 toString | `toString()` 输出调试字符串 | record 风格 `ClassName[field=value]`；Secret 脱敏为 `ClassName[***]` |
+| 可读 toString | `toString()` 输出调试字符串 | record 风格 `ClassName[field=value]`；敏感值脱敏为 `SecretValue[***]` / `ClassName[masked=…]` |
 
 `Type` 是 DP 的根标记接口，**不继承 `Serializable`**。`Identifier<T>` 继承 `Type`，保留 `T extends Comparable<T>` 约束（标识符底层值经常需要排序），但 DP 本身是否实现 `Comparable<Self>` 是可选的。
 
@@ -47,7 +45,7 @@ equals/hashCode 基于规范值 + class 类型（class-aware identity），派�
 | Class 单字段、无派生值 | `@EqualsAndHashCode` | 隐式纳入唯一字段（即规范值） |
 | Class 含派生/缓存字段 | `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` + `@EqualsAndHashCode.Include` 在规范值上 | 派生/缓存字段被排除 |
 | 密封继承 | 基类 `@EqualsAndHashCode`（比较 `value`），子类 `@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)` 且不标注任何 `@Include` | 仅比较基类 value + class 类型（`instanceof`），子类自身字段全部排除 |
-| Secret 子类 | 引用相等（`Object.equals`/`Object.hashCode`），不暴露敏感值 | 安全脱敏要求；不使用 Lombok 注解 |
+| SecretValue（独立 final 类） | 引用相等（`Object.equals`/`Object.hashCode`），不暴露敏感值 | 安全脱敏要求；不使用 Lombok 注解 |
 | Enum | JVM 枚举单例身份相等（`==` 等价） | 无需处理 |
 
 > **子类 `onlyExplicitlyIncluded = true` 的作用**：密封子类上该标记的作用是**排除子类自身所有字段**。配合 `callSuper = true` 委托基类比较 value，子类的派生字段（如 `userId`、`mobile`）不参与相等性计算。
@@ -66,16 +64,29 @@ ClassName[field1=value1, field2=value2, ...]
 | Class 单字段 | 手动：`"ClassName[value=" + value + "]"` | `Version[value=42]` |
 | Class 多字段 | 手动：`"ClassName[field1=" + f1 + ", field2=" + f2 + "]"` | `EmailContent[subject=Hello, body=World]` |
 | 密封继承 | 基类模板：`getClass().getSimpleName() + "[value=" + value + "]"` | `PasswordAuthAccountId[value=P:42]` |
-| Secret 子类 | 脱敏：`getClass().getSimpleName() + "[***]"`，不得暴露内部值 | `RawCredential[***]` |
+| SecretValue（独立 final 类） | 脱敏：`"SecretValue[***]"`，不得暴露内部值 | `SecretValue[***]` |
 
 要点：
 
 - 调试字符串**不应**被业务逻辑依赖解析或比较；
 - class DP 的 `toString()` 必须手工编写与 record 一致的格式，不可省略；
 - 密封层级统一在基类编写，子类不重写，借助 `getClass().getSimpleName()` 得到正确子类名；
-- `Secret` 及其子类是唯一例外，必须脱敏输出，`toString()` 在基类声明为 `final` 防止子类泄露。
+- 敏感数据 DP（继承 `SensitiveValue` 基类，见 ADR-0032/0033）必须脱敏输出，`toString()` 在基类声明为
+  `final` 防止子类泄露；脱敏派生经抽象 `maskedValue()` → `MaskedXxx.from(this).value()`（见 §1.3），
+  每次计算、不缓存（缓存纯函数是纯开销，见 ADR-0032）。
 
 > **record 构造器说明**：record 典范构造器必须是 public，无法物理阻止 `new Xxx(...)`。业务代码约定优先使用工厂方法；框架/序列化需要时可直接走构造器。
+
+### 1.3 脱敏存储值（Masked* 记录家族）
+
+已脱敏值（masked）是**落库存储形态**，用于展示场景（前端列表、日志归档、非敏感查询 API）——一经持久化，读回时必须格式校验承重。
+
+- **形态**：`record MaskedMobile` / `MaskedEmail` / `MaskedIdCard` / `MaskedBankCard` / `MaskedRealName` `implements StringLiteralType`（非 `SensitiveValue` 子类——脱敏值不敏感，record 即满足 dp-conventions「简单 DP 用 record」）。
+- **`value()`**：返回脱敏串本身（即展示值），`@JsonValue` 继承自 `StringLiteralType`。
+- **`of(String)`**：`@JsonCreator` 入口，**格式正则校验脱敏串**（读回承重）；非法脱敏串抛 `IllegalArgumentException`。
+- **`from(原始值 DP)`**：由原始值 DP 派生的唯一公开通道——`MaskedMobile.from(Mobile)` 内部经 `private static String maskOf(String)` 生成脱敏串后构造；原始值 DP 的 `maskedValue()` 即 `MaskedXxx.from(this).value()`。
+- **`maskOf(String)`**：`private`，掩码算法的**单一事实源**，与格式正则同址于各 `MaskedXxx` 记录内，仅服务 `from(原始值 DP)`——外部不得直接调用。
+- 设计依据见 ADR-0032（取代 ADR-0030 §4）；原始值 DP 不再缓存脱敏实例、`redacted()` 已删除。
 
 
 按以下顺序决策：
@@ -100,34 +111,26 @@ ClassName[field1=value1, field2=value2, ...]
 
 ## 2.2 Record 模板
 
-record 是默认形态。下面模板同时覆盖标识符与非标识符：差异仅在 `implements Identifier<T>` 还是 `implements Type`。
+record 是默认形态。单属性字面量 DP 实现字面量家族接口（`StringLiteralType` 等，见 ADR-0028）；
+标识符 DP 叠加 `Identifier<T>`。字面量 DP **零 Jackson 代码**——`@JsonValue` 继承自家族接口，
+标量序列化与反序列化自动获得（Jackson 3.1.4 实证双向，`{}`/对象形式仍被拒）。
 
 ```java
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Identifier;  // 标识符 DP
-// import com.soda.component.domain.Type;     // 非标识符 DP
+import com.soda.component.domain.StringLiteralType;  // 字面量家族；原语家族：LongLiteralType/IntLiteralType/BooleanLiteralType/DoubleLiteralType
+import com.soda.component.domain.Identifier;  // 标识符 DP 叠加（可选，非互斥）
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
 /**
- * Xxx DP — 不可变、自校验。
- * Jackson 3: record 上使用 {@code @JsonValue} 必须在 public 方法（component 上无效），
- * 此处显式声明 {@code value()} 方法。
+ * Xxx DP — 不可变、自校验。单属性字符串字面量，实现 {@link StringLiteralType}。
+ * Jackson 集成零代码：@JsonValue 继承自家族接口（ADR-0028），标量序列化与反序列化自动获得。
  */
-public record Xxx(T value) implements Identifier<T> {  // 或 implements Type
+public record Xxx(String value) implements StringLiteralType {  // 标识符：Identifier<String>, StringLiteralType
 
-    /** Jackson 3 序列化出口 — 必须为 public 方法。 */
-    @JsonValue
-    @Override
-    public T value() {
-        return value;
-    }
-
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)        // 紧凑构造：校验 + 格式归一化
     public Xxx {
-        ValidateUtils.notNull(value);                            // 或其他 ValidateUtils 方法
+        ValidateUtils.hasText(value);                            // 或其他 ValidateUtils 方法
         // 只做不改变值语义的归一化，如 Locale.ROOT 大小写
     }
 
@@ -137,7 +140,7 @@ public record Xxx(T value) implements Identifier<T> {  // 或 implements Type
     }
 
     @Override
-    public T identifier() {                                      // 仅标识符 DP 需要
+    public String identifier() {                                 // 仅标识符 DP 需要
         return value;
     }
 
@@ -147,31 +150,35 @@ public record Xxx(T value) implements Identifier<T> {  // 或 implements Type
 }
 ```
 
+> **非字面量 DP**（多属性、无标量语义）：不实现家族接口，序列化入口按 §5 模式总表
+> 显式声明（`@JsonValue` 必须在 public 方法上，record component / private 方法在 Jackson 3 中无效）。
+
 ## 2.3 Class + Lombok 模板
 
-用于需要缓存、派生字段或私有构造器的场景。无缓存与有缓存的差异仅在于构造器可见性和 `@JsonCreator` 位置。
+用于需要缓存、派生字段或私有构造器的场景。字面量 DP 的 `@JsonValue` 继承自家族接口（零注解）；
+`@JsonCreator` 位置取决于构造器形态：无缓存时单 public 构造器零注解（Jackson 3.1.4 推断实证，
+见 ADR-0028）；有缓存/单例/解析逻辑时 private 构造器 + 静态 `of(T)` 挂显式 `@JsonCreator`
+（private 构造器 Jackson 不可见，构造入口不可继承——结构性必要）。
 
 ```java
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.IntLiteralType;  // 字面量家族；字符串用 StringLiteralType
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.io.Serializable;  // 仅在需要 JDK 序列化时
 
 /**
- * Xxx DP — 不可变、自校验、带缓存（可选）。
+ * Xxx DP — 不可变、自校验、带缓存（可选）。单属性 int 字面量，实现 {@link IntLiteralType}。
  */
 @EqualsAndHashCode
 @Accessors(fluent = true)
-public final class Xxx implements Type, Serializable {  // Serializable 按需
+public final class Xxx implements IntLiteralType, Serializable {  // Serializable 按需
 
     @Serial
     private static final long serialVersionUID = 1L;      // 仅在实现 Serializable 时需要
@@ -189,20 +196,19 @@ public final class Xxx implements Type, Serializable {  // Serializable 按需
 
     private final int value;
 
-    /** 序列化出口。显式方法级别，不受 ObjectMapper visibility 配置影响。 */
-    @JsonValue
+    /** 规范值访问器 — @JsonValue 继承自 {@link IntLiteralType}（ADR-0028）。 */
     public int value() {
         return value;
     }
 
     /** 构造器只含校验和格式归一化，不修理输入。 */
-    private Xxx(int value) {                                 // 有缓存时私有；无缓存时 public 并加 @JsonCreator
+    private Xxx(int value) {                                 // 有缓存时私有；无缓存时 public（零注解，推断可用）
         ValidateUtils.minValue(0, true, value);
         this.value = value;
     }
 
-    /** 主入口。有缓存时 @JsonCreator 挂这里。 */
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)       // 有缓存时必需；无缓存时直接标在 public 构造器
+    /** 主入口。有缓存时 @JsonCreator 挂这里（private 构造器不可见，必须显式）。 */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Xxx of(int value) {
         if (0 <= value && value < CACHE_SIZE) {
             return CACHE[value];
@@ -216,9 +222,9 @@ public final class Xxx implements Type, Serializable {  // Serializable 按需
     }
 
     // 只在有自然顺序时实现 Comparable<Self>
-    // @Override
-    // public int compareTo(Xxx other) { ... }
-
+…
+}
+```
     @Override
     public String toString() {
         return "Xxx[value=" + value + "]";
@@ -264,10 +270,10 @@ public final class Xxx implements Type, Serializable {  // Serializable 按需
 
 | 实现 | `@JsonCreator` 位置 | Jackson 3 说明 |
 |---|---|---|
-| record 单字段 | 紧凑构造器 `@JsonCreator(mode = DELEGATING)` | 必须；单字段反序列化需 delegating |
+| record 单字段（字面量家族） | — | 不需要——继承 `@JsonValue` 即获标量反序列化（ADR-0028，Jackson 3.1.4 实证） |
 | record 多字段 | `@JsonCreator(mode = PROPERTIES)` 在紧凑构造器上，或省略（Jackson 3 RecordDeserializer 自动推断） | 可选；省略时 Jackson 3 自动匹配典范构造器与 record component 名 |
-| class 无缓存 | public 构造器 `@JsonCreator(mode = DELEGATING)` | 无变化 |
-| class 有缓存 | 静态 `of(T)` `@JsonCreator(mode = DELEGATING)` | 无变化 |
+| class 无缓存（字面量家族） | — | 不需要——单 public 构造器 + 继承 `@JsonValue`（Jackson 3.1.4 推断实证） |
+| class 有缓存 | 静态 `of(T)` `@JsonCreator(mode = DELEGATING)` | 必须；private 构造器 Jackson 不可见 |
 | class 多字段 | 静态 `of(...)` / 构造器 `@JsonCreator(mode = PROPERTIES)` | 无变化 |
 | enum | 静态 `of(String)` `@JsonCreator(mode = DELEGATING)` | 无变化 |
 | 密封基类（路由工厂） | 基类静态 `of(String)` `@JsonCreator(mode = DELEGATING)`，按前缀路由 | 无变化 |
@@ -280,7 +286,7 @@ JDK 包装类常见 `MIN`/`MAX`/`ZERO`/`EPOCH`/`random()`/`now()` 等常量或�
 - 数量/版本/金额型 DP（如 `Version`、`WanYuan`）可暴露 `ZERO`/`ONE`/`MIN`/`MAX`，如果有领域意义；
 - 标识符 DP 通常不需要 `UserId.ZERO` 这类常量；
 - 时间型 DP 可按 `LocalDate` 惯例暴露 `now()`、`MIN`/`MAX`；
-- 随机生成型 DP（如 `UUId`）保留 `random()` 或 `generate(...)`；
+- 随机生成型 DP（如 `Uuid`）保留 `random()` 或 `generate(...)`；
 - “无值”用 `Optional<DP>` 表达，不用 `Xxx.EMPTY` 单例（除非 EMPTY 本身是合法领域值）。
 
 ## 4. 校验与归一化
@@ -309,7 +315,9 @@ JDK 包装类常见 `MIN`/`MAX`/`ZERO`/`EPOCH`/`random()`/`now()` 等常量或�
   | 数值范围 | `ValidateUtils.minValue` / `range` | 内联比较 |
   | 正则格式 | `ValidateUtils.matches(value, pattern)` | 内联 `if(!pattern.matcher(...))` |
   | URI | `ValidateUtils.validUrl(uri)` | `try/catch URI` 校验 |
-  | 类型转换 | `ParseUtils.parseXxx(value)` | 手动 cast / 类型推断 |
+  | Base64/Base64url | `ValidateUtils.isBase64(value)` / `isBase64Url(value)` | try/catch 解码校验 |
+  | 字节数组长度 | `ValidateUtils.byteLength(bytes, expected)` | 内联比较 |
+  | 类型转换 | `ParseUtils.parseXxx(value)`（含 `parseBase64`/`parseBase64Url`） | 手动 cast / 类型推断 |
 
 新增校验类型或转换方法的流程：
 
@@ -383,31 +391,31 @@ DP 字段必须不可变：
 
 ## 5. JSON 与序列化
 
-每个 DP 独立声明序列化和反序列化入口，不依赖 Jackson 配置或隐式推断。
+字面量家族 DP（`StringLiteralType` 等，见 ADR-0028）的序列化入口继承自家族接口（`@JsonValue`）；反序列化：record 与单 public 构造器 class 零注解（Jackson 3.1.4 实证），带构造逻辑（缓存/单例/解析）的 class 显式 `@JsonCreator`。多属性 DP 独立声明序列化和反序列化入口（`@JsonCreator(PROPERTIES)` + `@JsonProperty`）。不依赖全局 Jackson 配置或隐式推断。
 
 ### 5.1 模式总表
 
 | 实现形态 | `@JsonValue`（序列化） | `@JsonCreator`（反序列化） | Jackson 3 说明 |
 |---|---|---|---|
-| Record + 单字段 | public 方法返回 component 值 | `(mode = DELEGATING)` 紧凑构造器 | `@JsonValue` 不能在 record component 上，必须在 public 方法 |
+| Record + 单字段（字面量家族） | 继承自家族接口（record 隐式访问器即可） | — | 零 Jackson 代码（ADR-0028；`@JsonValue` 不能在 record component 上，家族接口声明于抽象方法） |
 | Record + 多字段 | — | `(mode = PROPERTIES)` 紧凑构造器或省略 | Jackson 3 RecordDeserializer 能从典范构造器推断，`@JsonProperty` 冗余 |
-| Class + 单字段无缓存 | public 方法 | `(mode = DELEGATING)` public 构造器 | 无变化 |
-| Class + 单字段有缓存 | public 方法 | `(mode = DELEGATING)` 静态 `of(T)` | 无变化 |
+| Class + 单字段无缓存（字面量家族） | 继承自家族接口 | — | 零 Jackson 代码（单 public 构造器推断实证） |
+| Class + 单字段有缓存（字面量家族） | 继承自家族接口 | `(mode = DELEGATING)` 静态 `of(T)` | private 构造器 Jackson 不可见，creator 必须显式 |
 | Class + 多字段 | — | `(mode = PROPERTIES)` 静态 `of(...)` | 无变化 |
-| Enum | `name()` 默认；如需显式可加 public 方法（Jackson 3 忽略 `@JsonValue private`） | `(mode = DELEGATING)` 静态 `of(String)` | Jackson 3 默认用 `.name()` 序列化枚举；`@JsonValue private` 被忽略，可省略 |
-| 密封继承基类 | public 方法（子类复用） | 基类路由 `(mode = DELEGATING)` 静态 `of(String)`；子类也可各自声明 | sealed 类无需 `@JsonSubTypes`，Jackson 3 从 `permits` 子句自动发现 |
+| Enum | 无（Jackson 原生输出 `name()` 短名） | `(mode = DELEGATING)` 静态 `of(String)` | 序列化输出为 `name()`（ADR-0005）；`@JsonCreator` 显式保留 |
+| 密封继承基类（字面量家族） | 继承自家族接口（基类声明，子类复用） | 基类路由 `(mode = DELEGATING)` 静态 `of(String)`；子类也可各自声明 | sealed 类无需 `@JsonSubTypes`，Jackson 3 从 `permits` 子句自动发现 |
 
 | Java 类型 | JSON 类型 | 说明 |
 |---|---|---|
 | `long` / `int` | 数字 | 标量 |
 | `String` | 字符串 | 标量 |
 | `boolean` | 布尔 | 标量 |
-| `BigDecimal` | 字符串 | 经 `toPlainString()` 输出，规范值为 String，BigDecimal 作为派生缓存 |
-| `Instant` / `Duration` / 其他 JSR-310 | 数字/字符串 | Jackson 3 原生支持 JSR-310 类型，无需额外模块注册 |
+| `BigDecimal` | 字符串 | 经 `toPlainString()` 输出，规范值为 String，BigDecimal 作为派生缓存；小数 DP `extends DecimalLiteralType`（ADR-0031） |
+| `Instant` | long（经 `EpochMilli` DP）/ ISO-8601 字符串（裸） | Jackson 3 默认 ISO-8601 字符串（`WRITE_DATES_AS_TIMESTAMPS` 默认 false）；`EpochMilli` DP 用 `@JsonValue long value()`（毫秒）覆盖（ADR-0031） |
+| `Duration` | ISO-8601 字符串 | Jackson 3 默认 ISO-8601（如 `PT5M`） |
 | enum | 字符串 | Jackson 3 默认用 `name()` 序列化，`@JsonValue` 可选但必须在 public 方法上 |
 
-> **Jackson 3 JSR-310 说明**：Jackson 3 包含对 `java.time` 类型的原生序列化支持，
-> 无需注册 `JavaTimeModule`。`Instant` 输出数字时间戳（epoch seconds），`Duration` 输出 ISO-8601 格式字符串。
+> **Jackson 3 JSR-310 说明**：Jackson 3 内建 `java.time` 序列化支持，无需注册 `JavaTimeModule`。`Instant` 默认序列化为 **ISO-8601 字符串**（`WRITE_DATES_AS_TIMESTAMPS` 默认 false；Jackson 2 为 true）；即便启用 timestamps，默认也是 epoch 秒 + 小数纳秒，非毫秒。`Duration` 默认 ISO-8601 字符串（如 `PT5M`）。绝对时间点领域字段用 `EpochMilli` DP（`@JsonValue long` 毫秒）显式覆盖，不受全局 feature 影响（ADR-0031）。
 > 与 Jackson 2 中依赖 `com.fasterxml.jackson.datatype:jackson-datatype-jsr310` 的配置不兼容。
 
 ### 5.2 BigDecimal DP 模式
@@ -472,16 +480,10 @@ public final class WanYuan implements Type {
 
 ### 5.3 示例
 
-Record 单字段（Jackson 3: @JsonValue 在 public 方法上，不在 record component）：
+Record 单字段（字面量家族，零 Jackson 代码——@JsonValue 继承自家族接口，见 ADR-0028）：
 ```java
-public record Mobile(String value) implements Type {
-    @JsonValue
-    @Override
-    public String value() {
-        return value;
-    }
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public Mobile { … }
+public record Mobile(String value) implements StringLiteralType {
+    public Mobile { … }   // 校验 + 归一化；无需 @JsonValue / @JsonCreator
 }
 ```
 
@@ -500,22 +502,21 @@ public record VerificationCodePolicy(
 Class 单字段有缓存：
 ```java
 @EqualsAndHashCode
-@Accessors(fluent = true)
-public final class Version implements Type {
+…
+public final class Version implements IntLiteralType {
 
     private final int value;
 
-    @JsonValue                                    // 方法级别，不依赖字段可见性
-    public int value() {
+    public int value() {                              // @JsonValue 继承自 IntLiteralType（ADR-0028）
         return value;
     }
 
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)  // private 构造器不可见，必须显式
     public static Version of(int value) { … }
 }
 ```
 
-Enum（Jackson 3 默认用 name() 序列化，无需 @JsonValue；@JsonValue private 被忽略）：
+Enum（实现 EnumType：Jackson 原生序列化输出 name()，与持久化短名一致）：
 ```java
 public enum AuthAccountType implements EnumType {
     P("Password"), S("Sms"), E("Email"), O("OAuth");
@@ -529,16 +530,15 @@ public enum AuthAccountType implements EnumType {
 @EqualsAndHashCode
 @Getter
 @Accessors(fluent = true)
-public abstract sealed class AuthAccountId implements Identifier<String>
+public abstract sealed class AuthAccountId implements Identifier<String>, StringLiteralType
         permits PasswordAuthAccountId, SmsAuthAccountId, EmailAuthAccountId, SocialAuthAccountId {
 
-    @JsonValue
-    private final String value;                       // @Getter 生成 value() 访问器
+    private final String value;                       // @JsonValue 继承自 StringLiteralType（ADR-0028）；@Getter 生成 value() 访问器
 
     protected AuthAccountId(String value) {
         ValidateUtils.nonBlank(value);
         this.value = value;
-    }
+…
 
     @Override
     public final String identifier() { … }
@@ -681,10 +681,10 @@ public enum Xxx implements EnumType {
    - BigDecimal DP → `final class` + Lombok，规范值用 `String`，BigDecimal 作派生缓存（见 5.2）；
    - 密封继承层次 → 基类 `abstract sealed class` + 子类 `final class`（见 5.3 密封继承示例）；
    - 枚举 DP → enum + `EnumType`（见 9）；
-2. 选择接口：标识符 → `Identifier<T>`；其他 → `Type`（枚举用 `EnumType`）；
+2. 选择接口：单属性字面量 → 字面量家族（`StringLiteralType`/`LongLiteralType`/`IntLiteralType`/`BooleanLiteralType`/`DoubleLiteralType`，枚举用 `EnumType`）；标识符叠加 `Identifier<T>`；多属性/无标量语义 → `Type`；
 3. 字段类型必须不可变；
 4. 紧凑构造器/私有构造器内用 `ValidateUtils` 校验，只做格式归一化；
-5. 按对应模板添加 `@JsonValue`（必须为 public 方法，record component / private 方法在 Jackson 3 中无效）、`@JsonCreator`（必须显式 `mode`）、`parse`、`toString` 等；
+5. 按对应模板实现 `value()`（字面量家族：注解继承自家族接口，零 Jackson 代码；多属性：`@JsonCreator(PROPERTIES)` + `@JsonProperty`）；带构造逻辑（缓存/单例/解析）的 class 保留 `@JsonCreator(DELEGATING)` 在 `of(T)` 上；补 `parse`、`toString` 等；
 6. 需要自然顺序时实现 `Comparable<Self>`；
 7. 需要 JDK 序列化时显式实现 `Serializable`；
 8. 多字段 DP 必须用 `@JsonProperty` + `@JsonCreator(mode = PROPERTIES)`；
@@ -695,9 +695,9 @@ public enum Xxx implements EnumType {
 只在有自然顺序时实现（标识符、版本号、长度等）。三种字段形态的写法：
 
 ```java
-// 对象类型单字段（如 UUId）
+// 对象类型单字段（如 Uuid）
 @Override
-public int compareTo(UUId other) {
+public int compareTo(Uuid other) {
     return this.value.compareTo(other.value);
 }
 
@@ -723,7 +723,7 @@ public int compareTo(Xxx other) {
 | DP | 实现 | `Comparable` | 缓存 | `Serializable` |
 |---|---|---|---|---|
 | `LongId` | record | ✅ | 无 | 不显式 |
-| `UUId` | record | ✅ | 无 | 不显式 |
+| `Uuid` | record | ✅ | 无 | 不显式 |
 | `Fen` | record | ✅ | 无 | 不显式 |
 | `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式 |
 | `Version` | class | ✅ | `[0, 99]` | ✅ 显式 |

@@ -9,8 +9,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly project(':soda-user:soda-user-adapter')
     runtimeOnly project(':soda-user:soda-user-infrastructure')
-    // H2 集成测试（内存库 MODE=MySQL，主 application.yml 已配置）
-    testRuntimeOnly 'com.h2database:h2'
+    // H2 内存库 MODE=MySQL（主 application.yml 数据源，ADR-0022）：运行时类路径必需
+    // （bootRun/打包启动；测试类路径继承 runtimeClasspath）
+    runtimeOnly 'com.h2database:h2'
     // 集成测试编译期引用 api（UserService/UserAuthService）与 domain（gateway/聚合）
     testImplementation project(':soda-user:soda-user-api')
     testImplementation project(':soda-user:soda-user-domain')

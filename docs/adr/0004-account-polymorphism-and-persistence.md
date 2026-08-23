@@ -41,7 +41,7 @@
 - `SocialAuthAccount` 通过绑定/解绑流程独立添加和删除
 
 验证码行为由 ApplicationService 编排：生成随机码、创建 `VerificationCode` DP 后通过 `replaceCode(VerificationCode)` 注入到 AuthAccount 子类，并调用发送器 Gateway 发送。Domain 层不持有任何 Gateway 或 Generator 依赖。
-> 注记（2026-08-15）：本段为旧设计——验证码已迁出账户（ADR-0011），发码由 `VerificationService.requestCode` 编排、`Verification` 聚合承载（见 ADR-0021）。
+> 注记（2026-08-15；2026-08-16 修订）：本段为旧设计——验证码已迁出账户（ADR-0011），发码由 `UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode` 编排、`Verification` 为协助方聚合（2026-08-16 主体裁定，见 ADR-0026 §7）。
 验证码策略（长度、过期时间）由 `VerificationCodePolicy` DP 表达，AuthAccount 子类持有静态默认值，构造时可选传入自定义策略，实例化后不可变更（移除了 `overridePolicy()` 方法）。
 `AuthAccount` 构造器接受显式 `boolean active` 参数（而非默认 true），确保激活状态的语义明确。
 

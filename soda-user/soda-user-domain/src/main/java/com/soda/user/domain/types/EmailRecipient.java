@@ -17,8 +17,8 @@ public record EmailRecipient(Email target) implements VerificationRecipient<Emai
         ValidateUtils.notNull(target);
     }
 
-    public static EmailRecipient of(String value) {
-        return new EmailRecipient(new Email(value));
+    public static EmailRecipient of(String target) {
+        return new EmailRecipient(new Email(target));
     }
 
     @Override

@@ -42,7 +42,6 @@ import java.time.Instant;
 public class UserArchivePO extends AbstractPersistable<Long> {
 
     @Id
-    @Column(nullable = false)
     private Long id;
 
     @Column(nullable = false, length = 30)

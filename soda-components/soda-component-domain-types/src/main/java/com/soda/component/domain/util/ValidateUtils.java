@@ -143,11 +143,11 @@ public final class ValidateUtils {
     /**
      * 相等校验 — 校验值与期望值相等（{@link Objects#equals} 语义）。
      * <p>
-     * 用于不变量中的值对象比较，如恒等校验 {@code requireEquals(active, Active.TRUE)}。
+     * 用于不变量中的值对象比较，如恒等校验 {@code equals(active, Active.TRUE)}。
      */
-    public static <T> void requireEquals(@Nullable T actual, T expected) {
+    public static <T> void equals(@Nullable T actual, T expected) {
         if (!Objects.equals(actual, expected)) {
-            throw new IllegalArgumentException("must equal " + expected + ", got: " + actual);
+            throw new IllegalArgumentException("must equal '" + expected + "', got: '" + actual + "'");
         }
     }
 

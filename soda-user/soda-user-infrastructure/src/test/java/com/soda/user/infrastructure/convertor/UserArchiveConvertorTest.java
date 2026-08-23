@@ -1,9 +1,9 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Version;
 import com.soda.user.domain.PasswordAuthAccount;
 import com.soda.user.domain.User;
@@ -37,7 +37,7 @@ class UserArchiveConvertorTest {
                 .passwordAccount(PasswordAuthAccount.builder()
                         .id(PasswordAuthAccountId.from(new UserId(46L)))
                         .active(Active.TRUE)
-                        .passwordHash(new CredentialHash("$2a$10$hash"))
+                        .passwordHash(PasswordHash.of("$2a$10$hash"))
                         .build())
                 .build();
 

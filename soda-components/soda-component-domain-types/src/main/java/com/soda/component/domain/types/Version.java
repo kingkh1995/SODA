@@ -1,13 +1,11 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.IntLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
 
 
 /**
@@ -23,8 +21,7 @@ import lombok.experimental.Accessors;
  * @see TypeConfig
  */
 @EqualsAndHashCode
-@Accessors(fluent = true)
-public final class Version implements Type, Comparable<Version> {
+public final class Version implements IntLiteralType, Comparable<Version> {
 
     private static final int CACHE_HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
 
@@ -56,7 +53,9 @@ public final class Version implements Type, Comparable<Version> {
         return of(ParseUtils.parseInt(s));
     }
 
-    @JsonValue
+    /**
+     * 规范值访问器 — {@code @JsonValue} 继承自 {@link IntLiteralType}（ADR-0028）。
+     */
     public int value() {
         return value;
     }

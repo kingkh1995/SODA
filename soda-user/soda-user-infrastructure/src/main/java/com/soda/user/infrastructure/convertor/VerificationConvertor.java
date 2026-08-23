@@ -1,9 +1,9 @@
 package com.soda.user.infrastructure.convertor;
 
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
-import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationCode;
+import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import com.soda.user.infrastructure.persistence.VerificationPO;
@@ -33,7 +33,7 @@ public final class VerificationConvertor {
      */
     public static Verification toDomain(VerificationPO e) {
         return Verification.builder()
-                .id(new UUId(e.getId()))
+                .id(new Uuid(e.getId()))
                 .source(VerificationSource.of(e.getScene(), e.getSubject()))
                 .state(VerificationState.of(e.getState()))
                 .code(new VerificationCode(e.getCode(), e.getExpireAt()))
@@ -46,8 +46,8 @@ public final class VerificationConvertor {
      * 统一路由（无行 INSERT、有行 UPDATE），见 ADR-0024）。
      * <p>
      * 全量构造：领域对象是行的唯一事实源，逐列赋值（{@code active_key} 恒设
-     * {@code source.compositeKey()}——终态（V/U）清 NULL 收敛进 {@code VerificationGatewayImpl.save}，
-     * 见 ADR-0026 注记）。
+     * {@code source.compositeKey()}——终态（U）清 NULL 收敛进 {@code VerificationGatewayImpl.save}
+     * （V 内存瞬态不落库，不涉槽位，2026-08-16 检视修订，见 ADR-0026 修订注记）。
      * <p>
      * 审计列（{@code created_date}/{@code last_modified_date}）不在此构造（null 即可）——
      * 由 Spring Data auditing + {@code updatable=false} 自动处理（2026-08-15 修订，见 ADR-0024）。
@@ -63,10 +63,10 @@ public final class VerificationConvertor {
         entity.setCode(verification.getCode().code());
         entity.setExpireAt(verification.getCode().expireAt());
         entity.setChannel(verification.getRecipient().channel().name());
-        // 泛型捕获自带 value()（T extends LiteralType，见 ADR-0026 修订六）——免密封 switch 判别
+        // 泛型捕获自带 value()（T extends StringLiteralType，见 ADR-0028）——免密封 switch 判别
         entity.setTarget(verification.getRecipient().target().value());
-        // 活跃键恒设 source.compositeKey()——终态（V/U）清 NULL 收敛进 gateway.save（状态语义归网关，
-        // convertor 纯字段映射，见 ADR-0026 注记）
+        // 活跃键恒设 source.compositeKey()——终态（U）清 NULL 收敛进 gateway.save（状态语义归网关，
+        // convertor 纯字段映射；V 内存瞬态不落库不涉槽位，见 ADR-0026 检视修订）
         entity.setActiveKey(verification.getSource().compositeKey());
         return entity;
     }

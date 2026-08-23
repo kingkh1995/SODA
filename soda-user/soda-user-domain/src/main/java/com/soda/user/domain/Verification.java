@@ -1,16 +1,16 @@
 package com.soda.user.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.component.domain.util.ValidateUtils;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.user.domain.event.VerificationCreatedEvent;
-import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
+import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import lombok.Builder;
@@ -60,7 +60,7 @@ import java.time.Instant;
  */
 @EqualsAndHashCode(callSuper = true)
 @Getter
-public final class Verification extends Aggregate<UUId> {
+public final class Verification extends Aggregate<Uuid> {
 
     private VerificationSource source;
     private VerificationState state;
@@ -79,7 +79,7 @@ public final class Verification extends Aggregate<UUId> {
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     @Builder
     private Verification(
-            @JsonProperty(value = "id", required = true) UUId id,
+            @JsonProperty(value = "id", required = true) Uuid id,
             @JsonProperty(value = "source", required = true) VerificationSource source,
             @JsonProperty(value = "state", required = true) VerificationState state,
             @JsonProperty(value = "code", required = true) VerificationCode code,
@@ -116,7 +116,7 @@ public final class Verification extends Aggregate<UUId> {
                 generator.generate(policy.codeLength(), policy.codeAlphabet()),
                 Instant.now().plus(policy.expiry()));
         var verification = new Verification(
-                UUId.random(), source, VerificationState.I, verificationCode, recipient);
+                Uuid.random(), source, VerificationState.I, verificationCode, recipient);
         verification.registerEvent(new VerificationCreatedEvent(verification));
         return verification;
     }

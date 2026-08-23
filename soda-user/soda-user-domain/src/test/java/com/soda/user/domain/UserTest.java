@@ -1,17 +1,16 @@
 package com.soda.user.domain;
 
-import com.soda.component.domain.gateway.CredentialHasher;
-import com.soda.component.domain.gateway.EmailSender;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.gateway.RandomStringGenerator;
-import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Active;
-import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Sex;
 import com.soda.component.domain.types.Version;
+import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserCreatedEvent;
 import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
@@ -57,28 +56,27 @@ class UserTest {
     private static final Username USERNAME = new Username("testuser");
     private static final Nickname NICKNAME = new Nickname("Test_User");
 
-    private static final CredentialHash STUB_HASH = new CredentialHash(
+    private static final PasswordHash STUB_HASH = PasswordHash.of(
             "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    private static final CredentialHasher PASSWORD_HASHER = new CredentialHasher() {
+    private static final PasswordHasher PASSWORD_HASHER = new PasswordHasher() {
         @Override
-        public CredentialHash hash(RawCredential credential) {
+        public PasswordHash hash(SecretValue credential) {
             return STUB_HASH;
         }
 
         @Override
-        public boolean matches(RawCredential credential, CredentialHash hash) {
-            return "password123".equals(credential.rawValue());
+        public boolean verify(PasswordHash stored, SecretValue candidate) {
+            return "password123".equals(candidate.rawValue());
+        }
+
+        @Override
+        public boolean needsRehash(PasswordHash stored) {
+            return false;
         }
     };
     private static final RandomStringGenerator
             CODE_GENERATOR = (length, alphabet) -> new RandomString("123456");
-
-    // 测试用的发送桩（不真正外发）
-    private static final SmsSender SMS_SENDER = (to, content) -> {
-    };
-    private static final EmailSender EMAIL_SENDER = (to, content) -> {
-    };
 
     // ─── helpers ───
 
@@ -511,7 +509,8 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeAvatar(new Avatar("https://example.com/new.png")))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> user.changePassword(new RawCredential("password123"), PASSWORD_HASHER))
+            assertThatThrownBy(() -> user.changePassword(
+                    new SecretValue("password123"), new SecretValue("newPass123"), PASSWORD_HASHER))
                     .isInstanceOf(IllegalArgumentException.class);
             // 守卫在方法首行：R（吸收态）下先抛 IAE，验证聚合参数不会触达（null 仅作占位）
             assertThatThrownBy(() -> user.changeMobile(null))
@@ -535,7 +534,8 @@ class UserTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> user.changeAvatar(new Avatar("https://example.com/new.png")))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> user.changePassword(new RawCredential("password123"), PASSWORD_HASHER))
+            assertThatThrownBy(() -> user.changePassword(
+                    new SecretValue("password123"), new SecretValue("newPass123"), PASSWORD_HASHER))
                     .isInstanceOf(IllegalArgumentException.class);
             // 守卫在方法首行：D 态下先抛 IAE，验证聚合参数不会触达（null 仅作占位）
             assertThatThrownBy(() -> user.changeMobile(null))
@@ -566,6 +566,31 @@ class UserTest {
             var newName = new Nickname("New_Name");
             user.changeNickname(newName);
             assertThat(user.getNickname()).isEqualTo(newName);
+        }
+
+        @Test
+        @DisplayName("修改密码：原密码正确时重哈希并注册 PasswordChangedEvent")
+        void should_changePassword_when_oldPasswordMatches() {
+            var user = fullUserWithPasswordAccount();
+
+            user.changePassword(new SecretValue("password123"),
+                    new SecretValue("newPass123"), PASSWORD_HASHER);
+
+            var events = user.flushEvents();
+            assertThat(events).hasSize(1);
+            assertThat(events.getFirst()).isInstanceOf(PasswordChangedEvent.class);
+        }
+
+        @Test
+        @DisplayName("修改密码：原密码不匹配抛 IAE，不注册事件")
+        void should_rejectChangePassword_when_oldPasswordMismatch() {
+            var user = fullUserWithPasswordAccount();
+
+            assertThatThrownBy(() -> user.changePassword(new SecretValue("wrong"),
+                    new SecretValue("newPass123"), PASSWORD_HASHER))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Invalid old password");
+            assertThat(user.flushEvents()).isEmpty();
         }
 
         @Test
@@ -680,7 +705,7 @@ class UserTest {
 
             assertThatThrownBy(() -> user.changeMobile(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot change to the same mobile");
+                    .hasMessageContaining("Cannot change to the same mobile");
         }
 
         @Test
@@ -722,7 +747,7 @@ class UserTest {
         void should_rejectChangeEmail_when_sceneNotCredentialChange() {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
-                    .source(VerificationSource.of("ULG", "new@test.com"))
+                    .source(VerificationSource.of("ULG", Long.toString(USER_ID.value())))
                     .recipient(new EmailRecipient(new Email("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
@@ -776,7 +801,7 @@ class UserTest {
 
             assertThatThrownBy(() -> user.changeEmail(verification))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("cannot change to the same email");
+                    .hasMessageContaining("Cannot change to the same email");
         }
 
         @Test

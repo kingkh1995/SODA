@@ -2,15 +2,15 @@ package com.soda.user.application.service;
 
 import com.soda.component.application.AbstractAppService;
 import com.soda.component.domain.DomainEventBus;
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.RawCredential;
+import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Sex;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.ChangeUsernameCommand;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.DeleteUserCommand;
+import com.soda.user.api.command.DeregisterUserCommand;
 import com.soda.user.api.command.DisableUserCommand;
 import com.soda.user.api.command.EnableUserCommand;
 import com.soda.user.api.command.UpdateUserCommand;
@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
 import java.util.Optional;
 
 /**
- * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link CredentialHasher}。
+ * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link PasswordHasher}。
  * <p>
  * 凭证/验证码相关操作迁至 {@link UserAuthServiceImpl}。
  */
@@ -39,16 +39,16 @@ import java.util.Optional;
 @Service
 public class UserServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserService {
 
-    private final UserDTOConvertor userConvertor;
+    private final UserDTOConvertor userDtoConvertor;
     private final DomainEventBus domainEventBus;
-    private final CredentialHasher credentialHasher;
+    private final PasswordHasher passwordHasher;
 
-    public UserServiceImpl(UserGateway userGateway, UserDTOConvertor userConvertor,
-                           DomainEventBus domainEventBus, CredentialHasher credentialHasher) {
+    public UserServiceImpl(UserGateway userGateway, UserDTOConvertor userDtoConvertor,
+                           DomainEventBus domainEventBus, PasswordHasher passwordHasher) {
         super(User.class, userGateway);
-        this.userConvertor = userConvertor;
+        this.userDtoConvertor = userDtoConvertor;
         this.domainEventBus = domainEventBus;
-        this.credentialHasher = credentialHasher;
+        this.passwordHasher = passwordHasher;
     }
 
     @Override
@@ -74,11 +74,11 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
                 .email(email)
                 .sex(Optional.ofNullable(command.sex()).map(Sex::of).orElse(null))
                 .avatar(Optional.ofNullable(command.avatar()).map(Avatar::new).orElse(null))
-                .passwordHash(credentialHasher.hash(new RawCredential(command.password())))
+                .passwordHash(passwordHasher.hash(new SecretValue(command.password())))
                 .build();
         gateway.save(user);
         domainEventBus.publishAll(user.flushEvents());
-        return userConvertor.convert(user);
+        return userDtoConvertor.convert(user);
     }
 
     @Override
@@ -94,8 +94,8 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
     }
 
     @Override
-    public void deleteUser(DeleteUserCommand command) {
-        log.info("deleteUser: command={}", command);
+    public void deregisterUser(DeregisterUserCommand command) {
+        log.info("deregisterUser: command={}", command);
         var user = require(new UserId(command.userId()));
         user.deregister();
         gateway.save(user);

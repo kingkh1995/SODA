@@ -5,8 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ChangeEmailRequest(
-        @NotBlank
-        @Size(min = 8, max = 8)
+        @NotBlank @Size(min = 8, max = 8)
         @JsonProperty("code") String code
 ) {
 }

@@ -1,2 +1,2 @@
-com.soda.component.infrastructure.eventbus.SpringDomainEventBusConfiguration
+com.soda.component.infrastructure.eventbus.SpringDomainEventBusAutoConfiguration
 com.soda.component.infrastructure.persistence.JpaAuditingAutoConfiguration

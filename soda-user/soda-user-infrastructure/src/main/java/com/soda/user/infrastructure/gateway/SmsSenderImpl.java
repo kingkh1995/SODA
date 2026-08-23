@@ -21,6 +21,6 @@ public class SmsSenderImpl implements SmsSender {
 
     @Override
     public void send(Mobile to, SmsContent content) {
-        log.info("SMS deliver (log stub): to={}, contentLength={}", to.value(), content.value().length());
+        log.info("send: to={}, contentLength={}", to.value(), content.value().length());
     }
 }

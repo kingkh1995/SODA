@@ -58,9 +58,9 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> deleteUser(@PathVariable("id") @Positive Long id) {
-        log.info("deleteUser: id={}", id);
-        userService.deleteUser(assembler.toDeleteCommand(id));
+    public Result<Void> deregisterUser(@PathVariable("id") @Positive Long id) {
+        log.info("deregisterUser: id={}", id);
+        userService.deregisterUser(assembler.toDeregisterCommand(id));
         return Result.success();
     }
 

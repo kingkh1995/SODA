@@ -81,11 +81,12 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("ChangePasswordRequest 映射到 ChangePasswordCommand（userId 来自额外参数）")
         void should_mapChangePasswordRequest_when_toChangePasswordCommand() {
-            var request = new ChangePasswordRequest("newPass123");
+            var request = new ChangePasswordRequest("oldPass123", "newPass123");
 
             var cmd = assembler.toChangePasswordCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.oldPassword()).isEqualTo("oldPass123");
             assertThat(cmd.newPassword()).isEqualTo("newPass123");
         }
 
@@ -117,9 +118,9 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("DeleteUserCommand 由用户 ID 构建")
-        void should_mapDeleteUser_when_toDeleteCommand() {
-            var cmd = assembler.toDeleteCommand(42L);
+        @DisplayName("DeregisterUserCommand 由用户 ID 构建")
+        void should_mapDeregisterUser_when_toDeregisterCommand() {
+            var cmd = assembler.toDeregisterCommand(42L);
 
             assertThat(cmd.userId()).isEqualTo(42L);
         }

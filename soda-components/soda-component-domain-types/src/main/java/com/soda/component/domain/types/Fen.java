@@ -1,8 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.IntLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
@@ -22,7 +20,7 @@ import java.math.RoundingMode;
  * @see Type
  * @see WanYuan
  */
-public record Fen(int value) implements Type, Comparable<Fen> {
+public record Fen(int value) implements IntLiteralType, Comparable<Fen> {
 
     /**
      * 0 分常量 — 领域意义上的便捷引用。
@@ -31,10 +29,6 @@ public record Fen(int value) implements Type, Comparable<Fen> {
 
     private static final BigDecimal MIN_FEN = BigDecimal.valueOf(Integer.MIN_VALUE);
     private static final BigDecimal MAX_FEN = BigDecimal.valueOf(Integer.MAX_VALUE);
-
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public Fen {
-    }
 
     /**
      * 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。
@@ -61,14 +55,6 @@ public record Fen(int value) implements Type, Comparable<Fen> {
         var fen = yuan.movePointRight(2).setScale(0, roundingMode);
         ValidateUtils.range(fen, MIN_FEN, MAX_FEN);
         return new Fen(fen.intValueExact());
-    }
-
-    /**
-     * Jackson 3 序列化出口 — 必须为 public 方法（record component 上无效）。
-     */
-    @JsonValue
-    public int value() {
-        return value;
     }
 
     /**

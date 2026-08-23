@@ -2,7 +2,7 @@ package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
 import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.SmsRecipient;
@@ -33,7 +33,7 @@ class VerificationConvertorTest {
 
     private static Verification uccVerification(VerificationState state, Instant expireAt) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(state)
                 .code(new VerificationCode("123456", expireAt))
@@ -95,7 +95,7 @@ class VerificationConvertorTest {
     @DisplayName("toPersistence → toDomain 往返（EmailRecipient）：channel/target 双列还原 Email")
     void should_roundTripEmailRecipient() {
         var verification = Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(VerificationState.P)
                 .code(new VerificationCode("ABCDEF12", EXPIRE_AT))

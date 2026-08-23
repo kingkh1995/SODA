@@ -8,7 +8,7 @@ import org.springframework.context.ApplicationEventPublisher;
 /**
  * 基于 Spring {@link ApplicationEventPublisher} 的 {@link DomainEventBus} 默认实现。
  * <p>
- * 属于基础设施层，由 {@link SpringDomainEventBusConfiguration} 自动装配激活。
+ * 属于基础设施层，由 {@link SpringDomainEventBusAutoConfiguration} 自动装配激活。
  * 业务模块可通过声明自己的 {@link DomainEventBus} {@code @Bean} 覆盖。
  */
 @RequiredArgsConstructor

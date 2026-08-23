@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.jspecify.annotations.Nullable;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,7 +24,7 @@ import java.time.Instant;
  * 注记）——<b>channel 独立列</b>（S/E 枚举短名）、target 为地址裸值，subject 为裸键（无类型前缀）。
  * <p>
  * {@code active_key} 为活跃槽位键（{@code source.compositeKey()} = scene:subject；I/P 且未过期占槽、
- * V/U 迁移清 NULL、过期 I/P 行惰性 DELETE 释放）——{@code uk_active_key} 唯一索引硬保证单活跃
+ * U 终态迁移清 NULL、过期 I/P 行惰性 DELETE 释放）——{@code uk_active_key} 唯一索引硬保证单活跃
  * （ADR-0026，机制沿自 ADR-0025）。
  * <p>
  * {@code expire_at} 是绝对时间点（领域层为 {@link Instant}）：Hibernate 默认映射
@@ -71,5 +72,5 @@ public class VerificationPO extends AbstractAuditable<String> {
     private Instant expireAt;
 
     @Column(name = "active_key", length = 160)
-    private String activeKey;
+    private @Nullable String activeKey;
 }

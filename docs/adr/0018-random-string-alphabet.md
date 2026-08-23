@@ -3,6 +3,8 @@
 `RandomStringGenerator` 契约从 `generate(PositiveInt)` 改为 `generate(PositiveInt, Alphabet)`：字符集从"基础设施层实现细节"升格为领域概念（`com.soda.component.domain.types.Alphabet` DP，开集字符串，非枚举）。原契约显式声明"字符集和随机源由基础设施层决定，领域层只关心长度"（CONTEXT.md / framework-conventions.md / 两侧 Javadoc）——该断言被反转：验证码需求（短信纯数字、邮箱字母数字）要求领域层表达字符集意图。`VerificationCodePolicy` 相应重构为**嵌套 DP 值对象**——`codeLength`（`PositiveInt`）、`expiry`（`Duration`）、`codeAlphabet`（`Alphabet`）三要素一体，`DEFAULT_SMS`=6位/5分钟/DIGITS、`DEFAULT_EMAIL`=8位/30分钟/UNAMBIGUOUS_ALPHANUMERIC。
 
 > 再修订（2026-08-11）：`ALPHANUMERIC`、`LETTERS` 便捷常量移除，新增 `UNAMBIGUOUS_ALPHANUMERIC`（`"23456789ABCDEFGHJKLMNPQRSTUVWXYZ"`——数字 2-9 + 大写字母去 I/O，剔除 0/1/I/O 形近字符，仅大写，跟随兑换码/恢复码主流样式）；`DEFAULT_EMAIL` 改用之（码长/有效期不变）。
+>
+> 再修订（2026-08-16）：**`VerificationCode.code` 应用案例撤回**——`code` 组件保持 `String`（不回退内嵌 `RandomString`）：`from`/`matches` 入口签名仍收 `RandomString`，防伪造在边界成立；DB restore 非输入路径，构造器仅 `hasText` 无伪造面；DP 不持有生成包装，符合本 ADR「不为包装而包装」前提。正式记录于 ADR-0026 检视修订⑥。
 
 ## 决策
 

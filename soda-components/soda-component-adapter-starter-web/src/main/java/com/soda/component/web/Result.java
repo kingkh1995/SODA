@@ -21,14 +21,14 @@ import java.io.Serializable;
  *
  * @param <T>     data 段类型
  * @param code    业务码（0 为成功）
- * @param message 消息
+ * @param msg     消息
  * @param data    数据段，可为 null（省略）
  * @param error   错误详情（AIP-193），成功时为 null（省略）
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Result<T>(
         @JsonProperty("code") int code,
-        @JsonProperty("msg") String message,
+        @JsonProperty("msg") String msg,
         @JsonProperty("data") @Nullable T data,
         @JsonProperty("error") @Nullable ErrorInfo error
 ) implements Serializable {
@@ -55,15 +55,15 @@ public record Result<T>(
     /**
      * 错误响应。
      */
-    public static <T> Result<T> error(int code, String message) {
-        return new Result<>(code, message, null, null);
+    public static <T> Result<T> error(int code, String msg) {
+        return new Result<>(code, msg, null, null);
     }
 
     /**
      * 错误响应，含 ErrorInfo（遵循 AIP-193）。
      */
-    public static <T> Result<T> error(int code, String message, ErrorInfo errorInfo) {
-        return new Result<>(code, message, null, errorInfo);
+    public static <T> Result<T> error(int code, String msg, ErrorInfo errorInfo) {
+        return new Result<>(code, msg, null, errorInfo);
     }
 
     // ========== Query ==========

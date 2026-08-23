@@ -1,11 +1,9 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.soda.component.domain.Type;
+import com.soda.component.domain.BooleanLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
 
 /**
  * 激活状态 DP — 通用 boolean 值封装。
@@ -16,8 +14,7 @@ import lombok.experimental.Accessors;
  * @see Type
  */
 @EqualsAndHashCode
-@Accessors(fluent = true)
-public final class Active implements Type {
+public final class Active implements BooleanLiteralType {
 
     public static final Active TRUE = new Active(true);
     public static final Active FALSE = new Active(false);
@@ -43,7 +40,9 @@ public final class Active implements Type {
         return of(ParseUtils.parseBoolean(s));
     }
 
-    @JsonValue
+    /**
+     * 规范值访问器 — {@code @JsonValue} 继承自 {@link BooleanLiteralType}（ADR-0028）。
+     */
     public boolean value() {
         return value;
     }

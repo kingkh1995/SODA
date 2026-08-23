@@ -1,75 +1,43 @@
+---
+type: Convention
+title: Soda 编码规范
+description: 编码与注释标准。code-review 以本文件为「仓库编码标准」；新增/修改代码前读。
+tags: [convention, styleguide, code]
+status: stable
+---
+
 # 编码规范
 
-## JDK 特性优先
+> 本文件是代码怎么写（风格 + 注释）的单一标准；框架层**有什么**（基类/接口/类型）见 `docs/framework-conventions.md`。
+> 测试怎么写（分层映射/通用写法/覆盖率）见 `docs/test-conventions.md`；DP 必测分组见 `docs/conventions/dp-test-conventions.md`。
+
+## 1. 语言与术语
+
+- 代码注释与文档用中文（项目裁定）；术语保留英文原文，用词对齐 `CONTEXT.md` 词汇表
+- 异常消息用英文
+
+## 2. 代码风格
+
+### 2.1 JDK 特性优先
 
 优先使用 JDK 最新特性，不重复造轮子：
 
 | 场景 | 优先使用 | 禁止 |
+|---|---|---|
 | 不可变值对象（DP、DTO） | `record`（JDK 16+） | 手写 class + `@EqualsAndHashCode` + `toString()` |
+| 封闭集合建模 | `sealed` + `permits`，switch 分派依赖编译期穷举 | sealed 层次的 switch 写 `default` 兜底；把开放继承当封闭集用 |
 | 空值校验 + 值归一化 | record 紧凑构造 | 在工厂方法中校验 |
-| 工厂方法（DP） | `of`（参数即值）、`from`（跨类型转换）、`parse(String)`（字符串解析） | `valueOf(Object)`（已移除） |
-| 局部变量类型 | `var`（JDK 10+） | 显式写冗长类型 |
-| DP 序列化 | `Serializable` + `@Serial` + `serialVersionUID`（仅在明确需要时） | 无 `implements Serializable` 时留 `@Serial serialVersionUID` |
-```java
-// ✅ 推荐 — record DP，不显式实现 Serializable
-public record LongId(@JsonValue long value) implements Identifier<Long>, Comparable<LongId> {
+| 工厂方法（DP） | `of`（参数即值）、`from`（跨类型转换）、`parse(String)`（字符串解析） | `valueOf(Object)` |
+| 局部变量类型 | `var`（JDK 10+） | 显式冗长类型 |
+| DP 序列化 | `Serializable` + `@Serial`（仅在明确需要时） | 无 `implements Serializable` 时留 `@Serial` |
 
-    public LongId {                                          // 紧凑构造：校验
-        ValidateUtils.minValue(0, false, value);
-    }
+`var` 仅限局部变量——字段、方法参数、返回值不用。
 
-    /** 从字符串解析构造，格式同 {@link ParseUtils#parseLong}。 */
-    public static LongId parse(String s) {
-        return new LongId(ParseUtils.parseLong(s));
-    }
+### 2.2 校验参数顺序
 
-    @Override
-    public Long identifier() {
-        return value;
-    }
+`ValidateUtils` 校验方法参数遵循 Spring `Assert` 风格：被校验值在前，辅助参数在后（`minValue(value, 0, false)`）。辅助参数视为可信，仅被校验值允许 `@Nullable`。
 
-    @Override
-    public int compareTo(LongId other) {
-        return Long.compare(this.value, other.value);
-    }
-}
-
-// ✅ 推荐 — class DP，显式实现 Serializable（仅在必要时）
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Accessors(fluent = true)
-public final class Version implements Type, Comparable<Version>, Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    @Getter
-    @JsonValue
-    @EqualsAndHashCode.Include
-    private final int value;
-
-    public static Version of(int value) { ... }
-}
-```
-### 校验方法参数顺序
-
-`ValidateUtils` 中所有校验方法的参数遵循 Spring {@code Assert} 风格：被校验值在前，辅助参数在后。
-只有被校验值标注 `@Nullable` 并校验，辅助参数视为可信。
-
-```java
-minValue(value, 0, false)     // long value, long min, boolean inclusive
-maxLength(value, 30)          // String value, int max
-hasPrefix(value, "P:")        // String value, String prefix
-matches(value, pattern)       // String value, Pattern pattern
-```
-
-### Entity 空值校验
-
-Entity 类的空值校验使用 Spring `Assert.notNull`，携带自解释的错误消息：
-
-```java
-Assert.notNull(username, "username must not be null");
-Assert.notNull(status, "status must not be null");
-```
+### 2.3 空值校验角色
 
 | 角色 | 判空工具 | 消息 |
 |---|---|---|
@@ -77,224 +45,147 @@ Assert.notNull(status, "status must not be null");
 | Entity 类 | `Assert.notNull(value, "field must not be null")` | 每处自解释 |
 | 工具类 | `ValidateUtils.notNull(value)` | 固定默认消息 |
 
-原则：Entity 承载业务状态，判空时应当明确哪个字段为 null，便于故障排查。DP 类型简单，默认消息足够。
+Entity 承载业务状态，判空应明确哪个字段为 null；DP 类型简单，默认消息足够。
 
-## 注解驱动
+### 2.4 控制流
 
-能使用注解声明语义的地方，**禁止用手写代码替代**。
+- `if` / `for` / `while` 必须带 `{}`，禁止省略单行体
+- 非必要不嵌套；优先卫语句（guard clause）快速失败；避免 `else` / `else if`
+- 禁止显式类型转换，用泛型 / `Comparable<Self>` / 模式匹配消除强转
 
-### Jackson 注解
+### 2.5 类内成员访问（`this`）
+
+「写显式、读裸、调用裸」：赋值与集合增删必须 `this.`；字段读取、本类方法调用、委托协作调用禁止 `this.`。
+
+### 2.6 异常
+
+优先 `IllegalArgumentException` / `IllegalStateException`（不使用已废弃异常）；不在非异常路径上构造异常；工具类内联 IAE 消息，不引入工厂类。
+
+## 3. 注解
+
+### 3.1 Jackson
 
 | 用途 | 注解 | 位置 |
 |---|---|---|
-| 序列化 | `@JsonValue` | record 组件（如 `@JsonValue long value`）或访问器方法 |
-| 反序列化 | 无需（Jackson 2.12+ 原生识别 record 典范构造器） | — |
+| 序列化 | `@JsonValue` | record 组件（`@JsonValue long value`）或访问器方法 |
+| 反序列化 | 无需（Jackson 3 原生推断 record 典范构造器，模式总表见 dp-conventions §5.1） | — |
 
-### JSpecify 注解
+Entity JSON 契约见 framework-conventions 谱系（entity-aggregate）；框架契约型注解（`@JsonTypeInfo`/`@JsonAutoDetect` 等）随各自契约文档，不入本章。
 
-项目使用 JSpecify 1.0 作为空性标注标准，覆盖 `org.jspecify.annotations` 包中全部 4 个注解。
-Nullness Specification（空性标注）原则：通过 JSpecify 注解在编译期明确每个类型的空性，杜绝 NullPointerException。
+### 3.2 JSpecify 空性标注
 
-#### 注解速览
+项目使用 JSpecify 1.0，覆盖全部 4 个注解；编译期明确空性，杜绝 NPE。
 
-| 注解 | 目标 | 语义 | 本项目使用 |
-|---|---|---|---|
-| `@NullMarked` | MODULE, PACKAGE, TYPE, METHOD, CONSTRUCTOR | 作用域内类型默认 `@NonNull` | ✅ 必须 — 仅包级 |
-| `@Nullable` | TYPE_USE | 该类型可以包含 `null` | ✅ 按场景使用 |
-| `@NonNull` | TYPE_USE | 该类型排除 `null`（在 `@NullMarked` 下极少需要） | ⚠️ 仅非空投影 |
-| `@NullUnmarked` | PACKAGE, TYPE, METHOD, CONSTRUCTOR | 退出 `@NullMarked`，回到未指定空性 | ❌ 禁止使用 |
+| 注解 | 语义 | 本项目使用 |
+|---|---|---|
+| `@NullMarked` | 作用域内默认 `@NonNull` | ✅ 必须 — 仅包级（`package-info.java` 第一行） |
+| `@Nullable` | 该类型可含 null | ✅ 按场景（见下） |
+| `@NonNull` | 排除 null | ⚠️ 仅非空投影，禁止冗余标注 |
+| `@NullUnmarked` | 退出 `@NullMarked` | ❌ 禁止 |
 
----
+**必须加 `@Nullable`**：实体的可选字段（getter 返回 `Optional<T>`）、未持久化标识符（`private @Nullable ID id`）、工厂/构造器中对应可选字段的参数、立即校验拒绝 null 的工具参数。
+**禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为 null）。
+**局部变量**：根类型不标注，由赋值推断。
+**外部库互操作**：未标 `@NullMarked` 的库返回值是 unspecified nullness——调用点显式检查或 `Optional.ofNullable()` 包装。
 
-#### `@NullMarked` — 包级默认非空
-
-每个包须在 `package-info.java` 第一行标注 `@NullMarked`：
-
-```java
-@NullMarked
-@ApplicationModule(allowedDependencies = {})
-package com.soda.component.support.util;
-
-import org.jspecify.annotations.NullMarked;
-import org.springframework.modulith.ApplicationModule;
-```
-
-- 位置：`@NullMarked` 在前，`@ApplicationModule` 在后（纯约定，语义等价；安全契约优先于模块契约）
-
-- 仅限包级（本项目约定；JSpecify 同时支持 MODULE/TYPE/METHOD/CONSTRUCTOR 级别）
-- 未加 `@NullMarked` 的包视为不合规
-- `@NullMarked` 不级联子包，每个包独立标注
-
----
-
-#### `@Nullable` — 按场景使用
-
-**必须加 `@Nullable` 的场景：**
-
-| 场景 | 字段标注 | getter 返回值 | 示例 |
-| 实体的可选字段 | `@Nullable` | `Optional<T>` | `private @Nullable Mobile mobile;` → `public Optional<Mobile> getMobile()` |
-| 未持久化的标识符 | `@Nullable` | `@Nullable`（基类特例） | `private @Nullable ID id;` → `public final @Nullable ID getId()` |
-| 工厂/构造方法中与可选字段对应的参数 | `@Nullable` | — | `create(@Nullable Email email)` |
-| 工具方法接受 null 并立即校验拒绝的参数 | `@Nullable`（参数） | — | `notNull(@Nullable Object value)` |
-
-**禁止加 `@Nullable` 的场景：**
-
-| public/protected 方法返回值 | `Optional<T>` 或空集合/空数组 | 返回值永远不允许 null（项目约定；JSpecify 允许返回值 `@Nullable`） |
-> 注：`Optional<T>` 返回值每次调用分配对象。领域层不属于热路径，接受此开销。
-> 如有性能敏感路径需豁免，应在代码评审中逐案评估。
-
-**不受限的场景：**
-
-- `Entity.getId()` 和 `Identifiable.getId()`：实体在服务端生成 ID 模式下，持久化前 ID 为 null，getter 须保留 `@Nullable`（领域模型约定，不可用 `Optional` 替代）
-
-
----
-
-#### `@NonNull` — 仅语义需要
-
-在 `@NullMarked` 全覆盖的项目中，`@NonNull` 的唯一合理用途是**非空投影（non-null projection）**：
-
-```java
-// 当 E 有 @Nullable 上界时，强制某个使用点非空
-interface List<E extends @Nullable Object> {
-    Optional<@NonNull E> findFirst();
-}
-```
-
-- 禁止为"文档强调"目的冗余标注
-- 触发条件：泛型类的类型参数声明为 `<E extends @Nullable Object>` 时，若某个使用点需要强制非空（如 `Optional<@NonNull E>`），应标注 `@NonNull E`
-- 当前项目没有非空投影需求，如引入需评审
-
----
-
-#### `@NullUnmarked` — 禁止使用
-
-仅用于遗留代码渐进迁移，本项目为新项目，不适用。
-
----
-
-#### 外部库互操作
-
-外部库未标注 `@NullMarked` 时，其返回值具有未指定空性（unspecified nullness）。
-Java 编译器不会因此产生警告，但静态分析工具可能报错。
-建议在调用点显式 null 检查或使用 `Optional.ofNullable()` 包装，避免传播空性不确定性。
-
----
-
-#### 泛型空性
-
-```java
-// 声明侧：默认非空上界
-public class MyList<E> { ... }                // E 不可为 null
-
-// 声明侧：可 null 上界（当前项目无此模式）
-public class MyList<E extends @Nullable Object> { ... }  // E 可 null
-
-// 使用侧：
-E                 // parametric — E 可 null 则 null，否则非空
-@Nullable E       // nullable projection — 始终可 null
-@NonNull E        // non-null projection — 始终非空
-```
-
----
-
-#### 数组空性
-
-```java
-@Nullable String[]   // 元素可 null，数组本身不可 null
-String @Nullable []  // 数组本身可 null，元素不可 null
-```
-
----
-
-#### 局部变量
-
-局部变量的根类型**不标注**空性注解，由赋值推断。
-
-### Lombok 注解
-
-Lombok 用于减少实体/基类的 boilerplate，不用于替代 record：
+### 3.3 Lombok
 
 | 注解 | 使用场景 |
 |---|---|
-| `@Getter` | 字段上的值 getter，替代手写 `getXxx()`；Entity 基类不适用（需 final 语义）|
-| `@Accessors(fluent = true)` | 与 `@Getter` 配合，使访问器名为 `value()` 而非 `getValue()`，对齐 record 风格|
-| `@RequiredArgsConstructor` | 基类构造函数（如 `Entity(access = PROTECTED)`） |
-| `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` | 用于**非 record 的 class DP**，配合 `@EqualsAndHashCode.Include` 显式标记参与比较的字段|
-| `@EqualsAndHashCode.Include` | 标记参与 `equals`/`hashCode` 的字段|
+| `@Getter` | 字段 getter；Entity 基类不适用（需 final 语义） |
+| `@Accessors(fluent = true)` | 访问器名 `value()` 对齐 record 风格 |
+| `@RequiredArgsConstructor` | 基类构造函数 |
+| `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` | 非 record 的 class DP，配合 `@Include` 显式标记参与字段 |
+| `@UtilityClass` | 不用于有 `import static` 交叉引用的工具类（编译期符号解析先于 Lombok）——保持显式 `final class` + 私有构造器 |
+| `@Builder` | 仅限 Entity/Aggregate 双 Builder（恢复构造器 + `createBuilder()`）；值对象一律静态工厂 `of`/`from`/`parse` |
+| `@Setter` / `@NoArgsConstructor(access = PUBLIC)` | 仅限持久化 PO（infrastructure 载体）；domain / api / application 禁止 |
+| `@Slf4j` | 日志允许 |
+| 其余（`@Value` / `@With` / `@Data` / `@SuperBuilder` / `@AllArgsConstructor`） | 禁用——record 与显式构造器已覆盖其场景 |
 
-> **注意**：`@UtilityClass` 不用于有 `import static` 交叉引用的工具类（因编译期符号解析先于 Lombok 处理）。此类场景保持显式 `final class` + 私有构造器 + `static` 方法。
+### 3.4 MapStruct
 
-## 控制流
+| 规则 | 内容 |
+|---|---|
+| 适用边界 | 仅 adapter 协议转换（Request → Command、DTO → Response）；infrastructure PO ↔ 领域 convertor 手写——final 类 + 全量构造含显式 null 清空列语义（见现行 framework-conventions「Convertor（基础设施）」节，07 迁入 conventions/infrastructure.md），不采用 MapStruct |
+| 组件模型 | `@Mapper(componentModel = "spring")` 固定——生产注入生成 bean；`Mappers.getMapper(...)` 仅测试 |
+| 映射策略 | by-name 优先；仅名称不一致时写显式 `@Mapping` |
+| 未映射目标 | `unmappedTargetPolicy = ERROR`——协议字段漏映射编译期拦截；有意不映射须显式 `ignore = true` 自证 |
 
-- `if` / `for` / `while` 必须带 `{}`，禁止省略单行体
-- 非必要不嵌套。优先卫语句（guard clause）快速失败
-- 避免 `else` / `else if`，优先卫语句 + 提前 `return`
-- 禁止类型转换（type cast），用泛型 / {@code Comparable<Self>} / 模式匹配消除强转
+转换器契约语义（命名、方向、使用约定）归 `docs/conventions/adapter.md` WebAssembler 条目。
 
-```java
-// ❌ 嵌套 + 无括号
-if (value != null)
-    for (var item : value)
-        if (item.isActive())
-            return item;
+## 4. 注释规范
 
-// ✅ 卫语句 + 花括号
-if (value == null) {
-    return null;
-}
-if (!value.isEmpty()) {
-    return null;
-}
-for (var item : value) {
-    if (item.isActive()) {
-        return item;
-    }
-}
-```
+依据：Google Java Style §7（格式/摘要/块标签/两例外/TODO）+ Developer Style（主动语态/现在时/简洁）+ agent 意图型注释实践（02 研究）。
 
-## 类内成员访问（`this`）
+执行：code-review 以本文件为核查基准——§4.5 no-op 是语义判据，人工判定；机械格式项（块标签顺序、空描述、装饰边框）可加 checkstyle 规则，07 评估后可选启用。
 
-类内访问成员遵循「写显式、读裸、调用裸」原则：
+### 4.1 必须写 Javadoc
 
-| 场景 | 规则 | 示例 |
-|---|---|---|
-| 参数/局部变量遮蔽字段的赋值 | 必须 `this.` | `this.username = username;` |
-| 字段赋值 | 必须 `this.` | `this.state = UserState.D;` |
-| 修改字段对象状态的调用（集合增删等） | 必须 `this.` | `this.accounts.add(account);` |
-| 字段读取（含读取性方法调用，如 `equals`/`compareTo`） | 禁止 `this.` | `return value;` / `value.compareTo(other.value)` |
-| 本类方法调用 | 禁止 `this.` | `isIdentified()`、`registerEvent(...)` |
-| 协作调用（委托字段对象执行，如注入的服务/网关） | 禁止 `this.` | `userService.updateUser(...)`、`eventPublisher.publishEvent(...)` |
+public/protected 的类、接口、方法、构造器、字段（Google §7.3）。本项目落点：
 
-判断标准：操作是否写入或修改**字段所指向对象的状态**。赋值、集合增删 → `this.`；其余（读取、委托协作）→ 裸访问。
+| 层级 | 要求 |
+|---|---|
+| domain：聚合根 / 子实体 / 领域服务 / 事件 | 必写（类级 + 业务方法） |
+| domain：DP / Identifier / 枚举 | 必写（类级一行契约 + 非平凡方法） |
+| api：接口 / Command / DTO | 必写 |
+| application：AppService | 必写（类级一行职责 + 非平凡编排方法） |
+| adapter：Controller 端点 / Request / Response | 必写（端点标注业务语义） |
+| infrastructure：实现类 / 转换器 | 覆写例外为主（4.4），可省略 |
+| query-server | 类级一行；查询方法签名自明即省略（读侧混装，从简） |
+| private / 包私有 | 不强制；承载意图的必写 |
+
+### 4.2 摘要片段
+
+第一句是**摘要片段**：陈述句、句号收尾、描述行为（Google §7.1.2 / §7.2）。禁止 `@return` 引用式：
 
 ```java
-// ✅ 一致风格
-public void disable() {
-    if (UserState.D.equals(state)) {   // 读取：裸
-        return;
-    }
-    var oldState = state;              // 读取：裸
-    this.state = UserState.D;          // 赋值：this.
-    registerEvent(...);                // 本类方法：裸
-}
-
-public void addAccount(AuthAccount<?> account) {
-    this.accounts.add(account);        // 集合变更：this.
-}
+// ❌
+/** @return 客户 ID */
+// ✅
+/** 返回客户 ID。 */
 ```
 
-> 注：构造器中 `value = value.toLowerCase(...)` 一类写法是对**参数**的归一化（随后 `this.value = value` 落字段），不属于字段写，不要求 `this.`。
+摘要与后续描述之间空一行；新段落用空行或显式 `<p>`。
 
-## 异常
+### 4.3 块标签
 
-- 异常消息使用英文
-- 优先 `IllegalArgumentException` / `IllegalStateException`，不使用已废弃异常
-- 不在非异常路径上构造异常（性能考虑）
-- 工具类通过内联 `IllegalArgumentException` 消息文本校验，不引入工厂类
+顺序固定：`@param` → `@return` → `@throws` → `@deprecated`（Google §7.1.3）。**不允许空描述**；续行相对 `@` 缩进 ≥ 4 空格。
 
-## 依赖管理
-- `implementation` 用于运行时需要的依赖（Jackson 注解、spring-modulith 等）
-- `compileOnly` 用于仅编译期需要的依赖（Lombok）
-- 不在基础模块用 `api` 暴露传递依赖，除非被依赖的是核心框架能力
-- `testImplementation` 用于测试需要的依赖
+### 4.4 例外
+
+- **自解释方法**（§7.3.1）：签名自明、无更多值得说明的内容 → 省略。`getXxx()` 访问器、纯状态谓词（`isPending()`）通常属于此类。
+- **覆写**（§7.3.2）：`@Override` 方法不重复父类 Javadoc；确有补充契约才写。
+
+### 4.5 内容原则：写意图与契约，不写行为复述
+
+注释是**意图载体**，不是行为记录。每句注释过 **no-op 测试**：删掉它，读者是否失去信息？——失去则留，否则删整句（WfA：no-op 删整句）。
+
+| 写 | 不写 |
+|---|---|
+| 不变量、前置/后置条件、吸收态语义 | 复述方法名的单句（"修改用户名。"） |
+| 规则**为什么**存在（最终态理由） | 逐步描述实现过程 |
+| CONTEXT.md 术语原词、「见 ADR-NNNN」锚点 | 复述 CONTEXT.md 词条定义；inline 展开 ADR 决策内容 |
+| 签名之外的契约（可空、时钟注入、副作用、事务边界） | 显而易见的直译 |
+| 反直觉语义（如 `isVerified()` 含已使用态） | 环境可见事实（序列化细节、框架声明） |
+| — | **决策历史**：日期、变更沿革、"原为…现为…"、被否方案——演进叙事归 git 历史，不归注释 |
+
+### 4.6 格式
+
+- Javadoc 块 `/** */`，内部行以 `*` 开头与起始对齐；无块标签且单行可容纳时用 `/** … */`
+- 禁止装饰性星号边框（盒子注释）
+- 行注释 `//`，与所注释代码同级缩进
+
+### 4.7 TODO
+
+`TODO: <链接> - <说明串>`。前缀保留英文大写（工具可识别），说明用中文。仅标记**临时的、不完美的代码**——不是清晰代码或透彻理解的替代品（Google §7.4）。
+
+```java
+// TODO: https://gitee.com/zhijiantianya/yudao-cloud/issues/123 - RG 场景发码接入后移除 fail-fast
+```
+
+## 5. 依赖管理
+
+- `implementation`：运行时需要的依赖（Jackson 注解、spring-modulith 等）
+- `compileOnly`：仅编译期需要（Lombok）
+- 基础模块不用 `api` 暴露传递依赖，除非被依赖的是核心框架能力
+- `testImplementation`：测试需要的依赖

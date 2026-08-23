@@ -2,17 +2,17 @@ package com.soda.user.application;
 
 import com.soda.component.domain.DomainEvent;
 import com.soda.component.domain.DomainEventBus;
-import com.soda.component.domain.gateway.CredentialHasher;
+import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Alphabet;
-import com.soda.component.domain.types.CredentialHash;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
+import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.PositiveInt;
 import com.soda.component.domain.types.RandomString;
-import com.soda.component.domain.types.RawCredential;
-import com.soda.component.domain.types.UUId;
+import com.soda.component.domain.types.SecretValue;
+import com.soda.component.domain.types.Uuid;
 import com.soda.component.domain.types.Version;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
@@ -82,7 +82,7 @@ class UserAuthServiceImplTest {
     private static final Mobile NEW_MOBILE = new Mobile("13900139000");
     private static final Email NEW_EMAIL = new Email("new@test.com");
     private static final String VALID_CODE = "123456";
-    private static final CredentialHash STUB_HASH = new CredentialHash(
+    private static final PasswordHash STUB_HASH = PasswordHash.of(
             "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
     @Mock
@@ -92,7 +92,7 @@ class UserAuthServiceImplTest {
     @Mock
     private DomainEventBus domainEventBus;
     @Mock
-    private CredentialHasher credentialHasher;
+    private PasswordHasher passwordHasher;
     @Mock
     private RandomStringGenerator randomStringGenerator;
 
@@ -122,7 +122,7 @@ class UserAuthServiceImplTest {
 
     private static Verification pendingVerification(Mobile target) {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(VerificationState.P)
                 .recipient(new SmsRecipient(target))
@@ -132,7 +132,7 @@ class UserAuthServiceImplTest {
 
     private static Verification expiredVerification() {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(VerificationState.P)
                 .recipient(new SmsRecipient(NEW_MOBILE))
@@ -142,11 +142,19 @@ class UserAuthServiceImplTest {
 
     private static Verification pendingEmailVerification() {
         return Verification.builder()
-                .id(UUId.random())
+                .id(Uuid.random())
                 .source(UCC_SOURCE)
                 .state(VerificationState.P)
                 .recipient(new EmailRecipient(NEW_EMAIL))
                 .code(new VerificationCode(VALID_CODE, Instant.now().plus(Duration.ofMinutes(30))))
+                .build();
+    }
+
+    private static PasswordAuthAccount stubPasswordAccount() {
+        return PasswordAuthAccount.builder()
+                .id(PasswordAuthAccountId.from(USER_ID))
+                .active(Active.TRUE)
+                .passwordHash(STUB_HASH)
                 .build();
     }
 
@@ -169,15 +177,15 @@ class UserAuthServiceImplTest {
         assertThat(events.get(0)).isInstanceOf(VerificationCreatedEvent.class);
     }
 
+    // ─── UCC 发码 ───
+
     @BeforeEach
     void setUp() {
         service = new UserAuthServiceImpl(userGateway, verificationGateway,
                 new CredentialChangeDomainService(),
-                domainEventBus, credentialHasher,
+                domainEventBus, passwordHasher,
                 new UserVerificationFactory(randomStringGenerator));
     }
-
-    // ─── UCC 发码 ───
 
     @Nested
     @DisplayName("请求发送换绑手机号验证码（scene=UCC, channel=S）")
@@ -247,7 +255,7 @@ class UserAuthServiceImplTest {
             assertThatThrownBy(() -> service.requestChangeMobileCode(
                     new RequestChangeMobileCodeCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("cannot change to the same mobile");
+                    .hasMessage("Cannot change to the same mobile");
             verify(verificationGateway, never()).save(any());
             verify(domainEventBus, never()).publishAll(any());
         }
@@ -325,6 +333,8 @@ class UserAuthServiceImplTest {
         }
     }
 
+    // ─── 邮箱发码 ───
+
     @Nested
     @DisplayName("请求发送换绑邮箱验证码（scene=UCC, channel=E）")
     class RequestChangeEmailCode {
@@ -355,7 +365,7 @@ class UserAuthServiceImplTest {
             assertThatThrownBy(() -> service.requestChangeEmailCode(
                     new RequestChangeEmailCodeCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("cannot change to the same email");
+                    .hasMessage("Cannot change to the same email");
             verify(verificationGateway, never()).save(any());
             verify(domainEventBus, never()).publishAll(any());
         }
@@ -386,12 +396,28 @@ class UserAuthServiceImplTest {
         void should_changePasswordAndPublishEvents_when_userExists() {
             var user = createUser();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(credentialHasher.hash(any(RawCredential.class))).thenReturn(STUB_HASH);
+            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class))).thenReturn(true);
+            when(passwordHasher.hash(any(SecretValue.class))).thenReturn(STUB_HASH);
 
-            service.changePassword(new ChangePasswordCommand(1L, "newPassword123"));
+            service.changePassword(new ChangePasswordCommand(1L, "oldPassword123", "newPassword123"));
 
             verify(userGateway).save(user);
             verify(domainEventBus).publishAll(any());
+        }
+
+        @Test
+        @DisplayName("原密码不匹配：抛异常，不保存不发布")
+        void should_throw_when_oldPasswordMismatch() {
+            var user = createUser();
+            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
+            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class))).thenReturn(false);
+
+            assertThatThrownBy(() ->
+                    service.changePassword(new ChangePasswordCommand(1L, "wrongPassword", "newPassword123")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Invalid old password");
+            verify(userGateway, never()).save(any());
+            verify(domainEventBus, never()).publishAll(any());
         }
 
         @Test
@@ -400,7 +426,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    service.changePassword(new ChangePasswordCommand(1L, "newPassword123")))
+                    service.changePassword(new ChangePasswordCommand(1L, "oldPassword123", "newPassword123")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("User not found");
         }
@@ -540,13 +566,5 @@ class UserAuthServiceImplTest {
                     .hasMessageContaining("No pending verification");
             verify(userGateway, never()).save(any());
         }
-    }
-
-    private static PasswordAuthAccount stubPasswordAccount() {
-        return PasswordAuthAccount.builder()
-                .id(PasswordAuthAccountId.from(USER_ID))
-                .active(Active.TRUE)
-                .passwordHash(STUB_HASH)
-                .build();
     }
 }

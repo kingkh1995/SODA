@@ -3,14 +3,13 @@ dependencies {
     implementation project(':soda-components:soda-component-infrastructure-starter')
     implementation project(':soda-user:soda-user-domain')
     // data-jpa 经 infrastructure-starter api 传递（Auditable 基类所在），此处不重复声明
-    // Flyway 数据库迁移（Boot 4 强制 starter + MySQL 方言；H2 方言含在 flyway-core）
+    // Flyway 数据库迁移（Boot 4 强制 starter；H2 方言含在 flyway-core——
+    // MODE=MySQL 由 H2 兼容模式承担，ADR-0022：不接真实 MySQL，切真库时另加 profile）
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
-    implementation 'org.flywaydb:flyway-mysql'
-    // BCrypt 密码哈希（CredentialHasherImpl 实现，版本由 Spring Boot BOM 管理）
+    // BCrypt 口令哈希（PasswordHasherImpl 实现，版本由 Spring Boot BOM 管理）
     implementation 'org.springframework.security:spring-security-crypto'
     // @Slf4j 编译期需要 slf4j-api 在 classpath（data-jpa 未传递至编译 classpath）
     implementation 'org.slf4j:slf4j-api'
-    runtimeOnly 'com.mysql:mysql-connector-j'
-    // H2 仅测试用（集成测试内存库，MODE=MySQL）
-    testRuntimeOnly 'com.h2database:h2'
+    // H2 运行时驱动：主数据源为 H2（ADR-0022）；测试类路径继承 runtimeClasspath
+    runtimeOnly 'com.h2database:h2'
 }
