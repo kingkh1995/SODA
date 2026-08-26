@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.SensitiveValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 
@@ -21,13 +21,21 @@ public final class Mobile extends SensitiveValue {
 
     private static final Pattern PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
 
-    public Mobile(String value) {
+    private Mobile(String value) {
         super(value);
-        ValidateUtils.matches(value(), PATTERN);
+        ValidateUtils.matches(value, PATTERN);
     }
 
     @Override
     public String maskedValue() {
         return MaskedMobile.from(this).value();
+    }
+
+    /**
+     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static Mobile of(String raw) {
+        return new Mobile(raw);
     }
 }

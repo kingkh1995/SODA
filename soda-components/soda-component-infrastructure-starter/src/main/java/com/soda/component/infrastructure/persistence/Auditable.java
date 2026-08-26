@@ -5,8 +5,8 @@ import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 
 /**
- * 审计列读写契约 — 与 Spring Data {@code org.springframework.data.domain.Auditable} 对齐
- * （2026-08-13）：接口名、字段/方法词表（{@code createdDate}/{@code lastModifiedDate}）
+ * 审计列读写契约 — 与 Spring Data {@code org.springframework.data.domain.Auditable} 对齐：
+ * 接口名、字段/方法词表（{@code createdDate}/{@code lastModifiedDate}）
  * 均同 Spring；列名 {@code created_date}/{@code last_modified_date}（字段名 = 列名，
  * 仅形式差异）；返回类型 {@link Instant}（绝对时间点，仓库约定，见
  * {@link AbstractAuditable}）。

@@ -1,8 +1,8 @@
 package com.soda.component.domain.gateway;
 
 import com.soda.component.domain.Gateway;
-import com.soda.component.domain.SensitiveValue;
 import com.soda.component.domain.types.Ciphertext;
+import com.soda.component.domain.types.SensitiveValue;
 
 /**
  * 加密器 Gateway —— PII 字段可还原加密场景（ADR-0033）。

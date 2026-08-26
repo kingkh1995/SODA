@@ -26,37 +26,28 @@ import java.util.Optional;
  */
 public interface UserGateway extends EntityGateway<User, UserId> {
 
-    /**
-     * 按用户名查找用户。
-     */
     Optional<User> findByUsername(Username username);
 
-    /**
-     * 按手机号查找用户。
-     */
     Optional<User> findByMobile(Mobile mobile);
 
-    /**
-     * 按邮箱查找用户。
-     */
     Optional<User> findByEmail(Email email);
 
     /**
-     * 用户名是否存在（基于 {@link #findByUsername(Username)} 的 default 组合）。
+     * 用户名唯一性预检（与 DB 唯一索引双重保证 Username 全局唯一）。
      */
     default boolean existsByUsername(Username username) {
         return findByUsername(username).isPresent();
     }
 
     /**
-     * 手机号是否存在（基于 {@link #findByMobile(Mobile)} 的 default 组合）。
+     * 手机号唯一性预检（UCC 换绑的目标全局唯一前置检查）。
      */
     default boolean existsByMobile(Mobile mobile) {
         return findByMobile(mobile).isPresent();
     }
 
     /**
-     * 邮箱是否存在（基于 {@link #findByEmail(Email)} 的 default 组合）。
+     * 邮箱唯一性预检（UCC 换绑的目标全局唯一前置检查）。
      */
     default boolean existsByEmail(Email email) {
         return findByEmail(email).isPresent();

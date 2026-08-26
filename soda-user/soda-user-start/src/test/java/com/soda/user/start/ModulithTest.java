@@ -1,7 +1,11 @@
 package com.soda.user.start;
 
+import com.soda.support.test.ModulithTestSupport;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Spring Modulith 模块依赖关系验证。
@@ -14,28 +18,37 @@ import org.springframework.modulith.core.ApplicationModules;
  * ┌──────────────────┬──────────┬──────────────────────────────────────┐
  * │ Module           │ Type     │ Allowed dependencies                 │
  * ├──────────────────┼──────────┼──────────────────────────────────────┤
- * │ api              │ OPEN     │ (none) — 2026-08-16 解除 domain 依赖（见 ADR-0026）│
+ * │ api              │ OPEN     │ (none)，见 ADR-0026                  │
  * │ domain           │ OPEN     │ (none)                               │
  * │ application      │ CLOSED   │ api, domain                          │
- * │ web              │ CLOSED   │ api — 2026-08-16 解除 domain 依赖（见 ADR-0026）  │
+ * │ web              │ CLOSED   │ api，见 ADR-0026                     │
  * │ job              │ CLOSED   │ api                                  │
  * │ consumer         │ CLOSED   │ api                                  │
  * │ infrastructure   │ CLOSED   │ domain                               │
- * │ queryserver      │ CLOSED   │ api                          │
- * │ start            │ CLOSED   │ (none)                       │
+ * │ queryserver      │ CLOSED   │ api                                  │
+ * │ start            │ CLOSED   │ (none)                               │
  * </pre>
  */
+@DisplayName("soda-user 模块结构")
 class ModulithTest {
 
     @Test
-    void verifyModuleStructure() {
-        var modules = ApplicationModules.of("com.soda.user");
-        modules.verify();
+    @DisplayName("模块依赖关系校验通过")
+    void should_verifyModuleStructure() {
+        ApplicationModules.of("com.soda.user").verify();
     }
 
     @Test
-    void printModuleStructure() {
+    @DisplayName("模块结构可解析且非空")
+    void should_resolveNonEmptyModules() {
         var modules = ApplicationModules.of("com.soda.user");
         modules.forEach(System.out::println);
+        assertThat(modules).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("CLOSED 模块无未声明依赖")
+    void shouldHaveNoUndeclaredDependenciesInClosedModules() {
+        ModulithTestSupport.assertNoUndeclaredDependenciesInClosedModules("com.soda.user");
     }
 }

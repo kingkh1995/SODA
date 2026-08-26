@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * 独立依赖，不引入整个 Spring Security）；固定 10 轮成本因子（{@link #needsRehash} 以同值
  * 判定升级）。bcrypt 的 Blowfish 密钥调度最多吸收 72 字节输入、实现普遍静默截断——
  * {@link #hash()} 在入口 fail-fast 拒绝超限凭证；{@link #verify()} 不拦（存量截断哈希靠
- * 截断对称性照常匹配，见 ADR-0033 注记 8）。调用方应在 {@code hash()}/{@code verify()} 返回后尽快丢弃
+ * 截断对称性照常匹配，见 ADR-0033）。调用方应在 {@code hash()}/{@code verify()} 返回后尽快丢弃
  * {@link SecretValue} 引用（接口契约，本实现不保留、不日志）。
  */
 @Component

@@ -17,7 +17,7 @@ import lombok.EqualsAndHashCode;
  * 的 {@code positiveIntCacheHigh()} 自定义上限。
  * 超出缓存范围的值创建新实例，不受缓存影响。
  *
- * @see Type
+ * @see IntLiteralType
  * @see ArrayTypeCache
  */
 @EqualsAndHashCode
@@ -27,6 +27,9 @@ public final class PositiveInt implements IntLiteralType, Comparable<PositiveInt
     private static final ArrayTypeCache<PositiveInt> CACHE =
             new ArrayTypeCache<>(1, CACHE_HIGH, PositiveInt::new);
 
+    /**
+     * 单位值常量（1）。
+     */
     public static final PositiveInt ONE = CACHE.get(1);  // 1 始终在缓存范围
 
     private final int value;

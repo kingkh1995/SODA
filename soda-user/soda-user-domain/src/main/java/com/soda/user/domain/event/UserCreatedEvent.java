@@ -23,9 +23,6 @@ import java.time.Instant;
 public record UserCreatedEvent(User user, Instant occurredAt)
         implements DomainEvent<UserId> {
 
-    /**
-     * 默认使用当前时间。
-     */
     public UserCreatedEvent(User user) {
         this(user, Instant.now());
     }

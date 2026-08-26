@@ -1,19 +1,20 @@
 ---
 type: Convention
 title: Soda 编码规范
-description: 编码与注释标准。code-review 以本文件为「仓库编码标准」；新增/修改代码前读。
+description: 写 Java / 加注解 / 写注释 / 改依赖前读——编码与注释的仓库单一标准
 tags: [convention, styleguide, code]
 status: stable
 ---
 
 # 编码规范
 
-> 本文件是代码怎么写（风格 + 注释）的单一标准；框架层**有什么**（基类/接口/类型）见 `docs/framework-conventions.md`。
-> 测试怎么写（分层映射/通用写法/覆盖率）见 `docs/test-conventions.md`；DP 必测分组见 `docs/conventions/dp-test-conventions.md`。
+> 编码风格与注释的仓库单源；框架层有什么归 `docs/framework-conventions.md`（类型契约见
+> conventions/framework-type-contracts.md，跨切面见 conventions/framework-crosscutting.md）。测试规范见
+> `docs/test-conventions.md`；DP 必测分组见 `docs/conventions/dp-test-conventions.md`。
 
 ## 1. 语言与术语
 
-- 代码注释与文档用中文（项目裁定）；术语保留英文原文，用词对齐 `CONTEXT.md` 词汇表
+- 代码注释与文档用中文（项目裁定）；术语以 `CONTEXT.md` 为 **单源**——保留英文原词、对齐其词表，本文件不重定义
 - 异常消息用英文
 
 ## 2. 代码风格
@@ -22,14 +23,14 @@ status: stable
 
 优先使用 JDK 最新特性，不重复造轮子：
 
-| 场景 | 优先使用 | 禁止 |
-|---|---|---|
-| 不可变值对象（DP、DTO） | `record`（JDK 16+） | 手写 class + `@EqualsAndHashCode` + `toString()` |
-| 封闭集合建模 | `sealed` + `permits`，switch 分派依赖编译期穷举 | sealed 层次的 switch 写 `default` 兜底；把开放继承当封闭集用 |
-| 空值校验 + 值归一化 | record 紧凑构造 | 在工厂方法中校验 |
-| 工厂方法（DP） | `of`（参数即值）、`from`（跨类型转换）、`parse(String)`（字符串解析） | `valueOf(Object)` |
-| 局部变量类型 | `var`（JDK 10+） | 显式冗长类型 |
-| DP 序列化 | `Serializable` + `@Serial`（仅在明确需要时） | 无 `implements Serializable` 时留 `@Serial` |
+| 场景                    | 优先使用                                                                                                          | 禁止                                                         |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| 不可变值对象（DP、DTO） | `record`（JDK 16+）                                                                                               | 手写 class + `@EqualsAndHashCode` + `toString()`             |
+| 封闭集合建模            | `sealed` + `permits`，switch 分派依赖编译期穷举                                                                   | sealed 层次的 switch 写 `default` 兜底；把开放继承当封闭集用 |
+| 空值校验 + 值归一化     | record 紧凑构造                                                                                                   | 在工厂方法中校验                                             |
+| 工厂方法（DP）          | `of(T)`（参数即底层规范值）、`from`/`fromXxx`（跨类型转换）；`parse(String)` 仅当 `of`/构造器参数非 String 时出现 | 禁止 `valueOf(Object)`                                       |
+| 局部变量类型            | `var`（JDK 10+）                                                                                                  | 显式冗长类型                                                 |
+| DP 序列化               | `Serializable` + `@Serial`（仅在明确需要时）                                                                      | 无 `implements Serializable` 时留 `@Serial`                  |
 
 `var` 仅限局部变量——字段、方法参数、返回值不用。
 
@@ -70,11 +71,13 @@ Entity 承载业务状态，判空应明确哪个字段为 null；DP 类型简�
 | 序列化 | `@JsonValue` | record 组件（`@JsonValue long value`）或访问器方法 |
 | 反序列化 | 无需（Jackson 3 原生推断 record 典范构造器，模式总表见 dp-conventions §5.1） | — |
 
-Entity JSON 契约见 framework-conventions 谱系（entity-aggregate）；框架契约型注解（`@JsonTypeInfo`/`@JsonAutoDetect` 等）随各自契约文档，不入本章。
+Entity JSON 契约见 conventions/framework-type-contracts.md「Entity」条目；框架契约型注解（`@JsonTypeInfo`/`@JsonAutoDetect`
+等）随各自契约文档，不入本章。
 
 ### 3.2 JSpecify 空性标注
 
-项目使用 JSpecify 1.0，覆盖全部 4 个注解；编译期明确空性，杜绝 NPE。
+项目使用 JSpecify 1.0（Spring 7 自身即 `@NullMarked`），覆盖全部 4 个注解；编译期明确空性，杜绝 NPE。本节是空性标注规则的
+**单源**——框架层文档只指不述。
 
 | 注解 | 语义 | 本项目使用 |
 |---|---|---|
@@ -83,8 +86,11 @@ Entity JSON 契约见 framework-conventions 谱系（entity-aggregate）；框�
 | `@NonNull` | 排除 null | ⚠️ 仅非空投影，禁止冗余标注 |
 | `@NullUnmarked` | 退出 `@NullMarked` | ❌ 禁止 |
 
-**必须加 `@Nullable`**：实体的可选字段（getter 返回 `Optional<T>`）、未持久化标识符（`private @Nullable ID id`）、工厂/构造器中对应可选字段的参数、立即校验拒绝 null 的工具参数。
-**禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为 null）。
+**标注位置**：字段类型、参数、返回、类型参数（`List<@Nullable T>`）、record 组件。 **必须加 `@Nullable`**：实体的可选字段（getter
+返回 `Optional<T>`）、未持久化标识符（`private @Nullable ID id`——瞬态字段的使用点由调用方保证非空，方法路径无运行时窄化守卫）、工厂/构造器中对应可选字段的参数、立即校验拒绝
+null 的工具参数。
+**禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为 null）。 **不返回
+`Optional<@Nullable T>`**——Optional 本身表达可空返回。
 **局部变量**：根类型不标注，由赋值推断。
 **外部库互操作**：未标 `@NullMarked` 的库返回值是 unspecified nullness——调用点显式检查或 `Optional.ofNullable()` 包装。
 
@@ -104,20 +110,23 @@ Entity JSON 契约见 framework-conventions 谱系（entity-aggregate）；框�
 
 ### 3.4 MapStruct
 
-| 规则 | 内容 |
-|---|---|
-| 适用边界 | 仅 adapter 协议转换（Request → Command、DTO → Response）；infrastructure PO ↔ 领域 convertor 手写——final 类 + 全量构造含显式 null 清空列语义（见现行 framework-conventions「Convertor（基础设施）」节，07 迁入 conventions/infrastructure.md），不采用 MapStruct |
-| 组件模型 | `@Mapper(componentModel = "spring")` 固定——生产注入生成 bean；`Mappers.getMapper(...)` 仅测试 |
-| 映射策略 | by-name 优先；仅名称不一致时写显式 `@Mapping` |
-| 未映射目标 | `unmappedTargetPolicy = ERROR`——协议字段漏映射编译期拦截；有意不映射须显式 `ignore = true` 自证 |
+| 规则       | 内容                                                                                                                                                                                                                                    |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 适用边界   | 仅 adapter 协议转换（Request → Command、DTO → Response）；infrastructure PO ↔ 领域 convertor 手写——final 类 + 全量构造含显式 null 清空列语义（见 conventions/framework-type-contracts.md「Convertor（基础设施）」节），不采用 MapStruct |
+| 组件模型   | `@Mapper(componentModel = "spring")` 固定——生产注入生成 bean；`Mappers.getMapper(...)` 仅测试                                                                                                                                           |
+| 映射策略   | by-name 优先；仅名称不一致时写显式 `@Mapping`                                                                                                                                                                                           |
+| 未映射目标 | `unmappedTargetPolicy = ERROR`——协议字段漏映射编译期拦截；有意不映射须显式 `ignore = true` 自证                                                                                                                                         |
 
 转换器契约语义（命名、方向、使用约定）归 `docs/conventions/adapter.md` WebAssembler 条目。
 
 ## 4. 注释规范
 
-依据：Google Java Style §7（格式/摘要/块标签/两例外/TODO）+ Developer Style（主动语态/现在时/简洁）+ agent 意图型注释实践（02 研究）。
+适用面：一切随代码提交的解释性文本——Java Javadoc 与行注释、Flyway 迁移脚本的 DDL COMMENT、配置文件注释。
 
-执行：code-review 以本文件为核查基准——§4.5 no-op 是语义判据，人工判定；机械格式项（块标签顺序、空描述、装饰边框）可加 checkstyle 规则，07 评估后可选启用。
+依据：Google Java Style §7（格式/摘要/块标签/两例外/TODO）+ Developer Style（主动语态/现在时/简洁）+ agent 意图型注释实践。
+
+执行：code-review 以本文件为核查基准——§4.5 no-op 是语义判据，人工判定；机械格式项（块标签顺序、空描述、装饰边框）可加
+checkstyle 规则，漂移真实出现时再评估启用。
 
 ### 4.1 必须写 Javadoc
 
@@ -160,14 +169,14 @@ public/protected 的类、接口、方法、构造器、字段（Google §7.3）
 
 注释是**意图载体**，不是行为记录。每句注释过 **no-op 测试**：删掉它，读者是否失去信息？——失去则留，否则删整句（WfA：no-op 删整句）。
 
-| 写 | 不写 |
-|---|---|
-| 不变量、前置/后置条件、吸收态语义 | 复述方法名的单句（"修改用户名。"） |
-| 规则**为什么**存在（最终态理由） | 逐步描述实现过程 |
-| CONTEXT.md 术语原词、「见 ADR-NNNN」锚点 | 复述 CONTEXT.md 词条定义；inline 展开 ADR 决策内容 |
-| 签名之外的契约（可空、时钟注入、副作用、事务边界） | 显而易见的直译 |
-| 反直觉语义（如 `isVerified()` 含已使用态） | 环境可见事实（序列化细节、框架声明） |
-| — | **决策历史**：日期、变更沿革、"原为…现为…"、被否方案——演进叙事归 git 历史，不归注释 |
+| 写                                                                 | 不写                                                                                |
+|--------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| 不变量、前置/后置条件、吸收态语义                                  | 复述方法名的单句（"修改用户名。"）                                                  |
+| 规则**为什么**存在（最终态理由）                                   | 逐步描述实现过程                                                                    |
+| CONTEXT.md 术语原词、「见 ADR-NNNN」锚点（编号即定位、标题即命名） | 复述 CONTEXT.md 词条定义；inline 展开 ADR 决策内容                                  |
+| 签名之外的契约（可空、时钟注入、副作用、事务边界）                 | 显而易见的直译                                                                      |
+| 反直觉语义（如 `isVerified()` 含已使用态）                         | 环境可见事实（序列化细节、框架声明）                                                |
+| —                                                                  | **决策历史**：日期、变更沿革、"原为…现为…"、被否方案——演进叙事归 git 历史，不归注释 |
 
 ### 4.6 格式
 

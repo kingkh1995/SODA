@@ -16,9 +16,10 @@ import java.math.RoundingMode;
  * 规范值为 {@link BigDecimal#toPlainString()} 的 String（{@code @JsonValue}，继承自
  * {@link StringLiteralType}，见 ADR-0028），{@link BigDecimal} 派生缓存。
  * <p>
- * 通过 {@link #fromYuan(BigDecimal)} 从元转换，精度到百元（最多 2 位小数），可为负。
+ * 通过 {@link #fromYuan(BigDecimal)} 从元转换，精度到百元（最多 2 位小数，SPI 可调），可为负。
+ * 超出 {@link Fen} 值域（约 ±2147 万元）的金额用本 DP。
  *
- * @see Type
+ * @see StringLiteralType
  * @see DecimalLiteralType
  */
 @EqualsAndHashCode(callSuper = true)

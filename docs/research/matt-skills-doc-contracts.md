@@ -1,6 +1,25 @@
+---
+type: Research
+title: matt-pocock-skills 文档消费契约研究
+description: 锚点：重构 SODA 文档体系（AGENTS/CONTEXT/ADR/STYLEGUIDE/agents 目录）时，按 matt-pocock 技能硬编码的结构契约与可改边界执行，避免破坏技能读取。
+tags: [agent-skills, documentation, contracts]
+status: stable
+generated:
+  by: wayfinder/03
+  at: 2026-08-14T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-14T00:00:00Z
+sources:
+  - resource: https://github.com/mattpocock/skills
+    id: mattpocock-skills
+    author: Matt Pocock
+    title: matt-pocock/skills（SKILL.md · docs/agents 模板 · FORMAT 文件）
+---
 # matt-pocock-skills 文档消费契约研究（wayfinder 03）
 
-> 研究日期：2026-08-14。来源：`D:\Workspace\skills`（matt-pocock/skills 源码克隆）与 `C:\Users\mm\.claude\skills`（本地安装副本）的 SKILL.md 原文、`docs/agents/` 模板、CONTEXT-FORMAT.md / ADR-FORMAT.md、AGENT-BRIEF.md。
+> 来源：`D:\Workspace\skills`（matt-pocock/skills 源码克隆）与 `C:\Users\mm\.claude\skills`（本地安装副本）的 SKILL.md 原文、
+> `docs/agents/` 模板、CONTEXT-FORMAT.md / ADR-FORMAT.md、AGENT-BRIEF.md。
 > 用途：为「文档体系设计定案」（wayfinder 05）提供"技能侧契约"输入——重构后的文档集必须满足什么、可以改什么。
 
 ## 一、技能 → 文档映射（谁读什么、期望什么结构）

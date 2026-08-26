@@ -32,13 +32,12 @@ import org.springframework.util.Assert;
 import java.util.List;
 
 /**
- * 用户凭证相关的 ApplicationService 实现 — <b>UCC 发码与消费完整归位</b>
- * （2026-08-16，见 ADR-0026——{@code VerificationService} 作废，0021 曾迁出的发码用例回归 User 侧，
- * 主体裁定为 User，Verification 是协助方聚合）。
+ * 用户凭证相关的 ApplicationService 实现 — UCC 发码与消费的编排方
+ * （主体为 User，Verification 是协助方聚合，见 ADR-0026）。
  * <p>
  * 发码（{@link #requestChangeMobileCode}/{@link #requestChangeEmailCode}）：前置
  * （加载用户启用态 + 非终态 + target ≠ 当前值 + 目标全局唯一 + 无活跃验证）→
- * {@link UserVerificationFactory#create} 构造 INITIALIZED 验证聚合 → 同事务惰性 DELETE 腾槽 →
+ * {@link UserVerificationFactory} 构造 INITIALIZED 验证聚合 → 同事务惰性 DELETE 腾槽 →
  * save → 发布 {@code VerificationCreatedEvent}（物理发送由投递侧监听器在事务提交后执行，见 ADR-0011）。
  * <p>
  * 消费（verify → change → use）委托 {@link CredentialChangeDomainService}，按 <b>source 键控</b>
@@ -73,13 +72,13 @@ public class UserAuthServiceImpl
         this.userVerificationFactory = userVerificationFactory;
     }
 
-    // ─── UCC 发码（2026-08-16 回归 User 侧，见 ADR-0026）───
+    // ─── UCC 发码 ───
 
     @Override
     public void requestChangeMobileCode(RequestChangeMobileCodeCommand command) {
         log.info("requestChangeMobileCode: command={}", command);
         var user = requireEnabled(new UserId(command.userId()));
-        var target = new Mobile(command.newMobile());
+        var target = Mobile.of(command.newMobile());
         Assert.isTrue(!target.equals(user.getMobile().orElse(null)),
                 "Cannot change to the same mobile");
         Assert.isTrue(!gateway.existsByMobile(target),
@@ -91,7 +90,7 @@ public class UserAuthServiceImpl
     public void requestChangeEmailCode(RequestChangeEmailCodeCommand command) {
         log.info("requestChangeEmailCode: command={}", command);
         var user = requireEnabled(new UserId(command.userId()));
-        var target = new Email(command.newEmail());
+        var target = Email.of(command.newEmail());
         Assert.isTrue(!target.equals(user.getEmail().orElse(null)),
                 "Cannot change to the same email");
         Assert.isTrue(!gateway.existsByEmail(target),
@@ -135,11 +134,11 @@ public class UserAuthServiceImpl
 
     /**
      * 发码公共尾部 — 先构造（source 取自已构造的验证实体，服务层零并行推导）→ 槽位预检
-     * （Assert 守卫，existsBy 键存在性契约——活跃/过期判定归基础设施，见 ADR-0026）→
-     * save（惰性 DELETE 过期 I/P 行收敛在 gateway 实现内，见 ADR-0026）→ 发布创建事件。
+     * （Assert 守卫，existsBy 键存在性契约——活跃/过期判定归基础设施，见 ADR-0025 活跃验证唯一性）→
+     * save（惰性 DELETE 过期 I/P 行收敛在 gateway 实现内腾槽，见 ADR-0025）→ 发布创建事件。
      * <p>
      * 并发撞 {@code uk_active_key}：预检 + DB 兜底（唯一索引仲裁）——异常<b>原样上抛</b>，
-     * 不翻译（基础设施异常语义即契约，2026-08-16 会话修订，见 ADR-0026）。
+     * 不翻译（基础设施异常语义即契约，见 ADR-0025 原样上抛）。
      */
     private void requestCode(UserId userId, VerificationRecipient<?> recipient) {
         var verification = userVerificationFactory.newCredentialChangeVerification(userId, recipient);
@@ -150,7 +149,7 @@ public class UserAuthServiceImpl
     }
 
     /**
-     * 加载用户并断言凭证用例前置（非终态 + 启用态）——发码与消费共用（2026-08-16，见 ADR-0026）：
+     * 加载用户并断言凭证用例前置（非终态 + 启用态）——发码与消费共用（见 ADR-0026）：
      * 发码不触发聚合变更，启用态无 {@code mustEnable} 兜底；消费路径聚合 {@code mustEnable} 仍兜底，
      * 此处前置提前失败（R 态用户得到「terminal state」而非「must be enabled」的准确消息）。
      * 组合领域守卫（{@code requireNotTerminal} + {@link User#mustEnable()}，单一规则来源）。
@@ -163,7 +162,7 @@ public class UserAuthServiceImpl
 
     /**
      * 断言该用户最新且未过期的 UCC（credential change）PENDING 验证并返回 —
-     * changeMobile / changeEmail 的公共查询（方法名即场景，2026-08-16 见 ADR-0026）。
+     * changeMobile / changeEmail 的公共查询（方法名即场景，见 ADR-0026）。
      * <p>
      * 按 source 键控加载（{@code credentialChangeSource}——消费命令不含 target，换绑的
      * 新联系方式隐含在验证记录中；source 匹配守卫在 {@code User.changeXxx} 保留为防御纵深）；

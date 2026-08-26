@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.SensitiveValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 
@@ -21,7 +21,7 @@ public final class IdCard extends SensitiveValue {
 
     private static final Pattern PATTERN = Pattern.compile("^\\d{17}[\\dXx]$");
 
-    public IdCard(String value) {
+    private IdCard(String value) {
         super(value == null ? null : value.toUpperCase(Locale.ROOT));
         ValidateUtils.matches(value(), PATTERN);
     }
@@ -29,5 +29,13 @@ public final class IdCard extends SensitiveValue {
     @Override
     public String maskedValue() {
         return MaskedIdCard.from(this).value();
+    }
+
+    /**
+     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static IdCard of(String raw) {
+        return new IdCard(raw);
     }
 }

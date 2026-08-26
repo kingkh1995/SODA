@@ -11,12 +11,19 @@ import lombok.EqualsAndHashCode;
  * 不可变，缓存 TRUE / FALSE 单例。
  * 提供 {@link #negate()} 用于取反。
  *
- * @see Type
+ * @see BooleanLiteralType
  */
 @EqualsAndHashCode
 public final class Active implements BooleanLiteralType {
 
+    /**
+     * 真值单例（激活）。
+     */
     public static final Active TRUE = new Active(true);
+
+    /**
+     * 假值单例（未激活）。
+     */
     public static final Active FALSE = new Active(false);
 
     private final boolean value;

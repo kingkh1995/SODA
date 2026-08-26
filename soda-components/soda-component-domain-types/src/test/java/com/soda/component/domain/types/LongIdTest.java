@@ -4,16 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("LongId 值对象")
 class LongIdTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -34,9 +31,8 @@ class LongIdTest {
     }
 
     @Nested
-    @DisplayName("校验")
+    @DisplayName("校验与异常")
     class Validation {
-
 
         @Test
         @DisplayName("0 拒绝（minValue exclusive）")
@@ -68,7 +64,7 @@ class LongIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
+    @DisplayName("相等性与 hashCode")
     class Equality {
 
         @Test
@@ -91,26 +87,22 @@ class LongIdTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new LongId(42)).hasToString("LongId[value=42]");
-        }
-    }
-
-    @Nested
     @DisplayName("序列化")
     class Serialization {
 
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(new LongId(42), LongId.class);
+            var original = new LongId(42);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, LongId.class)).isEqualTo(original);
         }
 
+        @Test
+        @DisplayName("从裸数字反序列化")
+        void should_deserializeFromBareNumber() throws Exception {
+            assertThat(MAPPER.readValue("42", LongId.class)).isEqualTo(new LongId(42));
+        }
         @Test
         @DisplayName("序列化为裸数字")
         void should_serializeAsNumber() throws Exception {
@@ -146,4 +138,16 @@ class LongIdTest {
             assertThat(a).isEqualTo(same);
         }
     }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new LongId(42)).hasToString("LongId[value=42]");
+        }
+    }
+
 }

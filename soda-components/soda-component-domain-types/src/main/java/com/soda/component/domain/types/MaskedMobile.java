@@ -6,23 +6,22 @@ import com.soda.component.domain.util.ValidateUtils;
 import java.util.regex.Pattern;
 
 /**
- * 已脱敏手机号 —— 存储格式为 {@code 138****8000}，保留前 3 位和后 4 位的掩码唯一权威实现（见 ADR-0032）。
+ * 已脱敏手机号 —— 存储格式为 {@code 138****8000}（保留前 3 位和后 4 位），掩码唯一权威实现（见 ADR-0032）。
  *
  * @see Mobile 原始值 DP
  * @see Ciphertext 可逆加密信封
  */
 public record MaskedMobile(String value) implements StringLiteralType {
 
-    private static final Pattern PATTERN = Pattern.compile("^\\d{3}\\*{4}\\d{4}$");
+    private static final Pattern PATTERN = Pattern.compile("^1[3-9]\\d\\*{4}\\d{4}$");
 
     public MaskedMobile {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    public static MaskedMobile of(String value) {
-        return new MaskedMobile(value);
-    }
-
+    /**
+     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
+     */
     public static MaskedMobile from(Mobile mobile) {
         return new MaskedMobile(maskOf(mobile.value()));
     }

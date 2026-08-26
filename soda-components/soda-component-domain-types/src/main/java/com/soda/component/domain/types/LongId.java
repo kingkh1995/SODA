@@ -7,12 +7,10 @@ import com.soda.component.domain.util.ValidateUtils;
 
 
 /**
- * {@code Long} 类型标识符 — 通用 DP，项目中最基础的长整型 ID 类型。
+ * 通用长整型标识符 DP — 不可变、自校验、可比较。
  * <p>
- * 遵循 DP 规范：不可变、自校验、可比较。
- * 紧凑构造器为主入口（{@code new LongId(long)}），提供 {@code parse(String)} 字符串解析。
- * <p>
- * 参考 kk-ddd 的 {@code LongId} 设计。
+ * 值域 value ≥ 1：0 与负数非法。
+ * 紧凑构造器为主入口，提供 {@code parse(String)} 字符串解析。
  *
  * @see Identifier
  */

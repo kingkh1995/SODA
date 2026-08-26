@@ -1,6 +1,28 @@
+---
+type: Research
+title: Google 注释规范研究
+description: 锚点：制定或评审 SODA 注释/Javadoc 标准（格式、块标签、必写范围、中文冲突、agent 注释）时，按 Google Java Style §7 与 Developer Style 规则迁移执行。
+tags: [google-style, javadoc, comments]
+status: stable
+generated:
+  by: wayfinder/02
+  at: 2026-08-14T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-14T00:00:00Z
+sources:
+  - resource: https://google.github.io/styleguide/javaguide.html
+    id: google-java-style
+    author: Google
+    title: Google Java Style Guide（§7 Comments）
+  - resource: https://developers.google.com/style
+    id: google-developer-style
+    author: Google
+    title: Google Developer Documentation Style Guide
+---
 # Google 注释规范研究（wayfinder 02）
 
-> 研究日期：2026-08-14。用途：为「注释标准定案」（wayfinder 06）提供 Google 侧输入。
+> 用途：为「注释标准定案」（wayfinder 06）提供 Google 侧输入。
 > 来源均为 Google 官方文档或 Google 工程师一手材料；引用保留原文，转述标注〔转述〕。
 
 ## 一、Google Java Style Guide 注释规则（javaguide.html §7）

@@ -11,7 +11,7 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 
 /**
- * 社交认证账户实体 — 第三方社交账号（Gitee/DingTalk/WeChat）方式的认证。
+ * 社交认证账户实体 — 第三方社交账号映射。
  * <p>
  * 纯标识映射，无密码验证。SocialType + openId 编码在 {@link SocialAuthAccountId} 中。
  *
@@ -50,26 +50,16 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
 
     // ─── accessors ───
 
-    /**
-     * 认证类型 — 常量来源为 {@link SocialAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
-     */
     @Override
     public AuthAccountType getAccountType() {
         return SocialAuthAccountId.ACCOUNT_TYPE;
     }
 
-    /**
-     * 社交平台类型（@JsonIgnore：数据在 id 字段中，避免 JSON 属性冲突）。
-     */
     public SocialType getSocialType() {
         return getId().socialType();
     }
 
-    /**
-     * 社交平台用户开放 ID（数据在 id 字段中，避免 JSON 属性冲突）。
-     */
     public String getOpenId() {
         return getId().openId();
     }
-
 }

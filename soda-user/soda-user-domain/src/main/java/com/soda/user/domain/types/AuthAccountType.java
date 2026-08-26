@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 
+/**
+ * 认证方式枚举。取值：P（Password）、S（Sms）、E（Email）、O（OAuth）。
+ */
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor

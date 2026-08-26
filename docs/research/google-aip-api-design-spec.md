@@ -1,12 +1,28 @@
+---
+type: Research
+title: SODA API 设计规范（基于 Google AIP）
+description: 锚点：设计或评审 SODA REST API（Adapter/API 层资源、HTTP 方法、字段、错误、兼容性）时，按 Google AIP 适配规则逐条溯源执行。
+tags: [api-design, google-aip, rest]
+status: stable
+generated:
+  by: wayfinder/01
+  at: 2026-08-03T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-03T00:00:00Z
+sources:
+  - resource: https://google.aip.dev
+    id: google-aip
+    author: Google
+    title: Google API Improvement Proposals（AIP）
+---
 # SODA API 设计规范（基于 Google AIP）
 
 > **唯一信息来源**：[google.aip.dev](https://google.aip.dev) — Google API Improvement Proposals。
-> 本文档将 Google AIP 规范适配为 Java / Spring Boot / DDD REST API 设计规范。
 >
 > **引用格式说明**：
 > - 表格中 `AIP` 列标注源 AIP 编号
 > - 正文中使用 `[来源: AIP-XXX](https://google.aip.dev/XXX)` 标注引用
-> - 所有规则和声明均可溯源至 Google AIP 原文
 
 ---
 
@@ -242,7 +258,7 @@ record ListUsersResponse(
 
 > PUT 是全量替换。当 API 新增字段时，之前的 PUT 请求会静默丢失新字段的数据。PATCH 只更新指定字段，是向后兼容的。
 
-**SODA 适配**：项目已决定禁止 PUT（ADR-0009），与 AIP-134 一致。
+**SODA 适配**：项目已决定禁止 PUT（ADR-0012），与 AIP-134 一致。
 
 **Etag 乐观锁** [来源: AIP-134](https://google.aip.dev/134), [AIP-154](https://google.aip.dev/154)：
 
@@ -273,7 +289,9 @@ record ListUsersResponse(
 | 自定义动词 **必须** 使用 `camelCase` | MUST | [AIP-136](https://google.aip.dev/136) |
 | `body` **应当** 是 `"*"` | SHOULD | [AIP-136](https://google.aip.dev/136) |
 
-**SODA 适配**：项目使用 `POST /{resource}/{id}:{action}` 模式（如 `POST /users/1:disable`），与 AIP-136 一致。集合级自定义方法（无 parent 顶层集合）同样允许：`POST /collection:verb`（如 Firebase Identity Toolkit `POST /v1/accounts:signUp`、`accounts:sendOobCode`）——预认证/无资源场景（ULG/UPR/URG 发码）适用，见 ADR-0026。
+**SODA 适配**：项目使用 `POST /{resource}/{id}:{action}` 模式（如 `POST /users/1:disable`），与 AIP-136 一致。集合级自定义方法（无
+parent 顶层集合）同样允许：`POST /collection:verb`（如 Firebase Identity Toolkit `POST /v1/accounts:signUp`、
+`accounts:sendOobCode`）——预认证/无资源场景（ULG/UPR/URG 发码）适用，见 ADR-0026 Verification 双概念模型。
 
 **SODA 自定义方法命名规范**（[来源: AIP-136](https://google.aip.dev/136)）：
 
@@ -530,7 +548,9 @@ record ListUsersResponse(
 
 ---
 
-## 6. 命名规范 [来源: AIP-190](https://google.aip.dev/190)
+## 6. 命名规范
+
+_来源: [AIP-190](https://google.aip.dev/190)_
 
 ### 6.1 总体原则
 
@@ -575,7 +595,9 @@ record ListUsersResponse(
 
 ---
 
-## 7. 错误处理 [来源: AIP-193](https://google.aip.dev/193)
+## 7. 错误处理
+
+_来源: [AIP-193](https://google.aip.dev/193)_
 
 ### 7.1 错误响应结构
 
@@ -669,7 +691,9 @@ record Result<T>(
 
 ---
 
-## 8. 向后兼容性 [来源: AIP-180](https://google.aip.dev/180)
+## 8. 向后兼容性
+
+_来源: [AIP-180](https://google.aip.dev/180)_
 
 ### 8.1 三种兼容性类型
 
@@ -709,7 +733,7 @@ record Result<T>(
 
 ### 9.1 已有约定与 AIP 的对齐
 
-SODA 项目已有约定（ADR-0009）与 Google AIP 高度一致：
+SODA 项目已有约定（ADR-0012）与 Google AIP 高度一致：
 
 | SODA 约定 | AIP 对应 | 一致性 |
 |---|---|---|

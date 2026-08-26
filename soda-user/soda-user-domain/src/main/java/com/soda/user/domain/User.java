@@ -39,10 +39,14 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * 用户聚合根 — 核心业务实体，管理用户身份信息和认证账户集合。
+ * 用户身份聚合根 — 持有一组 AuthAccount 子实体与用户资料属性。
  * <p>
  * 创建时通过 {@link #createBuilder()} 构建，不含 ID（服务端生成）；
  * 持久化恢复通过 {@link #builder()}。
+ * <p>
+ * 不变量：passwordAccount 为构造期必填独立字段（每 User 恰一个密码账户，ADR-0004 类型化）；
+ * accounts 仅存可选账户且同类型至多一条；状态机 E/D/R（R 吸收态终态，见 ADR-0017），
+ * 注销后的键释放是基础设施表示决策，领域不感知（见 ADR-0023）。
  *
  * @see Aggregate
  */
@@ -183,7 +187,10 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 添加可选认证账户到用户聚合（密码账户为独立字段，不允许放入 accounts）。
+     * 添加可选认证账户。
+     * <p>
+     * 前置：账户须为激活状态、同类型账户不重复；密码账户为独立字段，不允许放入 accounts。
+     * 已包含同一实例时 no-op。
      */
     protected void addAccount(AuthAccount<?> account) {
         Assert.isTrue(!(account instanceof PasswordAuthAccount), "Password account must be set separately.");
@@ -195,39 +202,30 @@ public class User extends Aggregate<UserId> {
         this.accounts.add(account);
     }
 
+    /**
+     * 移除指定类型的可选账户（该类型至多一条；密码账户为独立字段，不受影响）。
+     */
     protected void removeAccount(AuthAccountType accountType) {
         this.accounts.removeIf(account -> Objects.equals(account.getAccountType(), accountType));
     }
 
     // ─── 属性修改 ───
 
-    /**
-     * 修改用户名。
-     */
     public void changeUsername(Username newUsername) {
         mustEnable();
         this.username = newUsername;
     }
 
-    /**
-     * 修改昵称。
-     */
     public void changeNickname(Nickname nickname) {
         mustEnable();
         this.nickname = nickname;
     }
 
-    /**
-     * 修改性别。
-     */
     public void changeSex(@Nullable Sex sex) {
         mustEnable();
         this.sex = sex;
     }
 
-    /**
-     * 修改头像。
-     */
     public void changeAvatar(@Nullable Avatar avatar) {
         mustEnable();
         this.avatar = avatar;
@@ -253,17 +251,17 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 修改手机号（需要手机号验证码）。
+     * 修改手机号（消费 UCC 验证聚合）。
      * <p>
-     * 业务规则：
+     * 前置：
      * <ul>
-     *   <li>验证主体必须匹配本用户（source 匹配——subject 裸键串，见 ADR-0026）</li>
-     *   <li>验证场景必须为 UCC（credential change）——其他场景的验证码不可用于换绑</li>
-     *   <li>验证必须处于 VERIFIED 状态（{@code isVerified()} 单一规则来源；USED 为终态，不可重放）</li>
-     *   <li>验证投递端点必须是手机号且不能修改为相同的手机号</li>
-     *   <li>更新 User.mobile 字段</li>
-     *   <li>替换旧 SmsAuthAccount 为新账户</li>
+     *   <li>source 匹配本用户——subject 裸键串与 userId 相等（按 source 加载即主体匹配，
+     *       此处保留为防御纵深，见 ADR-0026）</li>
+     *   <li>场景为 UCC——其他场景的验证码不可用于换绑</li>
+     *   <li>VERIFIED 状态（USED 为终态，不可重放）</li>
+     *   <li>recipient 为 {@link SmsRecipient} 且目标手机号不同于当前值</li>
      * </ul>
+     * 后置：mobile 字段与 SmsAuthAccount 同步替换（联动不变量——二者恒一致）。
      *
      * @param verification 已通过验证的验证聚合（recipient 为 {@link SmsRecipient}）
      */
@@ -272,7 +270,7 @@ public class User extends Aggregate<UserId> {
         Assert.isTrue(Objects.equals(verification.getSource().scene(), UserVerificationScene.UCC.name()),
                 "verification scene must be credential change, but was " + verification.getSource().scene());
         // subject 裸键串推导与 UserVerificationFactory.source 一致——防御纵深守卫（find-by-source 已按
-        // 构造精确，此处冗余兜底；推导刻意留在聚合侧而非复用工厂，见 ADR-0026 §9）
+        // 构造精确，此处冗余兜底；推导刻意留在聚合侧而非复用工厂，见 ADR-0026 双概念模型）
         Assert.isTrue(Objects.equals(verification.getSource().subject(), Long.toString(getId().value())),
                 "verification subject must match user " + getId().value()
                         + ", but was " + verification.getSource().subject());
@@ -291,17 +289,17 @@ public class User extends Aggregate<UserId> {
     }
 
     /**
-     * 修改邮箱（需要邮箱验证码）。
+     * 修改邮箱（消费 UCC 验证聚合）。
      * <p>
-     * 业务规则：
+     * 前置：
      * <ul>
-     *   <li>验证主体必须匹配本用户（source 匹配——subject 裸键串，见 ADR-0026）</li>
-     *   <li>验证场景必须为 UCC（credential change）——其他场景的验证码不可用于换绑</li>
-     *   <li>验证必须处于 VERIFIED 状态（{@code isVerified()} 单一规则来源；USED 为终态，不可重放）</li>
-     *   <li>验证投递端点必须是邮箱且不能修改为相同的邮箱</li>
-     *   <li>更新 User.email 字段</li>
-     *   <li>替换旧 EmailAuthAccount 为新账户</li>
+     *   <li>source 匹配本用户——subject 裸键串与 userId 相等（按 source 加载即主体匹配，
+     *       此处保留为防御纵深，见 ADR-0026）</li>
+     *   <li>场景为 UCC——其他场景的验证码不可用于换绑</li>
+     *   <li>VERIFIED 状态（USED 为终态，不可重放）</li>
+     *   <li>recipient 为 {@link EmailRecipient} 且目标邮箱不同于当前值</li>
      * </ul>
+     * 后置：email 字段与 EmailAuthAccount 同步替换（联动不变量——二者恒一致）。
      *
      * @param verification 已通过验证的验证聚合（recipient 为 {@link EmailRecipient}）
      */
@@ -330,15 +328,9 @@ public class User extends Aggregate<UserId> {
     // ─── 生命周期守卫 ───
 
     /**
-     * 状态前置守卫 — 变更方法必须处于启用状态（E）。
-     * <p>
-     * 语义：禁用（D）与注销（R）均为非启用态——D 仅可 {@link #enable()} / {@link #deregister()}，
-     * R 为吸收态（终态）无任何操作；本守卫一个检查覆盖全部（见 ADR-0017）。
-     */
-    /**
-     * 断言启用态（{@code UserState.E}）——用户域不变量：变更方法（changeXxx）与发码前置
-     * （{@code UserAuthService.requireEnabled}，2026-08-16 见 ADR-0026）共用的单一守卫，
-     * 服务层不重复该规则（防消息/逻辑漂移）。
+     * 断言启用态（E）——变更方法（changeXxx）与发码前置共用的单一守卫，服务层不重复该规则
+     * （防消息/逻辑漂移）。D 与 R 均拒绝：D 仅可 {@link #enable()} / {@link #deregister()}，
+     * R 为吸收态无任何操作（见 ADR-0017）。
      */
     public void mustEnable() {
         Assert.isTrue(UserState.E.equals(state), "user must be enabled");

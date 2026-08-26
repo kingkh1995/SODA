@@ -15,20 +15,21 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link VerificationConvertor} 转换单测（2026-08-16 source/recipient 双概念重写，见 ADR-0026）。
+ * {@link VerificationConvertor} 转换单测（source/recipient 双概念，见 ADR-0026）。
  * <p>
  * {@code toPersistence} 全量构造（创建路径 INSERT 的数据来源，ADR-0024）——重点验证：
- * subject 裸键、channel/target 双列（2026-08-16 修订，见 ADR-0026 注记）、active_key 恒设
+ * subject 裸键、channel/target 双列（见 ADR-0026 注记）、active_key 恒设
  * source.compositeKey()（终态清 NULL 收敛进 gateway.save）、restore 双参工厂。
  */
 @DisplayName("VerificationConvertor 转换")
 class VerificationConvertorTest {
 
     private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
-    private static final Mobile MOBILE = new Mobile("13800138000");
-    private static final Email EMAIL = new Email("user@test.com");
+    private static final Mobile MOBILE = Mobile.of("13800138000");
+    private static final Email EMAIL = Email.of("user@test.com");
     private static final Instant EXPIRE_AT = Instant.parse("2026-08-15T12:00:00Z");
 
     private static Verification uccVerification(VerificationState state, Instant expireAt) {
@@ -117,7 +118,7 @@ class VerificationConvertorTest {
         var po = VerificationConvertor.toPersistence(uccVerification(VerificationState.I, EXPIRE_AT));
         po.setChannel("X");
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-                IllegalArgumentException.class, () -> VerificationConvertor.toDomain(po));
+        assertThatThrownBy(() -> VerificationConvertor.toDomain(po))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

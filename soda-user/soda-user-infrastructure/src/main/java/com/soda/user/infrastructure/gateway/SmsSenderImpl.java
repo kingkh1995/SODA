@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * {@link SmsSender} 的开发期 log 桩实现（2026-08-11 决策）。
+ * {@link SmsSender} 的开发期 log 桩实现。
  * <p>
  * 契约（ADR-0011）：返回即已确认投递——本实现 log 记录投递目标后返回，
  * 满足「PENDING 蕴含已送达」语义，使端到端链路（发码 → 监听器 → 落 P）可真实运行。

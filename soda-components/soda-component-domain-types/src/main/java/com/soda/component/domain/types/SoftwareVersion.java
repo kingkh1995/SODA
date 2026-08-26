@@ -16,8 +16,9 @@ import java.util.regex.Pattern;
  * 三段式纯数字（major.minor.patch），每段 {@code [0, 999]}，规范值带小写 {@code v} 前缀
  * （如 {@code "v2.1.3"}）。前导 0 归一化：{@code v2.001.003} 与 {@code v2.1.3} 等价。
  * base-1000 打包 int：{@code v2.1.3} ↔ {@code 2001003}，打包序与版本序单调一致。
+ * 非 SemVer：无 pre-release / build 元数据后缀（见 ADR-0020）。
  *
- * @see Type
+ * @see StringLiteralType
  */
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Accessors(fluent = true)

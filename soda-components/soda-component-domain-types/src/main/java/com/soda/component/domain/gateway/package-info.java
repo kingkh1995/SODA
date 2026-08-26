@@ -1,6 +1,7 @@
 @NullMarked
-@ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {"domain", "domain.types"})
+@ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {"domain", "domain.types", "domain.util"})
 package com.soda.component.domain.gateway;
 
-import org.springframework.modulith.ApplicationModule;
 import org.jspecify.annotations.NullMarked;
+
+import org.springframework.modulith.ApplicationModule;

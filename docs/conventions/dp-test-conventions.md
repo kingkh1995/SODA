@@ -1,10 +1,20 @@
-# Domain Primitive 测试规范
-
-一页涵盖设计、风格、简化约定。
-
+---
+type: Convention
+title: Domain Primitive 测试规范
+description: 写 DP 测试时按形态取必测分组（§1）、@Nested 分组名（§2）与完整模板（§4）；改 DP 时按同形态核对覆盖。通用写法与分层映射单源在 test-conventions，本文只收 DP 必测分组与 DP 专属约定。
+tags: [ convention, testing, dp ]
+status: stable
 ---
 
-## 1. 测试用例设计：按 DP 形态
+# Domain Primitive 测试规范
+
+> 指针+单源：通用写法（断言/命名/分组/数据/参数化/mock 边界）与分层映射 **单源**
+> 在 [test-conventions](../test-conventions.md)；本文只收 DP 必测分组与 DP 专属约定。
+
+## 1. 必测分组：按 DP 形态
+
+**完成判据**：按被测 DP 的形态，覆盖该形态下表每一行「必须覆盖的测试」；跨 DP 不等式另见 §1.6。每组测试归属见 §2 的标准
+`@Nested` 分组名。
 
 ### 1.1 Record / Class DP（不含缓存）
 
@@ -16,10 +26,12 @@
 | **调试** | toString 格式 `ClassName[field=value]` |
 | **序列化** | Jackson round-trip、非法 JSON 拒绝 |
 | **比较** | `compareTo` 与 `equals` 一致（仅 `Comparable` DP） |
-|
-多字段 DP（`EmailContent`、`VerificationCode`、`VerificationCodePolicy`）使用 `@JsonCreator(mode = PROPERTIES)` + `@JsonProperty`，序列化为 JSON 对象 `{"f1":v, "f2":v}` 而非字符串。round-trip 测试方法相同，但 JSON 输入是对象格式。
-Jackson 3 原生支持 `Instant` / `Duration` 等 JSR-310 类型，无需注册额外模块。
-BigDecimal DP（`WanYuan`）规范值为 `String`（`toPlainString()` 格式），JSON 值为字符串而非数字。额外要求归一化幂等性测试（见 §3.6 示例）。
+
+多字段 DP（`EmailContent`、`VerificationCode`、`VerificationCodePolicy`）使用 `@JsonCreator(mode = PROPERTIES)` +
+`@JsonProperty`，序列化为 JSON 对象 `{"f1":v, "f2":v}` 而非字符串。round-trip 测试方法相同，但 JSON 输入是对象格式。Jackson
+3 原生支持 `Instant` / `Duration` 等 JSR-310 类型，无需注册额外模块。 BigDecimal DP（`WanYuan`）规范值为 `String`（
+`toPlainString()` 格式），JSON 值为字符串而非数字；额外要求归一化幂等性测试（≥4 组同构值时按 test-conventions §3「参数化」行写
+`@ParameterizedTest`）。
 
 ### 1.2 Record / Class DP（含缓存）
 
@@ -36,7 +48,6 @@ BigDecimal DP（`WanYuan`）规范值为 `String`（`toPlainString()` 格式）�
 | 分组 | 必须覆盖的测试 |
 |---|---|
 | **相等** | 相同子类等值相等（`Password("P:1")` = `Password("P:1")`）、hashCode 一致 |
-| **跨类型** | 不同子类之间不等（`Password("P:1")` ≠ `Sms("S:1")`） |
 | **路由** | 基类 `of("P:42")` 返回 `PasswordAuthAccountId` 实例、反序列化 JSON 路由到正确子类 |
 | **调试** | toString 格式由基类 `getSimpleName + [value=...]` 生成 |
 
@@ -58,203 +69,60 @@ BigDecimal DP（`WanYuan`）规范值为 `String`（`toPlainString()` 格式）�
 
 ### 1.6 跨 DP 不等式
 
-每个模块一个 `CrossTypeEqualityTest`，覆盖：同模块不同 DP 类型不等、密封子类不等。
+每模块一个 `CrossTypeEqualityTest`——维护一份「DP 实例清单」（非枚举、非 SecretValue 的 record/class DP 各一规范实例），套件内两两断言跨类
+`equals` 恒不等。新增 DP ＝ 清单登记一行，配对自动全量；密封子类不等由此统一承载。SensitiveValue 的 callSuper 泄漏守卫另归各模块
+`SensitiveValueContractTest`（探针契约，互补不重叠）。
+
+## 2. 标准 @Nested 分组名
+
+**完成判据**：分组名严格取自下表，不新造；一个测试类按需选用，不必全部使用。
+
+| 分组名           | 适用范围                  | 包含的测试                         |
+|------------------|---------------------------|------------------------------------|
+| `Constructor`    | 所有 DP                   | 合法值创建、parse（如有）          |
+| `Validation`     | 所有 DP                   | null/blank/边界/异常               |
+| `Equality`       | 所有 DP（除 SecretValue） | 相等、不等、hashCode               |
+| `Debug`          | 所有 DP                   | toString 格式                      |
+| `Serialization`  | 所有 DP                   | Jackson round-trip、非法 JSON 拒绝 |
+| `ComparableTest` | 仅 `Comparable` DP        | compareTo 与 equals 一致           |
+| `Cache`          | 仅含缓存 DP               | 缓存实例相等性                     |
+
+**报备族谱**（专用 `@Nested` 分组名；首次出现于 soda-components / soda-user 16/15 票存量，已在现库使用 — 报备不视为偏差，未来新
+DP 沿用）：
+
+| 分组名                  | 适用范围                                           | 包含的测试                                             |
+|-------------------------|----------------------------------------------------|--------------------------------------------------------|
+| `Conversion`            | 含派生转换的 DP（`Fen`/`WanYuan`/`EpochMilli` 等） | `fromYuan()` / `toYuan()` / `instant()` 等派生方法往返 |
+| `Masking`               | Masked 五族（ADR-0032）                            | `maskOf` 输出匹配 PATTERN、原值不可逆推                |
+| `Identity`              | Identifier 系 DP                                   | `identifier()` 返回类型化值                            |
+| `Normalization`         | 含归一化的 DP                                      | 大小写/格式归一化幂等性                                |
+| `BoundaryNormalization` | 含边界归一化的 DP                                  | 边界值的归一化形态（如 `BankCard` 13–19 位映射）       |
+| `RichMethods`           | 含额外方法的 DP                                    | 非 getter 的业务方法（`KeyUtils` 派生、状态查询等）    |
+| `Arithmetic`            | 含数值运算的 DP                                    | `add` / `subtract` / `multiply` 等运算契约             |
+| `Inverse`               | 含互逆转换的 DP                                    | `value()` 与 `from(value())` 互逆                      |
+| `Indexing`              | 含索引字段的 DP                                    | 索引与原始值映射、盲索引列契约                         |
+| `PackedInt`             | 含位运算的 DP                                      | 位段编码/解码（如 `MaskedBankCard` 星号段）            |
+| `Next`                  | 含步进语义的 DP                                    | `next()` / `previous()` 等单步推进                     |
+| `DerivedFields`         | 含派生缓存的 DP                                    | 派生字段与原始值一致性（如 `DecimalLiteralType` 缓存） |
+| `CrossTypeEquality`     | 跨类不等式 DP                                      | 跨类 `equals` 恒不等（已收 `CrossTypeEqualityTest`）   |
+| `CacheInvariant`        | 含缓存 DP                                          | 缓存实例引用相等、不可变 Map 行为等                    |
+| `JsonValueInheritance`  | 字面量家族 DP                                      | `@JsonValue` 继承自家族接口、序列化单源                |
+| `Routing`               | 密封基类（§1.3）                                   | `of(String)` 按短名前缀路由到子类、反序列化路由        |
+| `Parse`                 | 含 `parse(String)` 工厂的 DP                       | `parse` 合法/非法/边界输入                             |
+
+## 3. DP 专属写法
+
+- **共享 Mapper**（序列化/反序列化测试用；「共享基础设施允许、数据 fixture 禁止」规则 **单源**在 test-conventions
+  §3「复用」行）：用户模块 `import static com.soda.user.domain.DomainTestUtil.MAPPER`；组件模块
+  `import static com.soda.component.domain.testutil.JacksonTestUtil`（或共享 `SupportTestUtil.MAPPER`）；禁止每个测试文件
+  `new ObjectMapper()`
+- **小数组例外**：常数列举测试集的枚举或归一化幂等测试可接受 ≤5 元素的小数组（如 WanYuan 幂等值集）
 
 ---
 
-## 2. 测试代码风格
+## 4. 完整示例（按形态取用）
 
-### 2.1 断言：AssertJ
-
-| 场景 | AssertJ ✅ | JUnit ❌ |
-|---|---|---|
-| 相等 | `assertThat(a).isEqualTo(b)` | `assertEquals(a, b)` |
-| 不等 | `assertThat(a).isNotEqualTo(b)` | `assertNotEquals(a, b)` |
-| 异常类型+消息 | `assertThatThrownBy(() → f()).isInstanceOf(T.class).hasMessageContaining("…")` | `assertThrows(T.class, () → f())` |
-| 无异常 | `assertThatCode(() → f()).doesNotThrowAnyException()` | — |
-| hashCode | `assertThat(a).hasSameHashCodeAs(b)` | `assertEquals(a.hashCode(), b.hashCode())` |
-| null | `assertThat(x).isNull()` | `assertNull(x)` |
-| 为真 | `assertThat(x > 0).isTrue()` | `assertTrue(x > 0)` |
-
-### 2.2 导入语句
-```java
-// AssertJ — 唯一断言方式
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-// 测试框架
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.params.provider.CsvSource;
-
-// Jackson（序列化测试字段解析异常）
-import tools.jackson.core.JacksonException;
-
-// 禁止导入
-// import static org.junit.jupiter.api.Assertions.*;     ❌
-// import org.junit.jupiter.api.Assertions;               ❌
-```
-
-### 2.3 @DisplayName + @Nested
-
-```java
-@DisplayName("LongId 值对象")
-class LongIdTest {
-
-    @Nested
-    @DisplayName("构造")
-    class Constructor {
-
-        @Test
-        @DisplayName("合法值创建实例")
-        void should_create_when_validValue() {
-            ...
-        }
-    }
-}
-```
-
-简化规则：方法数 ≤6 时平铺即可，不需要 `@Nested`。
-
-标准 `@Nested` 分组名：
-
-| 分组名 | 适用范围 | 包含的测试 |
-|---|---|---|
-| `Constructor` | 所有 DP | 合法值创建、parse（如有） |
-| `Validation` | 所有 DP | null/blank/边界/异常 |
-| `Equality` | 所有 DP（除 SecretValue） | 相等、不等、hashCode |
-| `Debug` | 所有 DP | toString 格式 |
-| `Serialization` | 所有 DP | Jackson round-trip、非法 JSON 拒绝 |
-| `ComparableTest` | 仅 `Comparable` DP | compareTo 与 equals 一致 |
-| `Cache` | 仅含缓存 DP | 缓存实例相等性 |
-| `CrossType` | 仅 AuthAccountId | 跨子类不等（1.3 表格已列） |
-
-一个测试类按需选用以上分组，不必全部使用。
-
-### 2.4 方法命名
-
-```
-should_expectedBehavior_when_condition
-```
-
-| 正向 | `should_create_when_validValue` |
-| 异常 | `should_throw_when_valueIsNull` |
-| 相等 | `should_beEqual_when_sameValue` |
-| 不等 | `should_notBeEqual_when_differentValue` |
-
-### 2.5 测试顺序
-
-每分组：正向优先 → 边界 → 异常。
-
----
-
-## 3. 简化约定
-
-### 3.1 共享资源，不重复配置
-
-```java
-// ✅ 用户模块：使用共享 MAPPER
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-
-// ✅ 支持模块：使用 JacksonTestUtil（或共享 SupportTestUtil.MAPPER）
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
-
-// ❌ 禁止：每个文件 new ObjectMapper()
-private static final ObjectMapper MAPPER = new ObjectMapper();  // ❌
-```
-
-### 3.2 `var` 取代显式类型
-
-```java
-// ✅ 右侧 new 已说明类型
-var id = new LongId(42);
-
-// ❌ 冗余
-LongId id = new LongId(42);  // ❌
-```
-
-### 3.3 测试数据内联，不引入 fixture 层
-
-```java
-// ✅ 直接使用字面值
-@Test
-void should_notBeEqual_when_differentValue() {
-    assertThat(new LongId(1)).isNotEqualTo(new LongId(2));
-}
-
-// ✅ 允许类内常量（同一值在 ≥3 个方法中复用时提取）
-private static final long VALID_ID = 42L;
-private static final long INVALID_ID = -1L;
-
-// ❌ 禁止独立 fixture 工具类或数据工厂
-// ❌ 禁止跨测试类共享常量的工具类
-```
-
-例外：常数列举测试集的枚举或 WanYuan 幂等测试可接受小数组（≤5 元素）。
-
-### 3.4 每个方法一个逻辑断言
-
-```java
-// ✅ 一个场景一个断言
-@Test
-void should_beEqual_when_sameValue() {
-    assertThat(new LongId(42)).isEqualTo(new LongId(42));
-}
-
-// ❌ 不要在一个方法中塞入多个无关场景
-@Test
-void testLongId() {
-    assertThat(new LongId(42).value()).isEqualTo(42);
-    assertThat(new LongId(42)).isEqualTo(new LongId(42));   // ❌ 多余的 equals 验证
-    assertThat(MAPPER.readValue(MAPPER.writeValueAsString(new LongId(42)), LongId.class))
-            .isEqualTo(new LongId(42));                     // ❌ 序列化应独立成方法
-}
-```
-
-### 3.5 不要为了 DRY 写测试基类
-
-```java
-// ❌ 禁止：抽象测试基类
-abstract class BaseDpTest<T> {
-    abstract T createValue();
-    abstract T createDifferentValue();
-    @Test void equal() {
-        assertThat(createValue()).isEqualTo(createValue());
-    }
-}
-
-// ✅ 直接在每个测试类中写重复断言
-// 几行重复比间接继承容易读
-```
-
-### 3.6 `@ParameterizedTest` 节制使用
-
-仅当测试数据集 ≥4 组且逻辑完全相同时使用。≤3 组直接平铺。
-
-```java
-// ✅ 可用参数化：5 组幂等值
-@ParameterizedTest
-@ValueSource(strings = {"1.50", "0.00", "111.11", "-50.00", "99999999.99"})
-void normalization_idempotent(String s) {
-    assertThat(WanYuan.of(WanYuan.of(s).value()).value()).isEqualTo(WanYuan.of(s).value());
-}
-
-// ❌ 不需要参数化：仅 2 组
-@ParameterizedTest                                                 // ❌
-@CsvSource({"true, Active[value=true]", "false, Active[value=false]"})
-void toString(String value, String expected) { ... }
-
-// ✅ 直接写 2 个方法
-@Test void toString_true() { assertThat(Active.TRUE).hasToString("Active[value=true]"); }
-@Test void toString_false() { assertThat(Active.FALSE).hasToString("Active[value=false]"); }
-```
-数据 ≥10 组时优先使用 `@MethodSource` 将测试数据分离到独立工厂方法。
-
----
-
-## 4. 完整示例
+按被测 DP 形态取对应模板，其余形态按需跳过：单字段（§4.1）、多字段带 `Instant`/`Duration`（§4.2）、SecretValue（§4.3）。
 
 ### 4.1 单字段 DP
 
@@ -414,6 +282,7 @@ class VerificationCodePolicyTest {
         }
     }
 }
+```
 
 ### 4.3 SecretValue
 

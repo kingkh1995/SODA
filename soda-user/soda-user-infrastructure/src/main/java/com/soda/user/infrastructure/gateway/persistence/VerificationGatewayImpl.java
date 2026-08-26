@@ -23,7 +23,7 @@ import java.util.stream.StreamSupport;
  * <p>
  * 编排：查询 → {@link VerificationConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
  * <p>
- * 唯一性机制（见 ADR-0026）：槽位预检按 {@code active_key}（{@code uk_active_key} 索引）
+ * 唯一性机制（见 ADR-0025 活跃验证唯一性）：槽位预检按 {@code active_key}（{@code uk_active_key} 索引）
  * 等值过滤 + expire_at 残余过滤；<b>过期 I/P 行惰性删除收敛进 {@code save}</b>（INSERT 前
  * 同事务腾槽——基础设施实现细节，非领域契约）；消费反查按 {@code (subject, scene, state, expire_at)}
  * 复合索引（{@code idx_subject_scene_state_expire_at}）。
@@ -48,7 +48,7 @@ public class VerificationGatewayImpl implements VerificationGateway {
         var id = Objects.requireNonNull(verification.getId());
         // 终态守卫（同 UserGatewayImpl.save 基础设施兜底，ADR-0023）：findById 仅为读取持久化态
         // ——merge 不需要既有行基线（save(toPersistence(...)) 对 id 有值走 em.merge，路由与乐观
-        // 锁由框架内建；Verification 无版本字段，跨加载竞态由状态机单调幂等兜底，见 ADR-0024 修订；
+        // 锁由框架内建；Verification 无版本字段，跨加载竞态由状态机单调幂等兜底，见 ADR-0024；
         // 审计列由 auditing + updatable=false 自动处理，见 VerificationConvertor javadoc）。
         // 与 User 不同不 orElseThrow：Verification 客户端生成 id、创建即 save（首存无行 → INSERT
         // 是合法路径，见 UserAuthServiceImpl 创建流），行缺失放行。
@@ -60,7 +60,7 @@ public class VerificationGatewayImpl implements VerificationGateway {
         if (persisted != null && VerificationState.of(persisted.getState()).terminal()) {
             throw new IllegalStateException();
         }
-        // 惰性腾槽（基础设施实现细节，2026-08-16 见 ADR-0026）：INSERT 前同事务删除
+        // 惰性腾槽（基础设施实现细节，见 ADR-0025 腾槽）：INSERT 前同事务删除
         // 同活跃键过期未用（I/P）行——仅新占槽（I/P）需要腾槽；终态（U）迁移清 NULL 无槽可腾
         // （V 内存瞬态不落库，不涉槽位）。
         // 过期垃圾行物理清理（不同于 ADR-0017「终态由 save 持久化」——终态（U）行保留（V 内存瞬态不落库））。
@@ -70,9 +70,9 @@ public class VerificationGatewayImpl implements VerificationGateway {
         }
         // 单一转换：save(toPersistence(verification))——id 恒有 → isNew=false → merge 按行
         // 存在性统一路由（无行 INSERT、有行 detached 状态全量拷贝），乐观锁/审计由框架
-        // 自动处理（ADR-0024 决策 1：路由由 isNew + merge 内建，网关零判别逻辑）
+        // 自动处理（ADR-0024 save 全权委托：路由由 isNew + merge 内建，网关零判别逻辑）
         var po = VerificationConvertor.toPersistence(verification);
-        // 终态清理（2026-08-16 检视修订，见 ADR-0026 修订注记）：convertor 恒设 active_key，
+        // 终态清理（见 ADR-0025 终态不参与唯一）：convertor 恒设 active_key，
         // 终态（U）在此清 NULL——V 为内存瞬态（verify→use 同事务，永不落库，见
         // CredentialChangeDomainService）非终态、不涉槽位释放；terminal() 仅覆盖 U，
         // 不参与唯一（active_key 仅 I/P 行非空，uk_active_key 硬保证单活跃），

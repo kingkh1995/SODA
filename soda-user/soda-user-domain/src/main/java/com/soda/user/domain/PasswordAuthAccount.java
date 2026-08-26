@@ -15,9 +15,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
- * 密码认证账户实体 — 用户名 + 密码方式的认证。
+ * 密码认证账户 — 用户的口令凭证载体（持有 {@link PasswordHash}）。
  * <p>
- * 每个 User 有且仅有一个 PasswordAuthAccount，在 User 创建时自动生成。
+ * 每个 User 恰一个 PasswordAuthAccount（构造期必填独立字段，见 ADR-0004）；
+ * 恒启用——无解绑流程，不支持停用。
  *
  * @see AuthAccount
  */
@@ -109,7 +110,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     /**
      * 登录透明升级 —— 验证候选凭证，通过且存储哈希低于当前配置时以候选凭证重哈希
-     * （ADR-0033 注记 7；ULG 登录路径的落点）。
+     * （见 ADR-0033；ULG 登录路径落点）。
      * 错误候选返回 false 且不动 {@code passwordHash}（安全不变量：绝不用未经
      * 验证的凭证覆盖哈希）；调用方负责持久化以使新哈希落库（与 changePassword 同约定）。
      *
@@ -126,8 +127,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     }
 
     /**
-     * 停用账户 — 拒绝：密码账户**恒启用**（设计不变量，ADR-0004——无解绑流程，
-     * 持久化无 active 列，恢复恒 {@code Active.TRUE}）。不允许设置为禁用态。
+     * 停用账户 — 拒绝：密码账户<b>恒启用</b>（设计不变量，ADR-0004——无解绑流程，
+     * 持久化无 active 列，恢复恒 {@code Active.TRUE}）。
      * 防御编程：调用方按契约不得调用，异常类型 + 栈帧即语义，不携消息。
      *
      * @throws UnsupportedOperationException 恒抛（该操作对密码账户不支持）

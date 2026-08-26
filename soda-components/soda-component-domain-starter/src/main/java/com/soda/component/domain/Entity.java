@@ -10,7 +10,7 @@ import org.springframework.util.Assert;
  * <p>
  * 实体是具有连续身份标识（identity thread）的领域对象，直接持有 {@link Identifier} DP 作为身份标识。
  * 仅承载身份能力（id 分配/恢复）；状态机（{@link Stateful}）与领域事件源（{@link EventSource}）
- * 是**聚合根**能力，见 {@link Aggregate}——普通实体（如 {@code AuthAccount}，仅业务属性、
+ * 是<b>聚合根</b>能力，见 {@link Aggregate}——普通实体（如 {@code AuthAccount}，仅业务属性、
  * 无生命周期状态枚举、无领域事件）不实现。
  * <p>
  * 构造器按场景二选一：

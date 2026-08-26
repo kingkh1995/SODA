@@ -1,6 +1,7 @@
 package com.soda.user.domain;
 
 import com.soda.component.domain.types.Mobile;
+import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
 import org.junit.jupiter.api.DisplayName;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("SmsAuthAccountId 值对象")
 class SmsAuthAccountIdTest {
 
-    private static final Mobile VALID_MOBILE = new Mobile("13800138000");
+    private static final Mobile VALID_MOBILE = Mobile.of("13800138000");
 
     @Nested
     @DisplayName("构造")
@@ -47,6 +48,18 @@ class SmsAuthAccountIdTest {
         @DisplayName("authAccountType 返回 S")
         void should_returnS_when_authAccountType() {
             assertThat(SmsAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.S);
+        }
+    }
+
+    @Nested
+    @DisplayName("路由")
+    class Routing {
+        @Test
+        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
+        void should_routeToSmsSubtype_when_baseFactoryOrJson() throws Exception {
+            assertThat(AuthAccountId.of("S:13800138000")).isInstanceOf(SmsAuthAccountId.class);
+            assertThat(MAPPER.readValue("\"S:13800138000\"", AuthAccountId.class))
+                    .isInstanceOf(SmsAuthAccountId.class);
         }
     }
 
@@ -82,15 +95,15 @@ class SmsAuthAccountIdTest {
         @Test
         @DisplayName("相同值相等")
         void should_beEqual_when_sameValue() {
-            assertThat(SmsAuthAccountId.from(new Mobile("13800138000")))
-                    .isEqualTo(SmsAuthAccountId.from(new Mobile("13800138000")));
+            assertThat(SmsAuthAccountId.from(Mobile.of("13800138000")))
+                    .isEqualTo(SmsAuthAccountId.from(Mobile.of("13800138000")));
         }
 
         @Test
         @DisplayName("不同值不等")
         void should_notBeEqual_when_differentValue() {
-            assertThat(SmsAuthAccountId.from(new Mobile("13800138000")))
-                    .isNotEqualTo(SmsAuthAccountId.from(new Mobile("13900139000")));
+            assertThat(SmsAuthAccountId.from(Mobile.of("13800138000")))
+                    .isNotEqualTo(SmsAuthAccountId.from(Mobile.of("13900139000")));
         }
 
         @Test
@@ -155,8 +168,8 @@ class SmsAuthAccountIdTest {
         @Test
         @DisplayName("compareTo 委托给字符串比较")
         void should_delegateToStringCompare_when_compareTo() {
-            var a = SmsAuthAccountId.from(new Mobile("13800138000"));
-            var b = SmsAuthAccountId.from(new Mobile("13900139000"));
+            var a = SmsAuthAccountId.from(Mobile.of("13800138000"));
+            var b = SmsAuthAccountId.from(Mobile.of("13900139000"));
             assertThat(a.compareTo(b) < 0).isTrue();
             assertThat(b.compareTo(a) > 0).isTrue();
             assertThat(a.compareTo(a) == 0).isTrue();

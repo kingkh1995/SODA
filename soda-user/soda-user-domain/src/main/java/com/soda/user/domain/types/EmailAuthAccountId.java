@@ -31,16 +31,15 @@ public final class EmailAuthAccountId extends AuthAccountId implements Comparabl
         this.email = email;
     }
 
+    /**
+     * 反序列化入口 — 格式 {@code "E:{email}"}。
+     */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    /** 反序列化入口 — 格式 {@code "E:{email}"}。 */
     public static EmailAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, PREFIX);
-        return new EmailAuthAccountId(value, new Email(suffix));
+        return new EmailAuthAccountId(value, Email.of(suffix));
     }
 
-    /**
-     * 从 {@link Email} 构造邮箱认证账户标识符。
-     */
     public static EmailAuthAccountId from(Email email) {
         ValidateUtils.notNull(email);
         return new EmailAuthAccountId(PREFIX + email.value(), email);

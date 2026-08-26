@@ -49,8 +49,8 @@ import static org.mockito.Mockito.verify;
 class VerificationCreatedEventHandlerTest {
 
     private static final UserId USER_ID = new UserId(1L);
-    private static final Mobile NEW_MOBILE = new Mobile("13900139000");
-    private static final Email NEW_EMAIL = new Email("new@test.com");
+    private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
+    private static final Email NEW_EMAIL = Email.of("new@test.com");
     private static final String VALID_CODE = "123456";
 
     @Mock

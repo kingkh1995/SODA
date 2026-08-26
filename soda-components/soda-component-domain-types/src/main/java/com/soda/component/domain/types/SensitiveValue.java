@@ -1,6 +1,8 @@
-package com.soda.component.domain;
+package com.soda.component.domain.types;
 
-import org.springframework.util.Assert;
+import com.soda.component.domain.StringLiteralType;
+import com.soda.component.domain.util.ValidateUtils;
+
 import lombok.EqualsAndHashCode;
 
 /**
@@ -10,14 +12,19 @@ import lombok.EqualsAndHashCode;
  * equals/hashCode 由 Lombok 生成，子类仅需实现 {@link #maskedValue()} 返回日志安全表示。
  * <b>任何敏感 DP 必须继承本类</b>——toString 脱敏由类型系统保证，不依赖约定或测试兜底。
  * <p>
+ * <b>不允许 {@code null}</b> —— 构造器调 {@link ValidateUtils#hasText(String)}，
+ * null / 空白字符串均抛 {@link IllegalArgumentException}（DP 规范见
+ * {@code docs/dp-conventions.md}「可空性」条）。子类构造器同样禁止透传 null
+ * ——基类校验先于子类域校验，自然屏蔽。
+ * <p>
  * 相等性为 class-aware：基类 canEqual 经子类 {@code @EqualsAndHashCode(callSuper = true)}
  * 逐层收窄，不同具体子类型即使存储值相同也不相等——子类标注为强制契约，
  * 由 {@code SensitiveValueContractTest} 校验（漏标将静默继承基类相等语义，跨类误等）。
  *
  * @see StringLiteralType
- * @see com.soda.component.domain.types.Ciphertext
- * @see com.soda.component.domain.types.PasswordHash
- * @see com.soda.component.domain.types.MaskedMobile
+ * @see Ciphertext
+ * @see PasswordHash
+ * @see MaskedMobile
  */
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public abstract class SensitiveValue implements StringLiteralType {
@@ -26,9 +33,7 @@ public abstract class SensitiveValue implements StringLiteralType {
     private final String value;
 
     protected SensitiveValue(String value) {
-        // 本类位于 domain-starter，模块依赖为 types → starter 单向，无法引用 domain.util.ValidateUtils；
-        // 直接使用其底层 Spring Assert，消息与 ValidateUtils.hasText 逐字一致。
-        Assert.hasText(value, "must not be blank");
+        ValidateUtils.hasText(value);
         this.value = value;
     }
 

@@ -25,7 +25,9 @@ class PasswordAuthAccountTest {
     private static final PasswordAuthAccountId ID = PasswordAuthAccountId.from(new UserId(1L));
     private static final PasswordHash HASH = PasswordHash.of("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    /** 升级产物 —— 与 HASH 同尾异前缀（成本 12），专供透明升级断言区分新旧哈希。 */
+    /**
+     * 升级产物 —— 与 HASH 同尾异前缀（成本 12），专供透明升级断言区分新旧哈希。
+     */
     private static final PasswordHash REHASHED_HASH =
             PasswordHash.of("$2a$12$" + HASH.value().substring(7));
 
@@ -46,7 +48,9 @@ class PasswordAuthAccountTest {
         }
     };
 
-    /** needsRehash 恒真桩 —— hash 产出 {@link #REHASHED_HASH}，驱动透明升级路径。 */
+    /**
+     * needsRehash 恒真桩 —— hash 产出 {@link #REHASHED_HASH}，驱动透明升级路径。
+     */
     private static final PasswordHasher REHASHING_STUB = new PasswordHasher() {
         @Override
         public PasswordHash hash(SecretValue credential) {

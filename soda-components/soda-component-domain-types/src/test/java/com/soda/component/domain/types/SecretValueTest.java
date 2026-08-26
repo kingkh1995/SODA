@@ -3,15 +3,14 @@ package com.soda.component.domain.types;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SecretValue 敏感值对象")
 class SecretValueTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -40,11 +39,18 @@ class SecretValueTest {
             assertThatThrownBy(() -> new SecretValue(""))
                     .isInstanceOf(IllegalArgumentException.class);
         }
+
+        @Test
+        @DisplayName("空白字符串拒绝")
+        void should_throw_when_valueIsBlank() {
+            assertThatThrownBy(() -> new SecretValue("   "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("身份")
+    class Identity {
         @Test
         @DisplayName("不同实例不等（identity-based）")
         void should_notBeEqual_when_differentInstance() {
@@ -53,8 +59,8 @@ class SecretValueTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("脱敏")
+    class Masking {
         @Test
         @DisplayName("toString 脱敏")
         void should_maskToString() {
@@ -72,12 +78,11 @@ class SecretValueTest {
             assertThat(json).isEqualTo("{}");
         }
 
-
         @Test
-        @DisplayName("反序列化可恢复内部值")
-        void should_preserveValue_when_deserialize() throws Exception {
-            var restored = MAPPER.readValue("\"secret\"", SecretValue.class);
-            assertThat(restored.rawValue()).isEqualTo("secret");
+        @DisplayName("反序列化拒绝")
+        void should_throw_when_deserialize() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"secret\"", SecretValue.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 }

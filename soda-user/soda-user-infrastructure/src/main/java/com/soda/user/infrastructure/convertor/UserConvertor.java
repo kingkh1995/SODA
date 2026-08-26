@@ -28,11 +28,11 @@ import java.util.Optional;
 /**
  * {@link User} 聚合 ↔ {@link UserPO} 双向转换（COLA 惯例：infrastructure 独立 convertor）。
  * <p>
- * ADR-0004 单表化修订（2026-08-11）：账户不落表。恢复时 {@code password_hash} 列 →
+ * ADR-0004 单表化：账户不落表。恢复时 {@code password_hash} 列 →
  * {@link PasswordAuthAccount}（独立必填字段），{@code mobile}/{@code email} 非空 →
  * 派生 {@link SmsAuthAccount}/{@link EmailAuthAccount}。
  * 登录开关（{@code sms_login_enabled}/{@code email_login_enabled}）表达账户 active
- * （支付宝/阿里云模式，2026-08-12：手机号/邮箱仍是账号标识，开关仅表达登录方式可用性）。
+ * （支付宝/阿里云模式：手机号/邮箱仍是账号标识，开关仅表达登录方式可用性）。
  * <p>
  * 注销键释放（ADR-0023）：R 行三键（username/mobile/email）由 {@code UserGatewayImpl.save}
  * 置空——{@code username} 列为空时恢复为领域默认值 {@link Username#REMOVED}（该值只存在于
@@ -60,13 +60,13 @@ public final class UserConvertor {
         var accounts = new ArrayList<AuthAccount<?>>();
         if (e.getMobile() != null) {
             accounts.add(SmsAuthAccount.builder()
-                    .id(SmsAuthAccountId.from(new Mobile(e.getMobile())))
+                    .id(SmsAuthAccountId.from(Mobile.of(e.getMobile())))
                     .active(Active.of(e.isSmsLoginEnabled()))
                     .build());
         }
         if (e.getEmail() != null) {
             accounts.add(EmailAuthAccount.builder()
-                    .id(EmailAuthAccountId.from(new Email(e.getEmail())))
+                    .id(EmailAuthAccountId.from(Email.of(e.getEmail())))
                     .active(Active.of(e.isEmailLoginEnabled()))
                     .build());
         }
@@ -76,8 +76,8 @@ public final class UserConvertor {
                 .username(e.getUsername() == null ? Username.REMOVED : new Username(e.getUsername()))
                 .nickname(new Nickname(e.getNickname()))
                 .state(UserState.of(e.getState()))
-                .mobile(Optional.ofNullable(e.getMobile()).map(Mobile::new).orElse(null))
-                .email(Optional.ofNullable(e.getEmail()).map(Email::new).orElse(null))
+                .mobile(Optional.ofNullable(e.getMobile()).map(Mobile::of).orElse(null))
+                .email(Optional.ofNullable(e.getEmail()).map(Email::of).orElse(null))
                 .sex(Optional.ofNullable(e.getSex()).map(Sex::of).orElse(null))
                 .avatar(Optional.ofNullable(e.getAvatar()).map(Avatar::new).orElse(null))
                 .passwordAccount(passwordAccount)
@@ -92,11 +92,11 @@ public final class UserConvertor {
      * 全量构造：领域对象是行的唯一事实源，逐列赋值（含 null——可空列 mobile/email/sex/avatar
      * 领域为空 → 显式 NULL 清空列）。version 原样带入（乐观锁令牌：领域「递增由基础设施层
      * 负责」契约，JPA {@code @Version} 校验递增）；Sms/Email 登录开关从对应账户的 active
-     * 读取（2026-08-12）。id 可空（服务端生成 id 的创建路径：id==null → isNew=true → persist，
+     * 读取。id 可空（服务端生成 id 的创建路径：id==null → isNew=true → persist，
      * insert 后经 {@code assignId} 回填）。
      * <p>
      * 审计列（{@code created_date}/{@code last_modified_date}）不在此构造（null 即可）——
-     * 由 Spring Data auditing + {@code updatable=false} 自动处理（2026-08-15 修订，见 ADR-0024）：
+     * 由 Spring Data auditing + {@code updatable=false} 自动处理（见 ADR-0024）：
      * created_date 不进 UPDATE、last_modified_date 由 {@code @PreUpdate} 刷新，merge 的 null
      * 不会覆盖审计列。
      */

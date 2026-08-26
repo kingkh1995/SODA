@@ -7,6 +7,7 @@ import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.SmsRecipient;
+import com.soda.user.domain.types.VerificationChannel;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationRecipient;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 验证实体测试（2026-08-16 source/recipient 双概念形态，见 ADR-0026）。
+ * 验证实体测试（source/recipient 双概念形态，见 ADR-0026）。
  * <p>
  * 测试场景：
  * <ul>
@@ -40,8 +41,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class VerificationTest {
 
     private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
-    private static final Mobile MOBILE = new Mobile("13800138000");
-    private static final Email EMAIL = new Email("test@example.com");
+    private static final Mobile MOBILE = Mobile.of("13800138000");
+    private static final Email EMAIL = Email.of("test@example.com");
     private static final String VALID_CODE = "123456";
 
     // 测试用的验证码生成器（字符集参数忽略，恒返回固定码）
@@ -67,15 +68,13 @@ class VerificationTest {
                 .build();
     }
 
-    // ─── factories ───
-
     @Nested
     @DisplayName("工厂方法")
     class FactoryTests {
 
         @Test
         @DisplayName("createBuilder -> state=INITIALIZED，source/recipient/policy 生效")
-        void create_initializedState() {
+        void should_createInitializedState_when_validRequest() {
             var verification = uccSms();
 
             assertThat(verification.getState()).isEqualTo(VerificationState.I);
@@ -87,7 +86,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("source 不透明——聚合原样持有任意场景/主体串（URG 端点值 subject 同构）")
-        void create_opaqueSource_storedAsIs() {
+        void should_storeSourceAsIs_when_created() {
             var source = VerificationSource.of("URG", "13800138000");
             var verification = Verification.createBuilder()
                     .source(source)
@@ -101,7 +100,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("createBuilder 缺 source -> 拒绝（source 恒必填——非空即唯一要求，见 ADR-0026）")
-        void createRejectsNullSource() {
+        void should_throw_when_sourceIsNull() {
             assertThatThrownBy(() -> Verification.createBuilder()
                     .recipient(new SmsRecipient(MOBILE))
                     .generator(CODE_GENERATOR)
@@ -113,7 +112,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("createBuilder 缺 policy -> 拒绝（policy 必传——聚合不做通道→策略映射，见 ADR-0026）")
-        void createRejectsNullPolicy() {
+        void should_throw_when_policyIsNull() {
             assertThatThrownBy(() -> Verification.createBuilder()
                     .source(UCC_SOURCE)
                     .recipient(new SmsRecipient(MOBILE))
@@ -125,11 +124,11 @@ class VerificationTest {
 
         @Test
         @DisplayName("recipient 多属性 DP：channel/target 属性 + 双参工厂 + JSON 对象往返")
-        void recipientMultiAttributeRoundTrip() {
+        void should_roundTripRecipients_when_multiAttributeDp() {
             var sms = new SmsRecipient(MOBILE);
-            assertThat(sms.channel()).isEqualTo(com.soda.user.domain.types.VerificationChannel.S);
+            assertThat(sms.channel()).isEqualTo(VerificationChannel.S);
             assertThat(sms.target()).isEqualTo(MOBILE);
-            assertThat(SmsRecipient.of(MOBILE.value())).isEqualTo(sms);
+            assertThat(new SmsRecipient(Mobile.of(MOBILE.value()))).isEqualTo(sms);
             assertThat(VerificationRecipient.of("S", MOBILE.value())).isEqualTo(sms);
 
             var smsJson = DomainTestUtil.MAPPER.writeValueAsString(sms);
@@ -139,7 +138,7 @@ class VerificationTest {
             assertThat(DomainTestUtil.MAPPER.readValue(smsJson, VerificationRecipient.class)).isEqualTo(sms);
 
             var email = new EmailRecipient(EMAIL);
-            assertThat(email.channel()).isEqualTo(com.soda.user.domain.types.VerificationChannel.E);
+            assertThat(email.channel()).isEqualTo(VerificationChannel.E);
             assertThat(email.target()).isEqualTo(EMAIL);
             assertThat(VerificationRecipient.of("E", EMAIL.value())).isEqualTo(email);
 
@@ -154,8 +153,6 @@ class VerificationTest {
                     .hasMessageContaining("unknown VerificationChannel");
         }
     }
-
-    // ─── JSON 序列化 ───
 
     @Nested
     @DisplayName("JSON 序列化（恢复构造器契约）")
@@ -173,7 +170,7 @@ class VerificationTest {
         }
 
         @Test
-        @DisplayName("缺少 id 的 JSON 拒绝（required=true 双屏障，framework-conventions JSON 契约）")
+        @DisplayName("缺少 id 的 JSON 拒绝（required=true 双屏障，docs/conventions/framework-type-contracts.md JSON 契约）")
         void should_reject_when_missingId() {
             var original = restoredSms(VerificationState.P, Instant.parse("2026-08-15T12:00:00Z"));
             var tree = DomainTestUtil.MAPPER.readTree(DomainTestUtil.MAPPER.writeValueAsString(original));
@@ -185,15 +182,13 @@ class VerificationTest {
         }
     }
 
-    // ─── markSent ───
-
     @Nested
     @DisplayName("标记已发送（I → P）")
     class MarkSentTests {
 
         @Test
         @DisplayName("markSent -> 状态变为 PENDING")
-        void markSent_transitionsToPending() {
+        void should_markPending_when_markSent() {
             var verification = uccSms();
 
             verification.markSent();
@@ -205,7 +200,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("markSent from non-initialized state -> exception")
-        void markSent_fromNonInitialized_throwsException() {
+        void should_throw_when_markSentFromNonInitialized() {
             var verification = restoredSms(VerificationState.P, Instant.EPOCH);
 
             assertThatThrownBy(verification::markSent)
@@ -215,7 +210,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("markSent twice -> exception")
-        void markSent_twice_throwsException() {
+        void should_throw_when_markSentTwice() {
             var verification = uccSms();
             verification.markSent();
 
@@ -225,15 +220,13 @@ class VerificationTest {
         }
     }
 
-    // ─── verify ───
-
     @Nested
     @DisplayName("验证码校验")
     class VerifyTests {
 
         @Test
         @DisplayName("verify(correct code) -> state=VERIFIED")
-        void verify_correctCode_stateVerified() {
+        void should_markVerified_when_correctCode() {
             var verification = uccSms();
             verification.markSent();
 
@@ -245,7 +238,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("verify(wrong code) -> exception")
-        void verify_wrongCode_throwsException() {
+        void should_throw_when_codeMismatch() {
             var verification = uccSms();
             verification.markSent();
 
@@ -256,7 +249,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("verify expired -> exception")
-        void verify_expiredCode_throwsException() {
+        void should_throw_when_codeExpired() {
             var verification = restoredSms(VerificationState.P, Instant.EPOCH);
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
@@ -265,7 +258,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("verify already used verification -> exception")
-        void verify_alreadyUsed_throwsException() {
+        void should_throw_when_alreadyUsed() {
             var verification = uccSms();
             verification.markSent();
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
@@ -277,7 +270,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("verify from non-pending state -> exception")
-        void verify_fromVerifiedState_throwsException() {
+        void should_throw_when_alreadyVerified() {
             var verification = uccSms();
             verification.markSent();
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
@@ -287,15 +280,13 @@ class VerificationTest {
         }
     }
 
-    // ─── use ───
-
     @Nested
     @DisplayName("标记已使用")
     class UseTests {
 
         @Test
         @DisplayName("use after verify -> state=USED")
-        void use_afterVerify_stateUsed() {
+        void should_markUsed_when_usedAfterVerify() {
             var verification = uccSms();
             verification.markSent();
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
@@ -309,7 +300,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("use without verify -> exception")
-        void use_withoutVerify_throwsException() {
+        void should_throw_when_useWithoutVerify() {
             var verification = uccSms();
             verification.markSent();
 
@@ -320,7 +311,7 @@ class VerificationTest {
 
         @Test
         @DisplayName("use twice -> exception")
-        void use_twice_throwsException() {
+        void should_throw_when_useTwice() {
             var verification = uccSms();
             verification.markSent();
             verification.verify(Instant.now(), new RandomString(VALID_CODE));

@@ -1,6 +1,7 @@
 package com.soda.user.domain.types;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -13,55 +14,70 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("AuthAccountType 枚举")
 class AuthAccountTypeTest {
 
-    @Test
-    @DisplayName("枚举常量数量")
-    void should_haveCorrectCount() {
-        assertThat(AuthAccountType.values()).hasSize(4);
+    @Nested
+    @DisplayName("查找")
+    class Lookup {
+
+        @ParameterizedTest(name = "of({0}) → {0}")
+        @CsvSource({"P", "S", "E", "O"})
+        @DisplayName("of(String) 查找正确")
+        void should_findByName(String name) {
+            assertThat(AuthAccountType.of(name)).isEqualTo(AuthAccountType.valueOf(name));
+        }
+
+        @Test
+        @DisplayName("of(null) 抛出异常")
+        void should_throw_when_null() {
+            assertThatThrownBy(() -> AuthAccountType.of(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
-    @ParameterizedTest(name = "{0} → desc={1}")
-    @CsvSource(textBlock = """
-                P,     password
-                S,     sms
-                E,     email
-                O,     oauth
-            """)
-    @DisplayName("各枚举常量 desc() 正确")
-    void should_haveCorrectDesc(String name, String desc) {
-        assertThat(AuthAccountType.valueOf(name).desc()).isEqualTo(desc);
+    @Nested
+    @DisplayName("显示")
+    class Display {
+
+        @Test
+        @DisplayName("枚举常量数量")
+        void should_haveCorrectCount() {
+            assertThat(AuthAccountType.values()).hasSize(4);
+        }
+
+        @ParameterizedTest(name = "{0} → desc={1}")
+        @CsvSource(textBlock = """
+                    P,     password
+                    S,     sms
+                    E,     email
+                    O,     oauth
+                """)
+        @DisplayName("各枚举常量 desc() 正确")
+        void should_haveCorrectDesc(String name, String desc) {
+            assertThat(AuthAccountType.valueOf(name).desc()).isEqualTo(desc);
+        }
+
+        @Test
+        @DisplayName("toString 返回枚举名")
+        void should_returnName() {
+            assertThat(AuthAccountType.P).hasToString("P");
+        }
     }
 
-    @ParameterizedTest(name = "of({0}) → {0}")
-    @CsvSource({"P", "S", "E", "O"})
-    @DisplayName("of(String) 查找正确")
-    void should_findByName(String name) {
-        assertThat(AuthAccountType.of(name)).isEqualTo(AuthAccountType.valueOf(name));
-    }
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
 
-    @Test
-    @DisplayName("of(null) 抛出异常")
-    void should_throw_when_null() {
-        assertThatThrownBy(() -> AuthAccountType.of(null))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
+        @Test
+        @DisplayName("Jackson round-trip")
+        void should_serializeDeserialize() throws Exception {
+            assertThat(MAPPER.writeValueAsString(AuthAccountType.P)).isEqualTo("\"P\"");
+            assertThat(MAPPER.readValue("\"P\"", AuthAccountType.class)).isEqualTo(AuthAccountType.P);
+        }
 
-    @Test
-    @DisplayName("Jackson round-trip")
-    void should_serializeDeserialize() throws Exception {
-        assertThat(MAPPER.writeValueAsString(AuthAccountType.P)).isEqualTo("\"P\"");
-        assertThat(MAPPER.readValue("\"P\"", AuthAccountType.class)).isEqualTo(AuthAccountType.P);
-    }
-
-    @Test
-    @DisplayName("非法枚举名称拒绝")
-    void should_throw_when_invalidJson() {
-        assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", AuthAccountType.class))
-                .isInstanceOf(JacksonException.class);
-    }
-
-    @Test
-    @DisplayName("toString 返回枚举名")
-    void should_returnName() {
-        assertThat(AuthAccountType.P).hasToString("P");
+        @Test
+        @DisplayName("非法枚举名称拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", AuthAccountType.class))
+                    .isInstanceOf(JacksonException.class);
+        }
     }
 }

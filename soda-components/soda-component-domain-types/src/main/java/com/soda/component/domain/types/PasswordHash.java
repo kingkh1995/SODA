@@ -1,7 +1,6 @@
 package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.soda.component.domain.SensitiveValue;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;

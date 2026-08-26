@@ -1,21 +1,18 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("短信内容值对象")
 class SmsContentTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -31,8 +28,8 @@ class SmsContentTest {
         @Test
         @DisplayName("最大长度创建实例")
         void should_create_when_maxLength() {
-            var content = new SmsContent("a".repeat(70));
-            assertThat(content.value().length()).isEqualTo(70);
+            var content = new SmsContent("a".repeat(SmsContent.MAX_LENGTH));
+            assertThat(content.value().length()).isEqualTo(SmsContent.MAX_LENGTH);
         }
     }
 
@@ -49,9 +46,16 @@ class SmsContentTest {
         }
 
         @Test
+        @DisplayName("空白字符串拒绝")
+        void should_throw_when_valueIsBlank() {
+            assertThatThrownBy(() -> new SmsContent("   "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         @DisplayName("超长字符串拒绝")
         void should_throw_when_tooLong() {
-            assertThatThrownBy(() -> new SmsContent("a".repeat(71)))
+            assertThatThrownBy(() -> new SmsContent("a".repeat(SmsContent.MAX_LENGTH + 1)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -82,17 +86,6 @@ class SmsContentTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new SmsContent("hello")).hasToString("SmsContent[value=hello]");
-        }
-    }
-
-    @Nested
     @DisplayName("序列化")
     class Serialization {
 
@@ -100,14 +93,8 @@ class SmsContentTest {
         @DisplayName("Jackson 序列化反序列化一致")
         void should_roundTrip() throws Exception {
             var original = new SmsContent("hello");
-            JacksonTestUtil.assertRoundTrip(original, SmsContent.class);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", SmsContent.class))
-                    .isInstanceOf(JacksonException.class);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, SmsContent.class)).isEqualTo(original);
         }
 
         @Test
@@ -121,6 +108,24 @@ class SmsContentTest {
         @DisplayName("从裸字符串反序列化")
         void should_deserializeFromBareString() throws Exception {
             assertThat(MAPPER.readValue("\"hello\"", SmsContent.class)).isEqualTo(new SmsContent("hello"));
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("{}", SmsContent.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new SmsContent("hello")).hasToString("SmsContent[value=hello]");
         }
     }
 }

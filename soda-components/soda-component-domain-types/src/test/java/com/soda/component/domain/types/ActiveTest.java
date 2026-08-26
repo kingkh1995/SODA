@@ -4,15 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Active 值对象")
 class ActiveTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -44,7 +42,7 @@ class ActiveTest {
     }
 
     @Nested
-    @DisplayName("校验")
+    @DisplayName("校验与异常")
     class Validation {
 
         @Test
@@ -63,24 +61,7 @@ class ActiveTest {
     }
 
     @Nested
-    @DisplayName("缓存")
-    class Cache {
-
-        @Test
-        @DisplayName("TRUE 与 of(true) 相同")
-        void should_sameTrue() {
-            assertThat(Active.TRUE).isSameAs(Active.of(true));
-        }
-
-        @Test
-        @DisplayName("FALSE 与 of(false) 相同")
-        void should_sameFalse() {
-            assertThat(Active.FALSE).isSameAs(Active.of(false));
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
+    @DisplayName("相等性与 hashCode")
     class Equality {
 
         @Test
@@ -98,8 +79,58 @@ class ActiveTest {
 
         @Test
         @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
+        void should_haveConsistentHashCode_when_sameValue() {
             assertThat(Active.TRUE).hasSameHashCodeAs(Active.of(true));
+        }
+    }
+
+    @Nested
+    @DisplayName("缓存")
+    class Cache {
+
+        @Test
+        @DisplayName("of(true) 复用 TRUE 缓存实例")
+        void should_returnCachedInstance_when_ofTrue() {
+            assertThat(Active.TRUE).isSameAs(Active.of(true));
+        }
+
+        @Test
+        @DisplayName("of(false) 复用 FALSE 缓存实例")
+        void should_returnCachedInstance_when_ofFalse() {
+            assertThat(Active.FALSE).isSameAs(Active.of(false));
+        }
+    }
+
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() {
+            var original = Active.TRUE;
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, Active.class)).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("序列化为裸布尔")
+        void should_serializeToBareBoolean() {
+            var json = MAPPER.writeValueAsString(Active.TRUE);
+            assertThat(json).isEqualTo("true");
+        }
+
+        @Test
+        @DisplayName("从裸布尔反序列化")
+        void should_deserializeFromBareBoolean() {
+            assertThat(MAPPER.readValue("true", Active.class)).isEqualTo(Active.TRUE);
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-boolean\"", Active.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 
@@ -111,39 +142,6 @@ class ActiveTest {
         @DisplayName("toString 格式正确")
         void should_haveCorrectToString() {
             assertThat(Active.TRUE).hasToString("Active[value=true]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var json = MAPPER.writeValueAsString(Active.TRUE);
-            assertThat(json).isEqualTo("true");
-            assertThat(MAPPER.readValue(json, Active.class)).isEqualTo(Active.TRUE);
-        }
-
-        @Test
-        @DisplayName("序列化为裸布尔")
-        void should_serializeToBareBoolean() throws Exception {
-            var json = MAPPER.writeValueAsString(Active.TRUE);
-            assertThat(json).isEqualTo("true");
-        }
-
-        @Test
-        @DisplayName("从裸布尔反序列化")
-        void should_deserializeFromBareBoolean() throws Exception {
-            assertThat(MAPPER.readValue("true", Active.class)).isEqualTo(Active.TRUE);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-boolean\"", Active.class))
-                    .isInstanceOf(JacksonException.class);
         }
     }
 }

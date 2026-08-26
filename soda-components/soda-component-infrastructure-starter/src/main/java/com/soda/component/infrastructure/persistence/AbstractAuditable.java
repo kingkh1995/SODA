@@ -21,7 +21,7 @@ import java.time.Instant;
  * 恒已标识 → merge——insert/update 由 merge 按行存在性统一路由，乐观锁由 {@code @Version}
  * 自动校验。
  * <p>
- * 审计列（2026-08-13 修订，替代「DB 默认值 + 只读映射」方案）：Spring Data 官方审计机制
+ * 审计列：Spring Data 官方审计机制
  * ——{@code @CreatedDate}/{@code @LastModifiedDate} + {@code AuditingEntityListener}
  * （{@code @EnableJpaAuditing} 自动配置启用，见 {@link JpaAuditingAutoConfiguration}），
  * persist/update 时由 Spring Data 填充；字段/列名与 Spring {@link Auditable} 词表对齐
@@ -30,14 +30,14 @@ import java.time.Instant;
  * Hibernate 默认映射 {@code TIMESTAMP_UTC}，DATETIME 列存 UTC 字面值），时间源由
  * {@code DateTimeProvider} 提供（{@code Instant.now()}）。
  * {@code created_date} 不可更新（{@code updatable=false}）；列无 DB 默认值（{@code CURRENT_TIMESTAMP}
- * 按会话时区生成会与 UTC 字面值约定漂移，2026-08-13 移除，值由应用恒填充）。
+ * 按会话时区生成会与 UTC 字面值约定漂移，值由应用恒填充）。
  * setter 存在以供 JPA 与测试使用；convertor 更新路径<b>不</b>搬运审计列（{@code toPersistence}
- * 不构造，null 即可）——merge 全量拷贝不会覆盖审计列（2026-08-15 修订，见 ADR-0024；
+ * 不构造，null 即可）——merge 全量拷贝不会覆盖审计列（见 ADR-0024；
  * {@code created_date} 由 {@code updatable=false} 保护、{@code last_modified_date} 由
  * {@code @PreUpdate} 刷新），setter 不破坏「值由 auditing 填充」的契约（监听器仍覆盖写）。
  * <p>
  * 命名：具体数据库模型类统一 {@code XxxPO}；本基类按所实现接口命名
- * （AbstractXxx implements Xxx 模式，2026-08-13，见 ADR-0023）。
+ * （AbstractXxx implements Xxx 模式，见 ADR-0023）。
  * PO 字段名与 DB 列名一致（仅下划线/驼峰形式差异，由命名策略或显式 {@code @Column} 表达）；
  * 需履行框架契约（如 {@code Persistable.getId()}）时显式实现方法，而非为契约改字段名。
  *

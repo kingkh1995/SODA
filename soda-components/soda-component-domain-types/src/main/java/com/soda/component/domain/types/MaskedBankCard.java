@@ -13,16 +13,15 @@ import java.util.regex.Pattern;
  */
 public record MaskedBankCard(String value) implements StringLiteralType {
 
-    private static final Pattern PATTERN = Pattern.compile("^\\d{6}\\*{3,13}\\d{4}$");
+    private static final Pattern PATTERN = Pattern.compile("^\\d{6}\\*{3,9}\\d{4}$");
 
     public MaskedBankCard {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    public static MaskedBankCard of(String value) {
-        return new MaskedBankCard(value);
-    }
-
+    /**
+     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
+     */
     public static MaskedBankCard from(BankCard bankCard) {
         return new MaskedBankCard(maskOf(bankCard.value()));
     }

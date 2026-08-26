@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.SensitiveValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 
@@ -20,13 +20,21 @@ public final class BankCard extends SensitiveValue {
 
     private static final Pattern PATTERN = Pattern.compile("^\\d{13,19}$");
 
-    public BankCard(String value) {
+    private BankCard(String value) {
         super(value);
-        ValidateUtils.matches(value(), PATTERN);
+        ValidateUtils.matches(value, PATTERN);
     }
 
     @Override
     public String maskedValue() {
         return MaskedBankCard.from(this).value();
+    }
+
+    /**
+     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static BankCard of(String raw) {
+        return new BankCard(raw);
     }
 }

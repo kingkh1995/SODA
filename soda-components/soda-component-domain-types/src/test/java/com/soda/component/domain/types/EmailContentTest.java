@@ -1,19 +1,16 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("EmailContent 值对象")
 class EmailContentTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -27,11 +24,11 @@ class EmailContentTest {
         }
 
         @Test
-        @DisplayName("主题最大长度 255 可创建")
+        @DisplayName("主题最大长度可创建")
         void should_create_when_subjectMaxLength() {
-            var subj = "a".repeat(255);
+            var subj = "a".repeat(EmailContent.SUBJECT_MAX_LENGTH);
             var c = new EmailContent(subj, "body");
-            assertThat(c.subject()).hasSize(255);
+            assertThat(c.subject()).hasSize(EmailContent.SUBJECT_MAX_LENGTH);
         }
     }
 
@@ -53,6 +50,13 @@ class EmailContentTest {
         }
 
         @Test
+        @DisplayName("空白主题拒绝")
+        void should_throw_when_subjectIsBlank() {
+            assertThatThrownBy(() -> new EmailContent("   ", "body"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         @DisplayName("null 正文拒绝")
         void should_throw_when_bodyIsNull() {
             assertThatThrownBy(() -> new EmailContent("subject", null))
@@ -67,9 +71,16 @@ class EmailContentTest {
         }
 
         @Test
-        @DisplayName("主题超过 255 字符拒绝")
+        @DisplayName("空白正文拒绝")
+        void should_throw_when_bodyIsBlank() {
+            assertThatThrownBy(() -> new EmailContent("subject", "   "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("主题超过最大长度拒绝")
         void should_throw_when_subjectTooLong() {
-            assertThatThrownBy(() -> new EmailContent("a".repeat(256), "body"))
+            assertThatThrownBy(() -> new EmailContent("a".repeat(EmailContent.SUBJECT_MAX_LENGTH + 1), "body"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -97,23 +108,14 @@ class EmailContentTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new EmailContent("a", "b")).hasToString("EmailContent[subject=a, body=b]");
-        }
-    }
-
-    @Nested
     @DisplayName("序列化")
     class Serialization {
         @Test
         @DisplayName("Jackson round-trip 一致（JSON 对象格式）")
         void should_roundTrip() throws Exception {
             var original = new EmailContent("Welcome", "Thank you");
-            JacksonTestUtil.assertRoundTrip(original, EmailContent.class);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, EmailContent.class)).isEqualTo(original);
         }
 
         @Test
@@ -138,6 +140,16 @@ class EmailContentTest {
         void should_throw_when_emptyJson() {
             assertThatThrownBy(() -> MAPPER.readValue("{}", EmailContent.class))
                     .isInstanceOf(JacksonException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new EmailContent("a", "b")).hasToString("EmailContent[subject=a, body=b]");
         }
     }
 }

@@ -6,27 +6,27 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@DisplayName("ArrayTypeCache")
+@DisplayName("ArrayTypeCache 数组实例缓存")
 class ArrayTypeCacheTest {
 
     @Test
     @DisplayName("范围内返回缓存实例")
-    void get_withinRange_returnsCachedInstance() {
+    void should_returnCachedInstance_when_valueInRange() {
         var cache = new ArrayTypeCache<>(0, 99, String::valueOf);
         assertThat(cache.get(42)).isNotNull().isSameAs(cache.get(42));
     }
 
     @Test
-    @DisplayName("范围外返回 empty")
-    void get_beyondRange_returnsEmpty() {
+    @DisplayName("范围外未命中返回 null")
+    void should_returnNull_when_valueOutOfRange() {
         var cache = new ArrayTypeCache<>(0, 99, String::valueOf);
         assertThat(cache.get(100)).isNull();
         assertThat(cache.get(-1)).isNull();
     }
 
     @Test
-    @DisplayName("偏移起始不为 0 的正确定位")
-    void get_withOffset_returnsCorrectInstance() {
+    @DisplayName("偏移起始不为 0 时按 offset 正确定位")
+    void should_mapByOffset_when_lowNotZero() {
         var cache = new ArrayTypeCache<>(10, 20, String::valueOf);
         assertThat(cache.get(10)).isEqualTo("10");
         assertThat(cache.get(15)).isEqualTo("15");
@@ -36,8 +36,8 @@ class ArrayTypeCacheTest {
     }
 
     @Test
-    @DisplayName("单值范围")
-    void get_singleValueRange() {
+    @DisplayName("单值范围（low == high）")
+    void should_coverSingleValue_when_lowEqualsHigh() {
         var cache = new ArrayTypeCache<>(5, 5, String::valueOf);
         assertThat(cache.get(5)).isEqualTo("5");
         assertThat(cache.get(4)).isNull();
@@ -46,14 +46,14 @@ class ArrayTypeCacheTest {
 
     @Test
     @DisplayName("factory 为 null 抛异常")
-    void constructor_nullFactory_throws() {
+    void should_throw_when_factoryIsNull() {
         assertThatThrownBy(() -> new ArrayTypeCache<>(0, 10, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    @DisplayName("low() 和 high() 返回正确边界")
-    void lowHigh_returnsCorrectBounds() {
+    @DisplayName("low() 和 high() 返回构造时声明的边界")
+    void should_returnDeclaredBounds_when_queried() {
         var cache = new ArrayTypeCache<>(5, 15, String::valueOf);
         assertThat(cache.low()).isEqualTo(5);
         assertThat(cache.high()).isEqualTo(15);

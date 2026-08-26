@@ -17,7 +17,7 @@ import java.math.RoundingMode;
  * 校验规则：int 本身保证不溢出，整个值域均合法，无需额外约束。
  * {@link #ZERO} 是便捷常量，非缓存契约——不承诺单例身份（缓存不可观测，禁止依赖 {@code ==}）。
  *
- * @see Type
+ * @see IntLiteralType
  * @see WanYuan
  */
 public record Fen(int value) implements IntLiteralType, Comparable<Fen> {

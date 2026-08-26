@@ -1,6 +1,7 @@
 package com.soda.user.domain;
 
 import com.soda.component.domain.types.Email;
+import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +24,7 @@ class EmailAuthAccountIdTest {
         @Test
         @DisplayName("from(Email) 创建实例带 E: 前缀")
         void should_createWithPrefix_when_fromEmail() {
-            var email = new Email("test@example.com");
+            var email = Email.of("test@example.com");
             var id = EmailAuthAccountId.from(email);
             assertThat(id.value()).isEqualTo("E:test@example.com");
             assertThat(id.email()).isEqualTo(email);
@@ -32,7 +33,7 @@ class EmailAuthAccountIdTest {
         @Test
         @DisplayName("from 等价于 of")
         void should_beEquivalent_when_fromAndOf() {
-            var email = new Email("test@example.com");
+            var email = Email.of("test@example.com");
             assertThat(EmailAuthAccountId.from(email))
                     .isEqualTo(EmailAuthAccountId.of("E:test@example.com"));
         }
@@ -47,6 +48,18 @@ class EmailAuthAccountIdTest {
         @DisplayName("authAccountType 返回 E")
         void should_returnE_when_authAccountType() {
             assertThat(EmailAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.E);
+        }
+    }
+
+    @Nested
+    @DisplayName("路由")
+    class Routing {
+        @Test
+        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
+        void should_routeToEmailSubtype_when_baseFactoryOrJson() throws Exception {
+            assertThat(AuthAccountId.of("E:a@b.com")).isInstanceOf(EmailAuthAccountId.class);
+            assertThat(MAPPER.readValue("\"E:a@b.com\"", AuthAccountId.class))
+                    .isInstanceOf(EmailAuthAccountId.class);
         }
     }
 
@@ -119,7 +132,7 @@ class EmailAuthAccountIdTest {
         @Test
         @DisplayName("Jackson 序列化反序列化")
         void should_roundTrip_when_validJson() throws Exception {
-            var original = EmailAuthAccountId.from(new Email("test@example.com"));
+            var original = EmailAuthAccountId.from(Email.of("test@example.com"));
             var json = MAPPER.writeValueAsString(original);
             assertThat(json).isEqualTo("\"E:test@example.com\"");
             var restored = MAPPER.readValue(json, EmailAuthAccountId.class);

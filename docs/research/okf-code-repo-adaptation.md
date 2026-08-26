@@ -1,6 +1,25 @@
+---
+type: Research
+title: OKF 适配研究：OKF v0.2 在代码仓库文档场景的适用性
+description: 锚点：为 SODA 文档选 frontmatter 键、type 词表或定 bundle 布局时，按 OKF v0.2 适配裁定（status 全类采纳、verified/sources 按类、docs/ 为 bundle）执行。
+tags: [okf, frontmatter, documentation]
+status: stable
+generated:
+  by: wayfinder/01
+  at: 2026-08-14T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-14T00:00:00Z
+sources:
+  - resource: https://github.com/GoogleCloudPlatform/knowledge-catalog
+    id: okf-spec-v0.2
+    author: GoogleCloudPlatform
+    title: OKF v0.2 SPEC
+---
 # OKF 适配研究：OKF v0.2 在代码仓库文档场景的适用性（wayfinder 01）
 
-> 研究日期：2026-08-14。来源：OKF v0.2 规范（`D:\Workspace\knowledge-catalog\okf\SPEC.md`，本机克隆，全文研读）、`okf/README.md`、`okf/bundles/` 示例 bundle、`okf/tests/`（消费者实际强制的内容）。
+> 来源：OKF v0.2 规范（`D:\Workspace\knowledge-catalog\okf\SPEC.md`，本机克隆，全文研读）、`okf/README.md`、`okf/bundles/` 示例
+> bundle、`okf/tests/`（消费者实际强制的内容）。
 > 用途：为「文档体系设计定案」（wayfinder 05）提供 OKF 侧输入。
 
 ## 零、OKF 是什么（一句话）

@@ -12,7 +12,7 @@ package com.soda.component.domain;
  * 反序列化入口由各 enum 自行提供 {@code @JsonCreator of(String)}（显式声明，不依赖推断）。
  * <p>
  * 与字面量家族（{@link StringLiteralType} 等）平行：枚举是封闭常量集（常量自身即值），
- * 不包装字面量、不参与家族契约（见 ADR-0028 修订注记）。
+ * 不包装字面量、不参与家族契约（见 ADR-0028）。
  *
  * @see Type
  * @see Identifier

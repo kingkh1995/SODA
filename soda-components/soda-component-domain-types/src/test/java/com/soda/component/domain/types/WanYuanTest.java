@@ -1,21 +1,20 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("WanYuan 值对象")
 class WanYuanTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -23,13 +22,6 @@ class WanYuanTest {
         @Test
         @DisplayName("合法字符串创建实例")
         void should_create_when_validValue() {
-            var amount = WanYuan.of("15000");
-            assertThat(amount.value()).isEqualTo("15000.00");
-        }
-
-        @Test
-        @DisplayName("parse 创建实例")
-        void should_create_when_parseValidString() {
             var amount = WanYuan.of("15000");
             assertThat(amount.value()).isEqualTo("15000.00");
         }
@@ -88,6 +80,22 @@ class WanYuanTest {
         void should_beNormalized_when_differentPrecision() {
             assertThat(WanYuan.of("15000.10")).isEqualTo(WanYuan.of("15000.1"));
         }
+
+        @ParameterizedTest(name = "{0} -> {1}")
+        @CsvSource({
+                "15000, 15000.00",
+                "15000.0, 15000.00",
+                "15000.00, 15000.00",
+                "0, 0.00",
+                "-5.0, -5.00"
+        })
+        @DisplayName("同构值归一化幂等：规范串唯一，重复解析等值")
+        void should_beIdempotent_when_isomorphicValues(String raw, String canonical) {
+            var normalized = WanYuan.of(raw);
+            assertThat(normalized.value()).isEqualTo(canonical);
+            assertThat(WanYuan.of(normalized.value())).isEqualTo(normalized);
+        }
+
     }
 
     @Nested
@@ -113,30 +121,14 @@ class WanYuanTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(WanYuan.of("1.5")).hasToString("WanYuan[value=1.50]");
-        }
-    }
-
-    @Nested
     @DisplayName("序列化")
     class Serialization {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
             var original = WanYuan.of("1.5");
-            JacksonTestUtil.assertRoundTrip(original, WanYuan.class);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", WanYuan.class))
-                    .isInstanceOf(JacksonException.class);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, WanYuan.class)).isEqualTo(original);
         }
 
         @Test
@@ -150,6 +142,45 @@ class WanYuanTest {
         @DisplayName("从裸字符串反序列化")
         void should_deserializeFromBareString() throws Exception {
             assertThat(MAPPER.readValue("\"1.50\"", WanYuan.class)).isEqualTo(WanYuan.of("1.5"));
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("{}", WanYuan.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
+        @Test
+        @DisplayName("数值序自然排序")
+        void should_orderNaturally_when_valuesDiffer() {
+            var low = WanYuan.of("1.50");
+            var high = WanYuan.of("9.99");
+            assertThat(low.compareTo(high)).isNegative();
+            assertThat(high.compareTo(low)).isPositive();
+        }
+
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var amount = WanYuan.of("1.50");
+            var same = WanYuan.of("1.50");
+            assertThat(amount.compareTo(same)).isZero();
+            assertThat(amount).isEqualTo(same);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(WanYuan.of("1.5")).hasToString("WanYuan[value=1.50]");
         }
     }
 }

@@ -13,4 +13,5 @@ dependencies {
     testRuntimeOnly project(':soda-components:soda-component-query-server-starter')
     testRuntimeOnly project(':soda-components:soda-component-application-starter')
     testRuntimeOnly project(':soda-components:soda-component-domain-types')
+    testImplementation project(':soda-supports:soda-support-modulith')
 }

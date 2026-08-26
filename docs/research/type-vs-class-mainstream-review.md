@@ -1,3 +1,29 @@
+---
+type: Research
+title: 多态实体 type-vs-class 设计结论审视（对照主流 Java/DDD 实践）
+description: 锚点：审视或实现多态实体 type-vs-class 设计（sealed/枚举判据、网关 Class<T> 收参、@JsonTypeName 判别、铁律）时，按 OpenJDK/Jackson/DDD 主流来源逐条核对，结论收敛 ADR-0016。
+tags: [sealed, enum, jackson, ddd]
+status: stable
+generated:
+  by: wayfinder/01
+  at: 2026-08-08T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-08T00:00:00Z
+sources:
+  - resource: https://openjdk.org/jeps/409
+    id: jep-409
+    author: OpenJDK
+    title: OpenJDK JEP 409（Sealed Classes）
+  - resource: https://openjdk.org/jeps/441
+    id: jep-441
+    author: OpenJDK
+    title: OpenJDK JEP 441（Pattern Matching for switch）
+  - resource: https://github.com/FasterXML/jackson-databind
+    id: jackson-databind
+    author: FasterXML
+    title: Jackson Databind 官方仓库与发布说明
+---
 # 多态实体 type-vs-class 设计结论审视（对照主流 Java/DDD 实践）
 
 > **定案状态（2026-08-05）**：审查结论已由团队采纳并收敛为 ADR——见 [docs/adr/0016-type-class-mapping-ownership.md](../adr/0016-type-class-mapping-ownership.md)。过渡态违例的处置：`VerificationChannel` 去 `Class` 引用与 `of(Class)`、gateway 收敛为 `Class<T>` 单轨、`VerificationQuery` 去 `channel`、反查归基础设施；争议点 2 的取舍已拍板（以类型安全换查询对象可读性，纯数据统计需求走基础设施查询模型）。
@@ -48,7 +74,9 @@
    - Domain Events："a domain event typically contains a timestamp for the time the event occurred and **the identity of entities involved** in the event"——事件携带实体**身份标识**而非内部对象图；本项目的判别短名恰好编码在 `AuthAccountId` 前缀（`"P:42"`）中，即短名随身份在事件/持久化中流动。
    [来源: Evans, *Domain-Driven Design Reference* (2015, 官方 CC-BY 文档), §Layered Architecture / §Domain Events / §Repositories](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)
 2. **Hexagonal（Ports & Adapters）**："The rule to obey is that code pertaining to the *inside* part should not leak into the *outside* part"；adapter 负责把外部信号转换为领域 API——判别值落在存储列/JSON 字段上属 adapter 侧的技术形态。[来源: https://alistair.cockburn.us/hexagonal-architecture/](https://alistair.cockburn.us/hexagonal-architecture/)
-3. **边界值应稳定**：AIP-126 规定枚举只用于"变化不频繁的值集合"，频繁变化的值用 string——短名一旦落库/进 JSON 即成对外合同（本项目 ADR-0005 已承认"枚举常量改名破坏 DB 数据"）。[来源: https://google.aip.dev/126](https://google.aip.dev/126)；[来源: docs/adr/0005-enum-short-name.md](docs/adr/0005-enum-short-name.md)
+3. **边界值应稳定**：AIP-126 规定枚举只用于"变化不频繁的值集合"，频繁变化的值用 string——短名一旦落库/进 JSON 即成对外合同（本项目
+   ADR-0005 已承认"枚举常量改名破坏 DB
+   数据"）。[来源: https://google.aip.dev/126](https://google.aip.dev/126)；[来源: docs/adr/0005-enum-short-name.md](../adr/0005-enum-short-name.md)
 4. **领域内部用 class**：即结论 1/3 的 sealed + 模式匹配（JEP 409/441），见下条。
 
 **判定**：**符合**（附争议点）。方向完全主流："内部对象、边界稳定标识"是 DDD 边界翻译（Evans §Anticorruption Layer："create an isolating layer to provide your system with functionality of the upstream system **in terms of your own domain model**"）与 Hexagonal 的共识。争议点：判别短名既是"技术边界值"，同时又是**领域语言的一部分**（`channel`/`authAccountType` 对领域专家有意义，DDD Reference 明确要求查询条件"meaningful to domain experts"）——如何划界见结论 4 的争议点。
@@ -130,7 +158,10 @@
 1. **事实前提（语言层硬约束）**：JLS §9.7.1——"If T is a primitive type or String, then **v is a constant expression** (§15.29)"。`VerificationChannel.S.name()` 是方法调用，不属于 §15.29 常量表达式（常量表达式仅含引用"常量变量"的简单名等；枚举常量非常量变量，`name()` 更不是）——`@JsonTypeName(VerificationChannel.S.name())` **无法编译**。这是 Java 语言层面的事实，与 Jackson 无关。[来源: JLS 21 §9.7.1](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html#jls-9.7.1)、[§15.29](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.29)
 2. **Jackson 官方模型就是"手工维护字符串映射"**：
    - `@JsonTypeName` 的 `value()` 就是 `String`："Logical type name for annotated type. If missing... defaults to using non-qualified class name as the type."——Jackson 对判别串与枚举的关系一无所知。[来源: jackson-annotations @JsonTypeName javadoc（2.x 与 3.x 一致）](https://github.com/FasterXML/jackson-annotations/blob/3.x/src/main/java/com/fasterxml/jackson/annotation/JsonTypeName.java)
-   - 官方自定义扩展点是 `TypeIdResolver`（`idFromValue`/`typeFromId`，建议继承 `TypeIdResolverBase`），`@JsonTypeIdResolver` 注解 javadoc 明言："In simplest cases this can be a simple class with **static mapping between type names and matching classes**"——官方设想即"开发者集中维护一张映射表"。[来源: jackson-databind TypeIdResolver（[2.x](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/TypeIdResolver.java)/[3.x](https://github.com/FasterXML/jackson-databind/blob/3.x/src/main/java/tools/jackson/databind/jsontype/TypeIdResolver.java)）]、[@JsonTypeIdResolver javadoc](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/annotation/JsonTypeIdResolver.java)
+   - 官方自定义扩展点是 `TypeIdResolver`（`idFromValue`/`typeFromId`，建议继承 `TypeIdResolverBase`），`@JsonTypeIdResolver`
+     注解 javadoc 明言："In simplest cases this can be a simple class with **static mapping between type names and
+     matching classes**"——官方设想即"开发者集中维护一张映射表"。来源: jackson-databind
+     TypeIdResolver（[2.x](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/TypeIdResolver.java)/[3.x](https://github.com/FasterXML/jackson-databind/blob/3.x/src/main/java/tools/jackson/databind/jsontype/TypeIdResolver.java)）、[@JsonTypeIdResolver javadoc](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/annotation/JsonTypeIdResolver.java)
    - **Jackson 3 变化**：3.0.0-rc2（2025-03-28）"#5025: Add support for automatic detection of subtypes (like `@JsonSubTypes`) **from Java 17 sealed types**"——sealed `permits` 子句替代 `@JsonSubTypes` 注册，编译器已强制"有哪些子类"，但 `@JsonTypeName` 的**值**仍无编译期约束，判别串↔枚举一致性问题原样保留。[来源: jackson-databind 3.x release-notes/VERSION](https://github.com/FasterXML/jackson-databind/blob/3.x/release-notes/VERSION)
 3. **Jackson 自身不做判别值唯一性校验**：2.x `TypeNameIdResolver` 源码对重复 id 直接 `idToType.put(id, ...)`（后者覆盖，无 duplicate/conflict 检查）——项目的 `jsonTypeNamesAreUnique` 测试填补了真实空白（[inference: 由源码阅读得出，无 duplicate 检测逻辑]）。[来源: jackson-databind 2.x TypeNameIdResolver](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/impl/TypeNameIdResolver.java)
 4. **结构性/架构测试是主流**：用测试锁定"编译器管不到的结构不变量"是 Java 社区成熟实践，代表作是 ArchUnit（官方定位即架构/结构测试库，校验包依赖等规则）。[来源: https://www.archunit.org/](https://www.archunit.org/)
@@ -144,7 +175,9 @@
 1. **"@JsonSubTypes 已移除"表述不准确**：jackson-annotations 3.x 分支仍存在 `JsonSubTypes.java` 且无弃用标注（2026-08-04 核验）；实际变化是 3.0.0-rc2 起 sealed 类型自动发现使其对 sealed 层次不再必要。ADR-0004 中"@JsonSubTypes 已移除"的表述建议修正为"对 sealed 层次不再需要"。[来源: jackson-annotations 3.x 目录/源码](https://github.com/FasterXML/jackson-annotations/tree/3.x)、[jackson-databind 3.x release-notes](https://github.com/FasterXML/jackson-databind/blob/3.x/release-notes/VERSION)
 2. **铁律 2 的"查询对象不含判别枚举"与 DDD"查询用领域语言"的张力**：`VerificationChannel` 是领域概念；剔除后靠 `Class<T>` 等价表达（类型安全换可读性），需团队显式确认该取舍；纯数据类统计需求应放基础设施查询模型。
 3. **当前代码与结论的差距（过渡态）**：`VerificationChannel` 持 `Class` 引用 + `of(Class)` 反查（违反铁律 2/4）；`VerificationGateway` 同时有 `VerificationQuery(channel)` 与 `Class<T>` 变体（双轨语义重复）——按结论收敛时应一并清理。
-4. **判别短名是持久化/传输合同**：改名破坏 DB 数据（ADR-0005 已承认）；新增子类型同时变更 DB 数据与 JSON 判别串。AIP-126 建议频繁变化的值集用 string；本项目用枚举锁定 1-4 字符短名，需接受"变更=迁移"的成本。[来源: https://google.aip.dev/126](https://google.aip.dev/126)、[docs/adr/0005](docs/adr/0005-enum-short-name.md)
+4. **判别短名是持久化/传输合同**：改名破坏 DB 数据（ADR-0005 已承认）；新增子类型同时变更 DB 数据与 JSON 判别串。AIP-126
+   建议频繁变化的值集用 string；本项目用枚举锁定 1-4
+   字符短名，需接受"变更=迁移"的成本。[来源: https://google.aip.dev/126](https://google.aip.dev/126)、[docs/adr/0005](../adr/0005-enum-short-name.md)
 5. **铁律 3 与 @JsonTypeName 的双副本问题**：`getChannel()` 与 `@JsonTypeName("S")` 各存一份映射，仅靠测试（铁律 5）与 TypeIdResolver 收敛；不存在编译期手段。
 6. **`Class<T>` 参数的运行时校验缺口**：泛型擦除后 gateway 实现需校验 `Class` 是 permits 子类，否则错误静默到运行时；这是 JPA `find` 同款代价。
 7. **Fowler bliki TypeObject.html 404**（2026-08-04 实测）：引用 Type Object 请用 Johnson & Woolf PLoP 1997 论文（cs.ox.ac.uk 镜像可访问）+ Fowler《Analysis Patterns》(1997)。

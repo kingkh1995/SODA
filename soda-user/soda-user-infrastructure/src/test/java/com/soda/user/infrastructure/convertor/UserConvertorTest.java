@@ -1,6 +1,7 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Version;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link UserConvertor} 双向转换单测（COLA convertor 独立类后转换逻辑可独立验证）。
+ * <p>边际用途：PO↔领域双向映射语义（纯函数层）；持久化现实归 repository 切片。
  */
 @DisplayName("UserConvertor 双向转换")
 class UserConvertorTest {
@@ -30,7 +32,7 @@ class UserConvertorTest {
         var user = User.createBuilder()
                 .username(new Username("alice"))
                 .nickname(new Nickname("Alice"))
-                .mobile(new Mobile("13900139000"))
+                .mobile(Mobile.of("13900139000"))
                 .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(42L));
@@ -46,7 +48,7 @@ class UserConvertorTest {
         assertThat(restored.getId()).isEqualTo(user.getId());
         assertThat(restored.getUsername()).isEqualTo(user.getUsername());
         assertThat(restored.getNickname()).isEqualTo(user.getNickname());
-        assertThat(restored.getMobile()).contains(new Mobile("13900139000"));
+        assertThat(restored.getMobile()).contains(Mobile.of("13900139000"));
         assertThat(restored.getAccounts()).hasSize(1);
         assertThat(restored.getAccounts().get(0)).isInstanceOf(SmsAuthAccount.class);
         assertThat(restored.getPasswordAccount().getPasswordHash())
@@ -61,7 +63,7 @@ class UserConvertorTest {
         var user = User.createBuilder()
                 .username(new Username("bobby"))
                 .nickname(new Nickname("Bobby"))
-                .mobile(new Mobile("13900139001"))
+                .mobile(Mobile.of("13900139001"))
                 .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(43L));
@@ -81,7 +83,7 @@ class UserConvertorTest {
         var user = User.createBuilder()
                 .username(new Username("carol"))
                 .nickname(new Nickname("Carol"))
-                .email(new com.soda.component.domain.types.Email("carol@test.com"))
+                .email(Email.of("carol@test.com"))
                 .passwordHash(PasswordHash.of("$2a$10$hash"))
                 .build();
         user.assignId(new com.soda.user.domain.types.UserId(44L));

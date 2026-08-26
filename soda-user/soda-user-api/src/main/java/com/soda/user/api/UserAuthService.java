@@ -9,8 +9,8 @@ import com.soda.user.api.command.RequestChangeMobileCodeCommand;
 /**
  * 用户凭证相关的 ApplicationService 接口。
  * <p>
- * 管理手机号 / 邮箱 / 密码的修改。手机号 / 邮箱换绑走两步验证流程（<b>发码与消费完整归位</b>，
- * 2026-08-16，见 ADR-0026——{@code VerificationService} 作废，主体裁定为 User）：
+ * 管理手机号 / 邮箱 / 密码的修改。手机号 / 邮箱换绑走两步验证流程（发码与消费归位
+ * User 侧，见 ADR-0026）：
  * <ol>
  *   <li>发送验证码 → {@link #requestChangeMobileCode(RequestChangeMobileCodeCommand)} /
  *       {@link #requestChangeEmailCode(RequestChangeEmailCodeCommand)}</li>
@@ -20,9 +20,7 @@ import com.soda.user.api.command.RequestChangeMobileCodeCommand;
  * <p>
  * 实现在 {@code soda-user-application} 模块。
  *
- * <p><b>参数契约</b>：实现不校验入参，调用方必须保证参数合法（存在性 / 格式 / 业务约束）。
- * 方法入参默认非空；仅在可为 {@code null} 时标注 {@code @Nullable}（JSpecify）。
- * Command 对象属性遵循同一约定：未标注 {@code @Nullable} 的属性默认非空。
+ * <p>参数契约见 `docs/conventions/framework-crosscutting.md` §参数契约。
  */
 public interface UserAuthService {
 

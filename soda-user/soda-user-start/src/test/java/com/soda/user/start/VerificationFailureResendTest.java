@@ -31,8 +31,7 @@ import static org.mockito.Mockito.doThrow;
  * <p>
  * 用 {@code @MockitoBean} 把 {@link SmsSender} 替换为抛异常实现（投递契约违反，
  * ADR-0011）：send 失败 → 记录保持 I → 槽位预检（existsBySource）计入 I 拒绝
- * 重发 → 过期后惰性 DELETE 腾槽 → 重发成功（新 I 落库，发送仍失败，弱保证语义，
- * 2026-08-11 决策；机制见 ADR-0026）。
+ * 重发 → 过期后惰性 DELETE 腾槽 → 重发成功（新 I 落库，发送仍失败——弱保证语义，机制见 ADR-0026）。
  */
 @SpringBootTest(classes = SodaUserApplication.class)
 @DisplayName("投递失败自愈链路（H2）")

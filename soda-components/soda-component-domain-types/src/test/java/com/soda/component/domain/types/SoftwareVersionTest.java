@@ -1,6 +1,5 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,6 +9,7 @@ import tools.jackson.core.JacksonException;
 
 import java.util.stream.Stream;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -48,16 +48,16 @@ class SoftwareVersionTest {
         }
 
         @Test
+        @DisplayName("打包 int 还原")
+        void should_create_when_fromPackedInt() {
+            assertThat(SoftwareVersion.fromPackedInt(2_001_003).value()).isEqualTo("v2.1.3");
+        }
+
+        @Test
         @DisplayName("边界值可构造")
         void should_create_when_boundaryValues() {
             assertThat(SoftwareVersion.of("v0.0.0").value()).isEqualTo("v0.0.0");
             assertThat(SoftwareVersion.of("v999.999.999").value()).isEqualTo("v999.999.999");
-        }
-
-        @Test
-        @DisplayName("打包 int 还原")
-        void should_create_when_fromPackedInt() {
-            assertThat(SoftwareVersion.fromPackedInt(2_001_003).value()).isEqualTo("v2.1.3");
         }
     }
 
@@ -161,80 +161,6 @@ class SoftwareVersionTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(SoftwareVersion.of("v2.1.3")).hasToString("SoftwareVersion[value=v2.1.3]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            JacksonTestUtil.assertRoundTrip(SoftwareVersion.of("v2.1.3"), SoftwareVersion.class);
-        }
-
-        @Test
-        @DisplayName("序列化为规范字符串")
-        void should_serializeToBareString() throws Exception {
-            var json = JacksonTestUtil.mapper().writeValueAsString(SoftwareVersion.of("v2.1.3"));
-            assertThat(json).isEqualTo("\"v2.1.3\"");
-        }
-
-        @Test
-        @DisplayName("从规范字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            var v = JacksonTestUtil.mapper().readValue("\"v2.1.3\"", SoftwareVersion.class);
-            assertThat(v).isEqualTo(SoftwareVersion.of("v2.1.3"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> JacksonTestUtil.mapper().readValue("\"2.1.3\"", SoftwareVersion.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("数值比较而非字典序")
-        void should_compareNumerically() {
-            assertThat(SoftwareVersion.of("v2.1.10")).isGreaterThan(SoftwareVersion.of("v2.1.3"));
-        }
-
-        @Test
-        @DisplayName("段位逐级比较")
-        void should_compareSegmentBySegment() {
-            assertThat(SoftwareVersion.of("v2.3.0")).isGreaterThan(SoftwareVersion.of("v2.1.999"));
-            assertThat(SoftwareVersion.of("v3.0.0")).isGreaterThan(SoftwareVersion.of("v2.999.999"));
-        }
-
-        @Test
-        @DisplayName("最小与最大版本")
-        void should_orderAtBoundaries() {
-            assertThat(SoftwareVersion.of("v0.0.0")).isLessThan(SoftwareVersion.of("v2.1.3"));
-            assertThat(SoftwareVersion.of("v999.999.999")).isGreaterThan(SoftwareVersion.of("v999.999.998"));
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = SoftwareVersion.of("v2.001.003");
-            var b = SoftwareVersion.of("v2.1.3");
-            assertThat(a.compareTo(b)).isZero();
-            assertThat(a).isEqualTo(b);
-        }
-    }
-
-    @Nested
     @DisplayName("打包 int")
     class PackedInt {
         @Test
@@ -304,4 +230,81 @@ class SoftwareVersionTest {
                     .hasMessageContaining("must be between 0 and 999");
         }
     }
+
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() throws Exception {
+            var original = SoftwareVersion.of("v2.1.3");
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, SoftwareVersion.class)).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("序列化为规范字符串")
+        void should_serializeToBareString() throws Exception {
+            var json = MAPPER.writeValueAsString(SoftwareVersion.of("v2.1.3"));
+            assertThat(json).isEqualTo("\"v2.1.3\"");
+        }
+
+        @Test
+        @DisplayName("从规范字符串反序列化")
+        void should_deserializeFromBareString() throws Exception {
+            var v = MAPPER.readValue("\"v2.1.3\"", SoftwareVersion.class);
+            assertThat(v).isEqualTo(SoftwareVersion.of("v2.1.3"));
+        }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"2.1.3\"", SoftwareVersion.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("比较")
+    class ComparableTest {
+        @Test
+        @DisplayName("数值比较而非字典序")
+        void should_compareNumerically() {
+            assertThat(SoftwareVersion.of("v2.1.10")).isGreaterThan(SoftwareVersion.of("v2.1.3"));
+        }
+
+        @Test
+        @DisplayName("段位逐级比较")
+        void should_compareSegmentBySegment() {
+            assertThat(SoftwareVersion.of("v2.3.0")).isGreaterThan(SoftwareVersion.of("v2.1.999"));
+            assertThat(SoftwareVersion.of("v3.0.0")).isGreaterThan(SoftwareVersion.of("v2.999.999"));
+        }
+
+        @Test
+        @DisplayName("最小与最大版本")
+        void should_orderAtBoundaries() {
+            assertThat(SoftwareVersion.of("v0.0.0")).isLessThan(SoftwareVersion.of("v2.1.3"));
+            assertThat(SoftwareVersion.of("v999.999.999")).isGreaterThan(SoftwareVersion.of("v999.999.998"));
+        }
+
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = SoftwareVersion.of("v2.001.003");
+            var b = SoftwareVersion.of("v2.1.3");
+            assertThat(a.compareTo(b)).isZero();
+            assertThat(a).isEqualTo(b);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(SoftwareVersion.of("v2.1.3")).hasToString("SoftwareVersion[value=v2.1.3]");
+        }
+    }
+
 }

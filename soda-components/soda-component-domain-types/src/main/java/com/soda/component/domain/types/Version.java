@@ -13,11 +13,8 @@ import lombok.EqualsAndHashCode;
  * <p>
  * 缓存范围至少 [0, 99]，通过 SPI 接口 {@link com.soda.component.domain.util.TypeConfigProvider}
  * 的 {@code versionCacheHigh()} 自定义上限（参考 {@link Integer} 缓存设计）。
- * 超出缓存范围的版本号创建新实例，不受缓存影响。
- * <p>
- * 参考 kk-ddd 的 {@code Version} 设计。
  *
- * @see Type
+ * @see IntLiteralType
  * @see TypeConfig
  */
 @EqualsAndHashCode
@@ -28,6 +25,9 @@ public final class Version implements IntLiteralType, Comparable<Version> {
     private static final ArrayTypeCache<Version> CACHE =
             new ArrayTypeCache<>(0, CACHE_HIGH, Version::new);
 
+    /**
+     * 初始版本号（0）。
+     */
     public static final Version INITIAL = CACHE.get(0);  // 0 始终在缓存范围
 
     private final int value;

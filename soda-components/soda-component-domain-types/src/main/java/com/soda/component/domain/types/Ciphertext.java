@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * 解密时由调用方显式提供目标类型：{@code Decryptor.decrypt(ct, Mobile.class)}。
  * <p>
  * 字面值本身非攻击素材（无钥惰性），因此<b>不继承 SensitiveValue</b>、无遮蔽义务；
- * toString 缺省输出完整密文为可接受行为（ADR-0033 §域界判据）。
+ * toString 缺省输出完整密文为可接受行为（域界判据见 ADR-0033）。
  *
  * @see StringLiteralType
  * @see com.soda.component.domain.gateway.Encryptor
@@ -43,15 +43,6 @@ public record Ciphertext(String value) implements StringLiteralType {
         ValidateUtils.hasText(value);
         ValidateUtils.matches(value, FIVE_SEGMENTS);
         ValidateUtils.matches(decodeHeader(value), JOSE_HEADER);
-    }
-
-    /**
-     * 工厂 —— 委托紧凑构造器（校验收敛于构造器，STYLEGUIDE §2.1）。
-     *
-     * @param jwe JWE compact 密文串
-     */
-    public static Ciphertext of(String jwe) {
-        return new Ciphertext(jwe);
     }
 
     private static String decodeHeader(String jwe) {

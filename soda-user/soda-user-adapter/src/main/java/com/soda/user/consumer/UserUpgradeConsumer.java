@@ -8,10 +8,9 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 跨服务消息消费者示例 — 监听 order 模块发布的消息，处理用户升级。
+ * 跨服务消息消费者示例 — 监听 order 模块发布的首单消息，处理用户升级。
  * <p>
- * 消息类型 {@code UserFirstOrderMessage} 由 order 模块定义在其 api 包中，
- * 本模块依赖 order-api 后即可接收。
+ * 监听器在发布方事务提交后异步执行（AFTER_COMMIT）。
  *
  * @see UserFirstOrderMessage
  */

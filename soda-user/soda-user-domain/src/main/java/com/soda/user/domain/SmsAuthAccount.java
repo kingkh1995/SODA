@@ -13,13 +13,12 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
- * 短信认证账户实体 — 手机号 + 短信验证码方式的认证。
+ * 短信认证账户实体 — 以手机号为认证标识。
  * <p>
- * 与 User.mobile 联动：设置 User.mobile 时自动创建，清除时自动删除。
+ * 与 User.mobile 联动——字段与账户同步替换，恒一致。
  * <p>
- * 只保留认证标识（手机号）与 active——验证码的发送/校验状态已迁移至独立的
- * {@link Verification} 实体（ADR-0011）；码形策略是通道级规则，账户不持有 policy 字段
- * （2026-08-09 移除，见 ADR-0018）。
+ * 只持有认证标识与 active：验证码状态由独立的 {@link Verification} 聚合管理（见 ADR-0011）；
+ * 码形是通道级规则，账户不持有 policy 字段（见 ADR-0018）。
  *
  * @see AuthAccount
  */
@@ -29,7 +28,7 @@ import lombok.Getter;
 public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     /**
-     * 默认短信验证码策略：6 位纯数字，5 分钟过期。
+     * 通道默认码形常量（预留契约——码形由场景策略决定，非账户数据，见 ADR-0018）。
      */
     public static final VerificationCodePolicy DEFAULT_POLICY = VerificationCodePolicy.DEFAULT_SMS;
 
@@ -60,9 +59,6 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     // ─── accessors ───
 
-    /**
-     * 认证类型 — 常量来源为 {@link SmsAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
-     */
     @Override
     public AuthAccountType getAccountType() {
         return SmsAuthAccountId.ACCOUNT_TYPE;

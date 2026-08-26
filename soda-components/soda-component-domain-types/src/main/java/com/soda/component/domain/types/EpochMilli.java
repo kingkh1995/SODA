@@ -2,6 +2,7 @@ package com.soda.component.domain.types;
 
 import com.soda.component.domain.LongLiteralType;
 import com.soda.component.domain.Type;
+import com.soda.component.domain.util.ValidateUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -16,11 +17,14 @@ import java.time.Instant;
  * 覆盖 Jackson 3 裸 {@code Instant} 的 ISO-8601 字符串默认（{@code WRITE_DATES_AS_TIMESTAMPS} 默认 false）。
  * <p>
  * record 形态：{@code value()} 为 record 访问器、{@code @JsonValue} 继承、零 Jackson 代码、
- * 从 {@code long} 自动反序列化（Jackson 3.1.4 实证，见 ADR-0028）。无值域约束（任意 long 均合法）。
- * 富血方法（JDK 风格，见 dp-conventions）：{@link #of(Instant)}/{@link #now()} 构造、
- * {@link #plus(Duration)}/{@link #minus(Duration)} 偏移、{@link #isAfter(EpochMilli)}/{@link #isBefore(EpochMilli)} 谓词。
+ * 从 {@code long} 自动反序列化（Jackson 3.1.4 实证，见 ADR-0028）。
  * <p>
- * 当前为契约就位、暂无生产消费方；现有裸 {@code Instant} 字段的迁移另开一轮（见 ADR-0031 Consequences）。
+ * <b>值域约束</b>：{@code [0, Long.MAX_VALUE]}——epoch 毫秒，严格不允许负值。负数 epoch
+ * 毫秒在主流关系库（MySQL {@code TIMESTAMP}/{@code DATETIME} 模式）落库即报 out-of-range，
+ * 故在构造期拒绝（{@link Instant#MIN} 等极端合法 {@code Instant} 输入亦会因此被拒——与
+ * 「构造出来即可落库」契约一致；见 ADR-0022/0031）。下界常量见 {@link #MIN}。
+ * 富血方法（JDK 风格，见 dp-conventions）：{@link #from(Instant)}/{@link #now()} 构造、
+ * {@link #plus(Duration)}/{@link #minus(Duration)} 偏移、{@link #isAfter(EpochMilli)}/{@link #isBefore(EpochMilli)} 谓词。
  *
  * @see LongLiteralType
  * @see Type
@@ -28,9 +32,18 @@ import java.time.Instant;
 public record EpochMilli(long value) implements LongLiteralType, Comparable<EpochMilli> {
 
     /**
+     * 下界常量 — epoch 起点（{@code 1970-01-01T00:00:00Z}）。
+     */
+    public static final EpochMilli MIN = new EpochMilli(0L);
+
+    public EpochMilli {
+        ValidateUtils.minValue(value, 0L, true);
+    }
+
+    /**
      * 从 {@link Instant} 构造。
      */
-    public static EpochMilli of(Instant instant) {
+    public static EpochMilli from(Instant instant) {
         return new EpochMilli(instant.toEpochMilli());
     }
 
@@ -38,7 +51,7 @@ public record EpochMilli(long value) implements LongLiteralType, Comparable<Epoc
      * 当前时刻。
      */
     public static EpochMilli now() {
-        return of(Instant.now());
+        return from(Instant.now());
     }
 
     /**
@@ -52,14 +65,14 @@ public record EpochMilli(long value) implements LongLiteralType, Comparable<Epoc
      * 时间偏移（加）。例如 {@code EpochMilli.now().plus(Duration.ofMinutes(5))}。
      */
     public EpochMilli plus(Duration duration) {
-        return of(instant().plus(duration));
+        return from(instant().plus(duration));
     }
 
     /**
      * 时间偏移（减）。
      */
     public EpochMilli minus(Duration duration) {
-        return of(instant().minus(duration));
+        return from(instant().minus(duration));
     }
 
     /**

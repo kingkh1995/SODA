@@ -12,12 +12,10 @@ import lombok.experimental.Accessors;
 /**
  * 认证账户标识符密封基类 — 所有 AuthAccountId 统一为 {@link Identifier}{@code <String>}。
  * <p>
- * 序列化格式：{@code "{AuthAccountType短名}:{业务键}"}（如 {@code "P:42"}、{@code "S:13800138000"}）——
- * 单属性 String 字面量，实现 {@link StringLiteralType}（{@code @JsonValue} 继承自家族接口，
- * 见 ADR-0028；自描述编码与字面量契约正交，编码理由见 ADR-0007）。
+ * 序列化编码格式与示例单源在 CONTEXT「AuthAccountId」词条——单属性 String 字面量，实现
+ * {@link StringLiteralType}（{@code @JsonValue} 继承自家族接口，见 ADR-0028；
+ * 自描述编码与字面量契约正交，编码理由见 ADR-0007）。
  * 反序列化由各子类的 {@code of(String)} 完成，Jackson 需声明具体子类类型。
- * <p>
- * 子类可通过 {@link #of(String)} 传入带前缀的字符串完成构造。
  *
  * @see PasswordAuthAccountId
  * @see SmsAuthAccountId

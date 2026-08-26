@@ -1,3 +1,4 @@
 dependencies {
     api project(':soda-components:soda-component-domain-starter')
+    testImplementation project(':soda-supports:soda-support-modulith')
 }

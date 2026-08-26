@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.SensitiveValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 
@@ -20,13 +20,21 @@ public final class ChineseName extends SensitiveValue {
 
     private static final Pattern PATTERN = Pattern.compile("^[\\u4e00-\\u9fa5]{2,20}$");
 
-    public ChineseName(String value) {
+    private ChineseName(String value) {
         super(value);
-        ValidateUtils.matches(value(), PATTERN);
+        ValidateUtils.matches(value, PATTERN);
     }
 
     @Override
     public String maskedValue() {
         return MaskedChineseName.from(this).value();
+    }
+
+    /**
+     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static ChineseName of(String raw) {
+        return new ChineseName(raw);
     }
 }

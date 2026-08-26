@@ -1,5 +1,7 @@
 package com.soda.component.domain.types;
 
+import com.soda.support.test.ModulithTestSupport;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
@@ -18,20 +20,29 @@ import org.springframework.modulith.core.ApplicationModules;
  * │ domain           │ OPEN     │ (none)                               │
  * │ domain.util      │ CLOSED   │ (none)                               │
  * │ domain.types     │ CLOSED   │ domain, domain.util                  │
- * │ domain.gateway   │ CLOSED   │ domain, domain.types                 │
+ * │ domain.gateway   │ CLOSED   │ domain, domain.types, domain.util     │
  * </pre>
  */
+@DisplayName("Spring Modulith 模块结构")
 class ModulithTest {
 
     @Test
-    void verifyModuleStructure() {
+    @DisplayName("模块依赖关系符合结构约定（CLOSED 模块依赖白名单校验）")
+    void should_verifyModuleStructure() {
         var modules = ApplicationModules.of("com.soda.component");
         modules.verify();
     }
 
     @Test
-    void printModuleStructure() {
+    @DisplayName("打印模块结构（人工诊断输出）")
+    void should_printModuleStructure() {
         var modules = ApplicationModules.of("com.soda.component");
         modules.forEach(System.out::println);
+    }
+
+    @Test
+    @DisplayName("CLOSED 模块无未声明依赖")
+    void shouldHaveNoUndeclaredDependenciesInClosedModules() {
+        ModulithTestSupport.assertNoUndeclaredDependenciesInClosedModules("com.soda.component");
     }
 }

@@ -10,7 +10,7 @@ import java.util.Base64;
 /**
  * 解析工具类 — 将不可靠 {@link Object} 输入解析为指定基础类型。
  * <p>
- * 可调用 {@link ValidateUtils} 对输入做校验。
+ * 输入不可靠（可能 null / 类型不符 / 格式非法），失败统一抛 {@link IllegalArgumentException}。
  */
 public final class ParseUtils {
 
@@ -27,7 +27,7 @@ public final class ParseUtils {
     }
 
     /**
-     * Object → int
+     * 解析为 int：接受 {@code Number} 或 {@code String}（自动 trim），null、类型不符或格式非法抛 IAE。
      */
     public static int parseInt(@Nullable Object o) {
         ValidateUtils.notNull(o);
@@ -45,7 +45,7 @@ public final class ParseUtils {
     }
 
     /**
-     * Object → long
+     * 解析为 long：接受 {@code Number} 或 {@code String}（自动 trim），null、类型不符或格式非法抛 IAE。
      */
     public static long parseLong(@Nullable Object o) {
         ValidateUtils.notNull(o);
@@ -63,7 +63,7 @@ public final class ParseUtils {
     }
 
     /**
-     * Object → boolean
+     * 解析为 boolean：接受 {@code Boolean} 或 {@code String}（true/false/1/0，大小写不敏感）。
      */
     public static boolean parseBoolean(@Nullable Object o) {
         ValidateUtils.notNull(o);
@@ -83,7 +83,7 @@ public final class ParseUtils {
     }
 
     /**
-     * Object → BigDecimal
+     * 解析为 {@link BigDecimal}：接受 {@code BigDecimal}、{@code Number}（经 toString）或 {@code String}（自动 trim）。
      */
     public static BigDecimal parseBigDecimal(@Nullable Object o) {
         ValidateUtils.notNull(o);
@@ -108,7 +108,7 @@ public final class ParseUtils {
     }
 
     /**
-     * String → Enum
+     * 解析为枚举成员：按 {@code name} 精确匹配（大小写敏感），null 或未知值抛 IAE。
      */
     public static <T extends Enum<T>> T parseEnum(Class<T> enumClass, @Nullable String value) {
         ValidateUtils.hasText(value);

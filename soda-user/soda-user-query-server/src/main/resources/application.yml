@@ -1,6 +1,8 @@
 spring:
   application:
     name: soda-user-query-server
+  # 读侧独立部署单元数据源：H2 内存库 MySQL 兼容模式，与写侧同源（ADR-0022）。
+  # DATABASE_TO_LOWER=TRUE 必须保留：V1 反引号建小写表名（user），见写侧 application.yml 注记
   datasource:
     url: jdbc:h2:mem:soda_user_query;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver

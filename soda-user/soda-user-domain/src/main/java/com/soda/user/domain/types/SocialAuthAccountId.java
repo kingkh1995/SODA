@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 /**
  * 社交认证账户标识符 DP — 派生自 {@link SocialType} + openId。
  * <p>
- * 格式：{@code "O:{社交类型短名}:{openId}"}（如 {@code "O:W:open123"}、{@code "O:A:456"}）。
+ * 格式：{@code "O:{社交类型短名}:{openId}"}（如 {@code "O:GE:open123"}、{@code "O:DT:456"}）。
  *
  * @see AuthAccountId
  */
@@ -31,6 +31,9 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         this.openId = openId;
     }
 
+    /**
+     * 反序列化入口 — 格式 {@code "O:{社交类型短名}:{openId}"}。
+     */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SocialAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, PREFIX);
@@ -41,9 +44,6 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         return new SocialAuthAccountId(value, socialType, openId);
     }
 
-    /**
-     * 从 {@link SocialType} + openId 构造社交认证账户标识符。
-     */
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
         ValidateUtils.hasText(openId);

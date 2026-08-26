@@ -7,6 +7,10 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 
+/**
+ * 社交平台类型枚举。取值：GE（Gitee）、DT（DingTalk）、WENT（WechatWork）、WMP（WechatMp）、
+ * WOPN（WechatOpen）、WMIN（WechatMini）、ALIP（AlipayMini）。
+ */
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor

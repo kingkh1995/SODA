@@ -1,21 +1,18 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("随机字符串值对象")
 class RandomStringTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -47,6 +44,13 @@ class RandomStringTest {
             assertThatThrownBy(() -> new RandomString(invalid))
                     .isInstanceOf(IllegalArgumentException.class);
         }
+
+        @Test
+        @DisplayName("空白字符串拒绝")
+        void should_throw_when_valueIsBlank() {
+            assertThatThrownBy(() -> new RandomString("   "))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     @Nested
@@ -75,19 +79,6 @@ class RandomStringTest {
         }
     }
 
-    // ——— 业务方法 ———
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new RandomString("abc")).hasToString("RandomString[value=abc]");
-        }
-    }
-
     @Nested
     @DisplayName("序列化")
     class Serialization {
@@ -96,14 +87,8 @@ class RandomStringTest {
         @DisplayName("Jackson 序列化反序列化一致")
         void should_roundTrip() throws Exception {
             var original = new RandomString("Abc123");
-            JacksonTestUtil.assertRoundTrip(original, RandomString.class);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", RandomString.class))
-                    .isInstanceOf(JacksonException.class);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, RandomString.class)).isEqualTo(original);
         }
 
         @Test
@@ -118,5 +103,24 @@ class RandomStringTest {
         void should_deserializeFromBareString() throws Exception {
             assertThat(MAPPER.readValue("\"Abc123\"", RandomString.class)).isEqualTo(new RandomString("Abc123"));
         }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("{}", RandomString.class))
+                    .isInstanceOf(JacksonException.class);
+        }
     }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new RandomString("abc")).hasToString("RandomString[value=abc]");
+        }
+    }
+
 }

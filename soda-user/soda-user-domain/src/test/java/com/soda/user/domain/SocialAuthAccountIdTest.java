@@ -1,5 +1,6 @@
 package com.soda.user.domain;
 
+import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
@@ -59,6 +60,18 @@ class SocialAuthAccountIdTest {
                 assertThat(id.socialType()).isEqualTo(type);
                 assertThat(id.openId()).isEqualTo("testOpenId");
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("路由")
+    class Routing {
+        @Test
+        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
+        void should_routeToSocialSubtype_when_baseFactoryOrJson() throws Exception {
+            assertThat(AuthAccountId.of("O:GE:1")).isInstanceOf(SocialAuthAccountId.class);
+            assertThat(MAPPER.readValue("\"O:GE:1\"", AuthAccountId.class))
+                    .isInstanceOf(SocialAuthAccountId.class);
         }
     }
 

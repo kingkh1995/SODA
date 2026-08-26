@@ -1,14 +1,14 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.mapper;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MaskedMobileTest {
 
     private static final String VALID_MASKED = "138****8000";
-    private static final String VALID_MASKED_2 = "139****1234";
 
     @Nested
     @DisplayName("构造")
@@ -24,7 +23,7 @@ class MaskedMobileTest {
         @Test
         @DisplayName("合法脱敏格式创建实例")
         void should_create_when_validFormat() {
-            var mm = MaskedMobile.of(VALID_MASKED);
+            var mm = new MaskedMobile(VALID_MASKED);
             assertThat(mm.value()).isEqualTo(VALID_MASKED);
         }
     }
@@ -37,8 +36,37 @@ class MaskedMobileTest {
         @ValueSource(strings = {" ", "13800138000", "138***8000", "138*******8000", "abc****1234", "138****800"})
         @DisplayName("非法脱敏格式抛出异常")
         void should_throw_when_invalidFormat(String input) {
-            assertThatThrownBy(() -> MaskedMobile.of(input))
+            assertThatThrownBy(() -> new MaskedMobile(input))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("相等性与 hashCode")
+    class Equality {
+
+        @Test
+        @DisplayName("相同值相等")
+        void should_beEqual_when_sameValue() {
+            assertThat(new MaskedMobile(VALID_MASKED)).isEqualTo(new MaskedMobile(VALID_MASKED));
+        }
+
+        @Test
+        @DisplayName("不同值不等")
+        void should_notBeEqual_when_differentValue() {
+            assertThat(new MaskedMobile(VALID_MASKED)).isNotEqualTo(new MaskedMobile("139****1234"));
+        }
+
+        @Test
+        @DisplayName("hashCode 一致")
+        void should_haveConsistentHashCode() {
+            assertThat(new MaskedMobile(VALID_MASKED)).hasSameHashCodeAs(new MaskedMobile(VALID_MASKED));
+        }
+
+        @Test
+        @DisplayName("不同 Masked 类型不相等")
+        void should_notBeEqual_when_otherMaskedType() {
+            assertThat(new MaskedMobile(VALID_MASKED)).isNotEqualTo(new MaskedEmail("t***@example.com"));
         }
     }
 
@@ -48,36 +76,44 @@ class MaskedMobileTest {
         @Test
         @DisplayName("from 原始手机号等价于 of 掩码算法输出")
         void should_fromEqualOf_when_rawMobile() {
-            assertThat(MaskedMobile.from(new Mobile("13800138000")))
-                    .isEqualTo(MaskedMobile.of("138****8000"));
+            assertThat(MaskedMobile.from(Mobile.of("13800138000")))
+                    .isEqualTo(new MaskedMobile("138****8000"));
         }
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
+    @DisplayName("序列化")
+    class Serialization {
+
         @Test
-        @DisplayName("相同值相等")
-        void should_equal_sameValue() {
-            assertThat(MaskedMobile.of(VALID_MASKED)).isEqualTo(MaskedMobile.of(VALID_MASKED));
+        @DisplayName("JSON 序列化输出脱敏标量")
+        void should_serializeToScalar() {
+            var mm = new MaskedMobile(VALID_MASKED);
+            var json = MAPPER.writeValueAsString(mm);
+            assertThat(json).isEqualTo("\"" + VALID_MASKED + "\"");
         }
 
         @Test
-        @DisplayName("不同值不等")
-        void should_notEqual_diffValue() {
-            assertThat(MaskedMobile.of(VALID_MASKED)).isNotEqualTo(MaskedMobile.of(VALID_MASKED_2));
+        @DisplayName("JSON 反序列化还原实例")
+        void should_deserializeFromScalar() {
+            var json = "\"" + VALID_MASKED + "\"";
+            var mm = MAPPER.readValue(json, MaskedMobile.class);
+            assertThat(mm.value()).isEqualTo(VALID_MASKED);
         }
 
         @Test
-        @DisplayName("hashCode 一致")
-        void should_hashCodeConsistent() {
-            assertThat(MaskedMobile.of(VALID_MASKED)).hasSameHashCodeAs(MaskedMobile.of(VALID_MASKED));
+        @DisplayName("Jackson 双向验证")
+        void should_roundTrip() throws Exception {
+            var original = new MaskedMobile(VALID_MASKED);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, MaskedMobile.class)).isEqualTo(original);
         }
 
         @Test
-        @DisplayName("不同 Masked 类型不相等")
-        void should_notEqual_otherMaskedType() {
-            assertThat(MaskedMobile.of(VALID_MASKED)).isNotEqualTo(MaskedEmail.of("t***@example.com"));
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"13800138000\"", MaskedMobile.class))
+                    .isInstanceOf(JacksonException.class);
         }
     }
 
@@ -85,33 +121,9 @@ class MaskedMobileTest {
     @DisplayName("调试")
     class Debug {
         @Test
-        @DisplayName("record 标准格式")
-        void should_toStringRecordFormat() {
-            assertThat(MaskedMobile.of(VALID_MASKED)).hasToString("MaskedMobile[value=138****8000]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("JSON 序列化输出脱敏标量")
-        void should_serializeToScalar() {
-            String json = mapper().writeValueAsString(MaskedMobile.of(VALID_MASKED));
-            assertThat(json).isEqualTo("\"" + VALID_MASKED + "\"");
-        }
-
-        @Test
-        @DisplayName("JSON 反序列化还原实例")
-        void should_deserializeFromScalar() {
-            var mm = mapper().readValue("\"" + VALID_MASKED + "\"", MaskedMobile.class);
-            assertThat(mm.value()).isEqualTo(VALID_MASKED);
-        }
-
-        @Test
-        @DisplayName("Jackson 双向验证")
-        void should_roundTrip() throws Exception {
-            JacksonTestUtil.assertRoundTrip(MaskedMobile.of(VALID_MASKED), MaskedMobile.class);
+        @DisplayName("toString 返回脱敏串")
+        void should_haveCorrectToString() {
+            assertThat(new MaskedMobile(VALID_MASKED)).hasToString("MaskedMobile[value=" + VALID_MASKED + "]");
         }
     }
 }

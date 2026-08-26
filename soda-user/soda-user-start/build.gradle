@@ -15,4 +15,5 @@ dependencies {
     // 集成测试编译期引用 api（UserService/UserAuthService）与 domain（gateway/聚合）
     testImplementation project(':soda-user:soda-user-api')
     testImplementation project(':soda-user:soda-user-domain')
+    testImplementation project(':soda-supports:soda-support-modulith')
 }

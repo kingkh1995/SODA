@@ -4,146 +4,164 @@ import com.soda.component.domain.types.Active;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link SocialAuthAccount} 单元测试。
- * <p>
- * 验证构造、类型、社交平台属性、工厂方法、Jackson 序列化。
  */
+@DisplayName("SocialAuthAccount 社交认证账户")
 class SocialAuthAccountTest {
 
     private static final SocialAuthAccountId ID = SocialAuthAccountId.from(SocialType.GE, "open123");
 
-    @Test
-    void constructor_setsId() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertEquals(ID, account.getId());
+    private static SocialAuthAccount accountWith(Active active) {
+        return SocialAuthAccount.builder().id(ID).active(active).build();
     }
 
-    @Test
-    void getAccountType_returnsO() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertEquals(AuthAccountType.O, account.getAccountType());
+    @Nested
+    @DisplayName("构造")
+    class Construction {
+
+        @Test
+        @DisplayName("构造时设置 ID")
+        void should_setId_when_constructed() {
+            assertThat(accountWith(Active.TRUE).getId()).isEqualTo(ID);
+        }
+
+        @Test
+        @DisplayName("账户类型返回 O")
+        void should_returnTypeO_when_getAccountType() {
+            assertThat(accountWith(Active.TRUE).getAccountType()).isEqualTo(AuthAccountType.O);
+        }
+
+        @Test
+        @DisplayName("socialType 从 ID 派生")
+        void should_deriveSocialType_when_getSocialType() {
+            assertThat(accountWith(Active.TRUE).getSocialType()).isEqualTo(SocialType.GE);
+        }
+
+        @Test
+        @DisplayName("openId 从 ID 派生")
+        void should_deriveOpenId_when_getOpenId() {
+            assertThat(accountWith(Active.TRUE).getOpenId()).isEqualTo("open123");
+        }
+
+        @Test
+        @DisplayName("Active.TRUE 时启用")
+        void should_beActive_when_activeIsTrue() {
+            assertThat(accountWith(Active.TRUE).isActive()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Active.FALSE 时停用")
+        void should_beInactive_when_activeIsFalse() {
+            assertThat(accountWith(Active.FALSE).isActive()).isFalse();
+        }
     }
 
-    @Test
-    void socialType_returnsFromId() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertEquals(SocialType.GE, account.getSocialType());
+    @Nested
+    @DisplayName("工厂方法")
+    class Factories {
+
+        @Test
+        @DisplayName("createBuilder 从社交平台与 openId 派生 ID 并默认启用")
+        void should_setDefaults_when_usingCreateBuilder() {
+            var account = SocialAuthAccount.createBuilder()
+                    .socialType(SocialType.GE)
+                    .openId("open123")
+                    .build();
+
+            assertThat(account.getId()).isEqualTo(ID);
+            assertThat(account.isActive()).isTrue();
+        }
+
+        @Test
+        @DisplayName("builder 恢复所有字段")
+        void should_restoreAllFields_when_usingBuilder() {
+            var account = SocialAuthAccount.builder()
+                    .id(ID)
+                    .active(Active.FALSE)
+                    .build();
+
+            assertThat(account.getId()).isEqualTo(ID);
+            assertThat(account.isActive()).isFalse();
+        }
     }
 
-    @Test
-    void openId_returnsFromId() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertEquals("open123", account.getOpenId());
+    @Nested
+    @DisplayName("序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("Jackson round-trip 一致")
+        void should_roundTrip() throws Exception {
+            var original = SocialAuthAccount.createBuilder()
+                    .socialType(SocialType.GE)
+                    .openId("open123")
+                    .build();
+            var json = MAPPER.writeValueAsString(original);
+
+            assertThat(MAPPER.readValue(json, SocialAuthAccount.class)).isEqualTo(original);
+        }
+
+        @Test
+        @DisplayName("缺少 id 的 JSON 拒绝")
+        void should_reject_when_missingId() {
+            var json = """
+                    {"active":true}
+                    """;
+
+            assertThatThrownBy(() -> MAPPER.readValue(json, SocialAuthAccount.class))
+                    .isInstanceOf(JacksonException.class);
+        }
     }
 
-    @Test
-    void activeTrue_isActive() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertTrue(account.isActive());
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+
+        @Test
+        @DisplayName("相同 ID 构建的两个实例相等且非同一对象")
+        void should_beEqualButDistinct_when_sameId() {
+            var a = accountWith(Active.TRUE);
+            var b = accountWith(Active.TRUE);
+
+            assertThat(a).isNotSameAs(b);
+            assertThat(a.getId()).isEqualTo(b.getId());
+            assertThat(a).isEqualTo(b);
+        }
+
+        @Test
+        @DisplayName("相同字段相等，不同 ID 不等")
+        void should_beEqual_when_sameFields() {
+            var same = accountWith(Active.TRUE);
+            var equal = accountWith(Active.TRUE);
+            var diffId = SocialAuthAccount.builder()
+                    .id(SocialAuthAccountId.from(SocialType.GE, "otherOpen"))
+                    .active(Active.TRUE)
+                    .build();
+
+            assertThat(same).isEqualTo(equal);
+            assertThat(same).isNotEqualTo(diffId);
+        }
+
     }
 
-    @Test
-    void activeFalse_isInactive() {
-        var account = SocialAuthAccount.builder().id(ID).active(Active.FALSE).build();
-        assertFalse(account.isActive());
-    }
+    @Nested
+    @DisplayName("调试")
+    class Debug {
 
-    @Test
-    void equal_whenSameId() {
-        var a = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        var b = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertNotSame(a, b);
-        assertEquals(ID, a.getId());
-        assertEquals(ID, b.getId());
-        assertEquals(a.getId(), b.getId());
-    }
-
-
-    @Test
-    void notEqual_whenDifferentPlatform() {
-        var gitee = SocialAuthAccountId.from(SocialType.GE, "open123");
-        var dingtalk = SocialAuthAccountId.from(SocialType.DT, "open123");
-        assertNotEquals(gitee, dingtalk);
-    }
-
-    @Test
-    void notEqual_whenDifferentOpenId() {
-        var id1 = SocialAuthAccountId.from(SocialType.GE, "open123");
-        var id2 = SocialAuthAccountId.from(SocialType.GE, "open456");
-        assertNotEquals(id1, id2);
-    }
-
-    // ——— factories ———
-
-    @Test
-    void createBuilder_setsDefaults() {
-        var account = SocialAuthAccount.createBuilder()
-                .socialType(SocialType.GE)
-                .openId("open123")
-                .build();
-        assertEquals(ID, account.getId());
-        assertTrue(account.isActive());
-    }
-
-    @Test
-    void builder_restoresAllFields() {
-        var account = SocialAuthAccount.builder()
-                .id(ID)
-                .active(Active.FALSE)
-                .build();
-        assertEquals(ID, account.getId());
-        assertFalse(account.isActive());
-    }
-
-    // ——— JSON ———
-
-
-    @Test
-    void jackson_serializeDeserialize() throws Exception {
-        var original = SocialAuthAccount.createBuilder()
-                .socialType(SocialType.GE)
-                .openId("open123")
-                .build();
-        var json = MAPPER.writeValueAsString(original);
-        var restored = MAPPER.readValue(json, SocialAuthAccount.class);
-        assertEquals(original, restored);
-    }
-
-    @Test
-    void jackson_rejectsMissingId() {
-        var json = """
-                {"active":true}
-                """;
-        assertThrows(JacksonException.class, () -> MAPPER.readValue(json, SocialAuthAccount.class));
-    }
-
-    // ——— identity ———
-
-    @Test
-    void equals_byFields() {
-        // 添加 @EqualsAndHashCode(callSuper = true) 后实体使用字段相等
-        var same = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        var equal = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        var diffId = SocialAuthAccount.builder().id(SocialAuthAccountId.from(SocialType.GE, "otherOpen")).active(Active.TRUE).build();
-        assertEquals(same, equal, "相同字段应相等");
-        assertNotEquals(same, diffId, "不同 ID 不应相等");
-    }
-
-    @Test
-    void toString_containsClassName() {
-        var a = SocialAuthAccount.builder().id(ID).active(Active.TRUE).build();
-        assertTrue(a.toString().contains("SocialAuthAccount@"));
+        @Test
+        @DisplayName("toString 包含类名")
+        void should_containClassName_when_toString() {
+            assertThat(accountWith(Active.TRUE).toString()).contains("SocialAuthAccount@");
+        }
     }
 }

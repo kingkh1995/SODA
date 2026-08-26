@@ -15,10 +15,8 @@ import java.io.Serializable;
  * 决定（version 属性存在时优先于 Persistable，Spring Data {@code JpaMetamodelEntityInformation}）
  * ——创建路径 version=0 亦走 merge（transient → INSERT），与无本基类时行为一致。
  * <p>
- * 早期形态（transient isNew 标志 + {@code markNotNew()} + {@code @PostLoad}/{@code @PostPersist}
- * 翻转）已随 merge 全权委托移除（ADR-0024）——本类仅保留 {@link Persistable} 契约与
- * {@code id == null} 判定，作为所有 PO 的统一基类（ADR-0023 命名惯例：
- * AbstractXxx implements Xxx）。
+ * 仅承载 {@link Persistable} 契约与 {@code id == null} 判定（ADR-0024）；
+ * 命名遵循 AbstractXxx implements Xxx 惯例。
  * <p>
  * 不声明 {@code @Id} 字段（PO 主键策略异构：服务端自增/客户端 Uuid/分配式），由各 PO
  * 自行声明；{@code Persistable.getId()} 由 PO 的 {@code @Getter} 生成（字段名与列名一致，

@@ -4,16 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("PositiveInt 值对象")
 class PositiveIntTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -39,7 +36,7 @@ class PositiveIntTest {
     }
 
     @Nested
-    @DisplayName("校验")
+    @DisplayName("校验与异常")
     class Validation {
 
         @Test
@@ -72,36 +69,19 @@ class PositiveIntTest {
     }
 
     @Nested
-    @DisplayName("缓存")
-    class Cache {
-
-        @Test
-        @DisplayName("缓存范围内相同实例")
-        void should_sameInstance_withinRange() {
-            assertThat(PositiveInt.of(5)).isSameAs(PositiveInt.of(5));
-        }
-
-        @Test
-        @DisplayName("缓存上限相同实例")
-        void should_sameInstance_atUpperBound() {
-            assertThat(PositiveInt.of(100)).isSameAs(PositiveInt.of(100));
-        }
-
-        @Test
-        @DisplayName("缓存范围外不同实例")
-        void should_differentInstance_beyondRange() {
-            assertThat(PositiveInt.of(1000)).isNotSameAs(PositiveInt.of(1000));
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
+    @DisplayName("相等性与 hashCode")
     class Equality {
 
         @Test
         @DisplayName("相同值相等")
         void should_beEqual_when_sameValue() {
             assertThat(PositiveInt.of(6)).isEqualTo(PositiveInt.of(6));
+        }
+
+        @Test
+        @DisplayName("不同值不等")
+        void should_notBeEqual_when_differentValue() {
+            assertThat(PositiveInt.of(6)).isNotEqualTo(PositiveInt.of(7));
         }
 
         @Test
@@ -112,13 +92,25 @@ class PositiveIntTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("缓存")
+    class Cache {
 
         @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(PositiveInt.of(42)).hasToString("PositiveInt[value=42]");
+        @DisplayName("缓存范围内相同实例")
+        void should_beSameInstance_when_withinRange() {
+            assertThat(PositiveInt.of(5)).isSameAs(PositiveInt.of(5));
+        }
+
+        @Test
+        @DisplayName("缓存上限相同实例")
+        void should_beSameInstance_when_atUpperBound() {
+            assertThat(PositiveInt.of(100)).isSameAs(PositiveInt.of(100));
+        }
+
+        @Test
+        @DisplayName("缓存范围外不同实例")
+        void should_beDifferentInstance_when_beyondRange() {
+            assertThat(PositiveInt.of(1000)).isNotSameAs(PositiveInt.of(1000));
         }
     }
 
@@ -129,7 +121,9 @@ class PositiveIntTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(PositiveInt.of(6), PositiveInt.class);
+            var original = PositiveInt.of(6);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, PositiveInt.class)).isEqualTo(original);
         }
 
         @Test
@@ -172,6 +166,17 @@ class PositiveIntTest {
             var same = PositiveInt.of(42);
             assertThat(a.compareTo(same) == 0).isTrue();
             assertThat(a).isEqualTo(same);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(PositiveInt.of(42)).hasToString("PositiveInt[value=42]");
         }
     }
 }

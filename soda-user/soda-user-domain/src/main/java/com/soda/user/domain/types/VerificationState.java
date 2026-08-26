@@ -10,17 +10,14 @@ import lombok.experimental.Accessors;
 /**
  * 验证状态枚举。
  * <p>
- * I(Initialized) 已初始化（创建后尚未发送验证码）
- * P(Pending) 待验证（验证码已发送）
- * V(Verified) 已验证——<b>内存瞬态</b>：消费流 verify→use 同事务完成
- * （{@code CredentialChangeDomainService}），V 永不落库
- * U(Used) 已使用（持久化终态；过期是派生判断，不落状态，见 ADR-0011）
+ * I（Initialized）已创建，验证码尚未投递
+ * P（Pending）已投递，待验证
+ * V（Verified）已验证——<b>内存瞬态</b>：消费流 verify→use 同事务完成，永不落库（见 ADR-0026）
+ * U（Used）已使用——持久化终态
  * <p>
- * 终态以覆写 {@code terminal()} 标记：仅 U 覆写返回 true——
- * 终态不占活跃槽、持久化行不可写（基础设施兜底，ADR-0023）。V 为<b>内存瞬态</b>
- * （verify→use 同事务完成，永不落库）——不落库故不涉槽位释放，非终态
- * （见 ADR-0026 修订注记）。
- * {@code terminal()} 与 {@code UserState} 同契约（{@link StateEnumType}）。
+ * 过期是派生判断，不落状态（见 ADR-0011）。终态以覆写 {@code terminal()} 标记（仅 U）：
+ * 终态不占活跃槽、持久化行不可写（基础设施兜底，见 ADR-0023）；V 不落库故不涉槽位释放，
+ * 非终态。{@code terminal()} 与 {@code UserState} 同契约（{@link StateEnumType}）。
  *
  * @see StateEnumType
  */

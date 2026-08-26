@@ -17,13 +17,13 @@ import java.io.Serializable;
  * <p>
  * null 省略策略：{@code data} / {@code error} 为 null 时对应键整体省略（{@code @JsonInclude(NON_NULL)}），
  * 成功响应（{@link #success()}）与错误响应（{@link #error}）因此可能只含 {@code code} + {@code msg}。
- * 参照 Yudao {@code CommonResult} 设计。
+ * 参照 Yudao {@code CommonResult} 设计；统一信封与错误结构决策见 ADR-0009/0013。
  *
- * @param <T>     data 段类型
- * @param code    业务码（0 为成功）
- * @param msg     消息
- * @param data    数据段，可为 null（省略）
- * @param error   错误详情（AIP-193），成功时为 null（省略）
+ * @param <T>   data 段类型
+ * @param code  业务码（0 为成功）
+ * @param msg   消息
+ * @param data  数据段，可为 null（省略）
+ * @param error 错误详情（AIP-193），成功时为 null（省略）
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Result<T>(
@@ -36,7 +36,7 @@ public record Result<T>(
     private static final int SUCCESS_CODE = 0;
     private static final String SUCCESS_MSG = "success";
 
-    // ========== Factory ==========
+    // ─── 工厂方法 ───
 
     /**
      * 成功响应，含数据体。
@@ -66,7 +66,7 @@ public record Result<T>(
         return new Result<>(code, msg, null, errorInfo);
     }
 
-    // ========== Query ==========
+    // ─── 查询 ───
 
     @JsonIgnore
     public boolean isSuccess() {

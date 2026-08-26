@@ -1,13 +1,12 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.testutil.JacksonTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -17,12 +16,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DecimalLiteralTypeTest {
 
     @Nested
-    @DisplayName("跨子类不相等（getClass 作用域）")
+    @DisplayName("跨子类不相等（类型作用域）")
     class CrossTypeEquality {
 
         @Test
         @DisplayName("规范串相同的 WanYuan 与 Percentage 不相等")
-        void should_notEqual_acrossTypes_sameCanonicalString() {
+        void should_notBeEqual_when_crossTypeSameCanonicalString() {
             var yuan = WanYuan.from(new BigDecimal("1.00"));
             var pct = Percentage.from(new BigDecimal("1.00"));
             assertThat(yuan).isNotEqualTo(pct);
@@ -31,7 +30,7 @@ class DecimalLiteralTypeTest {
 
         @Test
         @DisplayName("同类型规范串相同则相等、哈希一致")
-        void should_equal_withinType_sameCanonicalString() {
+        void should_beEqual_when_sameTypeSameCanonicalString() {
             assertThat(WanYuan.from(new BigDecimal("1.00")))
                     .isEqualTo(WanYuan.from(new BigDecimal("1.00")))
                     .hasSameHashCodeAs(WanYuan.from(new BigDecimal("1.00")));
@@ -46,7 +45,7 @@ class DecimalLiteralTypeTest {
 
         @Test
         @DisplayName("value()（@JsonValue）与 decimalValue() 同源于规范化 BigDecimal")
-        void should_valueAndDecimalValue_fromSameNormalized() {
+        void should_haveValueConsistentWithDecimalValue() {
             var yuan = WanYuan.from(new BigDecimal("1.5"));
             assertThat(yuan.value()).isEqualTo("1.50");
             assertThat(yuan.decimalValue()).isEqualByComparingTo("1.5");
@@ -60,23 +59,28 @@ class DecimalLiteralTypeTest {
 
         @Test
         @DisplayName("WanYuan 序列化为裸 String 标量（接口→基类→子类）")
-        void should_serializeWanYuanAsBareScalar() throws Exception {
-            var json = JacksonTestUtil.mapper().writeValueAsString(WanYuan.from(new BigDecimal("1.50")));
+        void should_serializeToBareString_when_wanYuan() throws Exception {
+            var json = MAPPER.writeValueAsString(WanYuan.from(new BigDecimal("1.50")));
             assertThat(json).isEqualTo("\"1.50\"");
         }
 
         @Test
         @DisplayName("Percentage 序列化为裸 String 标量")
-        void should_serializePercentageAsBareScalar() throws Exception {
-            var json = JacksonTestUtil.mapper().writeValueAsString(Percentage.from(new BigDecimal("12.34")));
+        void should_serializeToBareString_when_percentage() throws Exception {
+            var json = MAPPER.writeValueAsString(Percentage.from(new BigDecimal("12.34")));
             assertThat(json).isEqualTo("\"12.34\"");
         }
 
         @Test
         @DisplayName("round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(WanYuan.from(new BigDecimal("1.50")), WanYuan.class);
-            assertRoundTrip(Percentage.from(new BigDecimal("12.34")), Percentage.class);
+            var yuan = WanYuan.from(new BigDecimal("1.50"));
+            var json = MAPPER.writeValueAsString(yuan);
+            assertThat(MAPPER.readValue(json, WanYuan.class)).isEqualTo(yuan);
+
+            var pct = Percentage.from(new BigDecimal("12.34"));
+            var pctJson = MAPPER.writeValueAsString(pct);
+            assertThat(MAPPER.readValue(pctJson, Percentage.class)).isEqualTo(pct);
         }
     }
 }

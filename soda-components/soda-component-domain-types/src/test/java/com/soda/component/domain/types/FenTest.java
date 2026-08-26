@@ -8,8 +8,7 @@ import tools.jackson.core.JacksonException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
-import static com.soda.component.domain.testutil.JacksonTestUtil.mapper;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -41,7 +40,7 @@ class FenTest {
 
         @Test
         @DisplayName("parse 创建实例")
-        void should_create_when_parse() {
+        void should_create_when_parseValidString() {
             assertThat(Fen.parse("1500")).isEqualTo(new Fen(1500));
         }
 
@@ -59,10 +58,17 @@ class FenTest {
             assertThat(Fen.fromYuan(new BigDecimal("1.004"), RoundingMode.HALF_UP))
                     .isEqualTo(new Fen(100));
         }
+
+        @Test
+        @DisplayName("int 边界值创建实例")
+        void should_create_when_intBoundaries() {
+            assertThat(new Fen(Integer.MAX_VALUE).value()).isEqualTo(Integer.MAX_VALUE);
+            assertThat(new Fen(Integer.MIN_VALUE).value()).isEqualTo(Integer.MIN_VALUE);
+        }
     }
 
     @Nested
-    @DisplayName("校验")
+    @DisplayName("校验与异常")
     class Validation {
 
         @Test
@@ -76,6 +82,13 @@ class FenTest {
         @DisplayName("parse 非法字符串拒绝")
         void should_throw_when_parseInvalidString() {
             assertThatThrownBy(() -> Fen.parse("not-a-number"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("parse 空字符串拒绝")
+        void should_throw_when_parseEmptyString() {
+            assertThatThrownBy(() -> Fen.parse(""))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -96,25 +109,7 @@ class FenTest {
     }
 
     @Nested
-    @DisplayName("转换")
-    class Conversion {
-
-        @Test
-        @DisplayName("toYuan 分转元精确")
-        void should_convertToYuan() {
-            assertThat(new Fen(1500).toYuan()).isEqualByComparingTo(new BigDecimal("15.00"));
-            assertThat(new Fen(-100).toYuan()).isEqualByComparingTo(new BigDecimal("-1.00"));
-        }
-
-        @Test
-        @DisplayName("toDisplayString 格式正确")
-        void should_haveCorrectDisplayString() {
-            assertThat(new Fen(1500).toDisplayString()).isEqualTo("15.00元");
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
+    @DisplayName("相等性与 hashCode")
     class Equality {
 
         @Test
@@ -137,13 +132,20 @@ class FenTest {
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("转换")
+    class Conversion {
 
         @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new Fen(42)).hasToString("Fen[value=42]");
+        @DisplayName("toYuan 分转元精确")
+        void should_convertToYuan() {
+            assertThat(new Fen(1500).toYuan()).isEqualByComparingTo(new BigDecimal("15.00"));
+            assertThat(new Fen(-100).toYuan()).isEqualByComparingTo(new BigDecimal("-1.00"));
+        }
+
+        @Test
+        @DisplayName("toDisplayString 格式正确")
+        void should_haveCorrectDisplayString() {
+            assertThat(new Fen(1500).toDisplayString()).isEqualTo("15.00元");
         }
     }
 
@@ -154,27 +156,32 @@ class FenTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(new Fen(1500), Fen.class);
-            assertRoundTrip(new Fen(-100), Fen.class);
+            var positive = new Fen(1500);
+            var json = MAPPER.writeValueAsString(positive);
+            assertThat(MAPPER.readValue(json, Fen.class)).isEqualTo(positive);
+
+            var negative = new Fen(-100);
+            var negativeJson = MAPPER.writeValueAsString(negative);
+            assertThat(MAPPER.readValue(negativeJson, Fen.class)).isEqualTo(negative);
         }
 
         @Test
         @DisplayName("序列化为裸数字")
         void should_serializeToBareNumber() throws Exception {
-            var json = mapper().writeValueAsString(new Fen(42));
+            var json = MAPPER.writeValueAsString(new Fen(42));
             assertThat(json).isEqualTo("42");
         }
 
         @Test
         @DisplayName("从裸数字反序列化")
         void should_deserializeFromBareNumber() throws Exception {
-            assertThat(mapper().readValue("42", Fen.class)).isEqualTo(new Fen(42));
+            assertThat(MAPPER.readValue("42", Fen.class)).isEqualTo(new Fen(42));
         }
 
         @Test
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> mapper().readValue("\"not-a-number\"", Fen.class))
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Fen.class))
                     .isInstanceOf(JacksonException.class);
         }
     }
@@ -199,6 +206,17 @@ class FenTest {
             var same = new Fen(42);
             assertThat(a.compareTo(same) == 0).isTrue();
             assertThat(a).isEqualTo(same);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new Fen(42)).hasToString("Fen[value=42]");
         }
     }
 }

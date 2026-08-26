@@ -62,8 +62,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link UserAuthServiceImpl} 单元测试（2026-08-16，见 ADR-0026——发码用例回归 User 侧，
- * {@code VerificationServiceImplTest} 并入本类）。
+ * {@link UserAuthServiceImpl} 单元测试（发码用例见 ADR-0026）。
  * <p>
  * 发码用例（requestChangeMobileCode / requestChangeEmailCode）：前置（加载用户启用态 + 非终态
  * + target ≠ 当前值 + 目标全局唯一 + 无活跃验证）→ {@link UserVerificationFactory} 构造
@@ -79,8 +78,8 @@ class UserAuthServiceImplTest {
 
     private static final UserId USER_ID = new UserId(1L);
     private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
-    private static final Mobile NEW_MOBILE = new Mobile("13900139000");
-    private static final Email NEW_EMAIL = new Email("new@test.com");
+    private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
+    private static final Email NEW_EMAIL = Email.of("new@test.com");
     private static final String VALID_CODE = "123456";
     private static final PasswordHash STUB_HASH = PasswordHash.of(
             "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
@@ -176,8 +175,6 @@ class UserAuthServiceImplTest {
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(VerificationCreatedEvent.class);
     }
-
-    // ─── UCC 发码 ───
 
     @BeforeEach
     void setUp() {
@@ -333,8 +330,6 @@ class UserAuthServiceImplTest {
         }
     }
 
-    // ─── 邮箱发码 ───
-
     @Nested
     @DisplayName("请求发送换绑邮箱验证码（scene=UCC, channel=E）")
     class RequestChangeEmailCode {
@@ -385,8 +380,6 @@ class UserAuthServiceImplTest {
         }
     }
 
-    // ─── 修改密码 ───
-
     @Nested
     @DisplayName("修改密码")
     class ChangePassword {
@@ -431,8 +424,6 @@ class UserAuthServiceImplTest {
                     .hasMessageContaining("User not found");
         }
     }
-
-    // ─── 确认手机号变更 ───
 
     @Nested
     @DisplayName("确认手机号变更")
@@ -513,8 +504,6 @@ class UserAuthServiceImplTest {
             verify(userGateway, never()).save(any());
         }
     }
-
-    // ─── 确认邮箱变更 ───
 
     @Nested
     @DisplayName("确认邮箱变更")

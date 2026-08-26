@@ -4,19 +4,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("EpochMilli 值对象")
 class EpochMilliTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -29,18 +26,69 @@ class EpochMilliTest {
         }
 
         @Test
-        @DisplayName("of(Instant) 构造")
-        void should_create_fromInstant() {
+        @DisplayName("MIN 常量：epoch 起点 0L")
+        void should_exposeMinConstant() {
+            assertThat(EpochMilli.MIN.value()).isEqualTo(0L);
+            assertThat(EpochMilli.MIN.instant()).isEqualTo(Instant.EPOCH);
+        }
+
+        @Test
+        @DisplayName("零值边界通过（>= 0 包含 0）")
+        void should_accept_when_zero() {
+            assertThat(new EpochMilli(0L).value()).isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("负值拒绝（构造期抛 IAE）")
+        void should_throw_when_negativeValue() {
+            assertThatThrownBy(() -> new EpochMilli(-1L))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new EpochMilli(Long.MIN_VALUE))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("from(Instant) 拒绝：负 epoch 毫秒在 MySQL 模式无法落库")
+        void should_throw_when_fromInstantNegative() {
+            // epoch 之前 1 秒的 Instant：JDK Instant.toEpochMilli 不会溢出（仅 Instant.MIN/MAX 溢出），
+            // 能走到构造器守卫，验证 IAE 由 EpochMilli 自身抛出
+            var negativeInstant = Instant.EPOCH.minusSeconds(1L);
+            assertThatThrownBy(() -> EpochMilli.from(negativeInstant))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("from(Instant.EPOCH) 接受（边界值 0L）")
+        void should_accept_when_fromInstantEpoch() {
+            assertThat(EpochMilli.from(Instant.EPOCH)).isEqualTo(EpochMilli.MIN);
+        }
+
+        @Test
+        @DisplayName("from(Instant) 构造")
+        void should_createFromInstant() {
             var instant = Instant.parse("2026-08-09T12:00:00Z");
-            assertThat(EpochMilli.of(instant)).isEqualTo(new EpochMilli(instant.toEpochMilli()));
+            assertThat(EpochMilli.from(instant)).isEqualTo(new EpochMilli(instant.toEpochMilli()));
         }
 
         @Test
         @DisplayName("now() 近当前时刻")
-        void should_create_now() {
+        void should_createNow() {
             var now = EpochMilli.now();
             assertThat(now).isNotNull();
             assertThat(Math.abs(now.value() - Instant.now().toEpochMilli())).isLessThan(2_000L);
+        }
+    }
+
+    @Nested
+    @DisplayName("相等性")
+    class Equality {
+
+        @Test
+        @DisplayName("基于值的相等语义：相同值相等、hashCode 一致、不同值不等")
+        void should_beValueBased() {
+            assertThat(new EpochMilli(1000L)).isEqualTo(new EpochMilli(1000L));
+            assertThat(new EpochMilli(1000L)).hasSameHashCodeAs(new EpochMilli(1000L));
+            assertThat(new EpochMilli(1000L)).isNotEqualTo(new EpochMilli(1001L));
         }
     }
 
@@ -49,16 +97,16 @@ class EpochMilliTest {
     class Inverse {
 
         @Test
-        @DisplayName("毫秒精度 Instant 经 of→instant 无损还原")
-        void should_roundTripLosslessly_atMillisPrecision() {
+        @DisplayName("毫秒精度 Instant 经 from→instant 无损还原")
+        void should_roundTripLosslessly_when_millisPrecision() {
             var instant = Instant.parse("2026-08-09T12:00:00.123Z");
-            assertThat(EpochMilli.of(instant).instant()).isEqualTo(instant);
+            assertThat(EpochMilli.from(instant).instant()).isEqualTo(instant);
         }
 
         @Test
         @DisplayName("亚毫秒截断到毫秒（毫秒单位契约）")
         void should_truncateSubMillis() {
-            var em = EpochMilli.of(Instant.parse("2026-08-09T12:00:00.123456789Z"));
+            var em = EpochMilli.from(Instant.parse("2026-08-09T12:00:00.123456789Z"));
             assertThat(em.value()).isEqualTo(Instant.parse("2026-08-09T12:00:00.123Z").toEpochMilli());
             assertThat(em.instant()).isEqualTo(Instant.parse("2026-08-09T12:00:00.123Z"));
         }
@@ -71,35 +119,22 @@ class EpochMilliTest {
         @Test
         @DisplayName("plus/minus(Duration) 偏移")
         void should_offsetByDuration() {
-            var base = EpochMilli.of(Instant.parse("2026-08-09T12:00:00Z"));
+            var base = EpochMilli.from(Instant.parse("2026-08-09T12:00:00Z"));
             assertThat(base.plus(Duration.ofMinutes(5)))
-                    .isEqualTo(EpochMilli.of(Instant.parse("2026-08-09T12:05:00Z")));
-            assertThat(EpochMilli.of(Instant.parse("2026-08-09T12:05:00Z")).minus(Duration.ofMinutes(5)))
+                    .isEqualTo(EpochMilli.from(Instant.parse("2026-08-09T12:05:00Z")));
+            assertThat(EpochMilli.from(Instant.parse("2026-08-09T12:05:00Z")).minus(Duration.ofMinutes(5)))
                     .isEqualTo(base);
         }
 
         @Test
         @DisplayName("isAfter/isBefore 谓词")
-        void should_compare() {
-            var earlier = EpochMilli.of(Instant.parse("2026-08-09T12:00:00Z"));
-            var later = EpochMilli.of(Instant.parse("2026-08-09T13:00:00Z"));
+        void should_evaluatePredicates_whenComparing() {
+            var earlier = EpochMilli.from(Instant.parse("2026-08-09T12:00:00Z"));
+            var later = EpochMilli.from(Instant.parse("2026-08-09T13:00:00Z"));
             assertThat(later.isAfter(earlier)).isTrue();
             assertThat(earlier.isBefore(later)).isTrue();
             assertThat(earlier.isAfter(earlier)).isFalse();
             assertThat(earlier.isBefore(earlier)).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
-    class Equality {
-
-        @Test
-        @DisplayName("value-based identity")
-        void should_beValueBased() {
-            assertThat(new EpochMilli(1000L)).isEqualTo(new EpochMilli(1000L));
-            assertThat(new EpochMilli(1000L)).hasSameHashCodeAs(new EpochMilli(1000L));
-            assertThat(new EpochMilli(1000L)).isNotEqualTo(new EpochMilli(1001L));
         }
     }
 
@@ -110,7 +145,9 @@ class EpochMilliTest {
         @Test
         @DisplayName("round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(new EpochMilli(1738080000000L), EpochMilli.class);
+            var original = new EpochMilli(1738080000000L);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, EpochMilli.class)).isEqualTo(original);
         }
 
         @Test
@@ -147,6 +184,26 @@ class EpochMilliTest {
             assertThat(a.compareTo(b)).isNegative();
             assertThat(b.compareTo(a)).isPositive();
             assertThat(a.compareTo(a)).isZero();
+        }
+
+        @Test
+        @DisplayName("compareTo 与 equals 一致")
+        void should_beConsistentWithEquals() {
+            var a = new EpochMilli(3000L);
+            var same = new EpochMilli(3000L);
+            assertThat(a.compareTo(same)).isZero();
+            assertThat(a).isEqualTo(same);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(new EpochMilli(1738080000000L)).hasToString("EpochMilli[value=1738080000000]");
         }
     }
 }

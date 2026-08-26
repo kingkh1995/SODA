@@ -38,7 +38,7 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface UserWebAssembler {
 
-    // ========== Request → Command ==========
+    // ─── Request → Command ───
 
     CreateUserCommand toCreateCommand(CreateUserRequest request);
 
@@ -56,7 +56,7 @@ public interface UserWebAssembler {
 
     /**
      * 换绑手机号发码：scene=UCC、channel=S 由方法语义决定，非 Request 数据；
-     * userId = 路径用户（认证会话解析的务实形态——仓库尚无认证主体机制，见 ADR-0026）。
+     * userId 取路径用户（资源级端点）。
      */
     RequestChangeMobileCodeCommand toRequestChangeMobileCodeCommand(
             Long userId, RequestChangeMobileCodeRequest request);
@@ -65,14 +65,14 @@ public interface UserWebAssembler {
 
     /**
      * 换绑邮箱发码：scene=UCC、channel=E 由方法语义决定，非 Request 数据；
-     * userId = 路径用户（认证会话解析的务实形态——仓库尚无认证主体机制，见 ADR-0026）。
+     * userId 取路径用户（资源级端点）。
      */
     RequestChangeEmailCodeCommand toRequestChangeEmailCodeCommand(
             Long userId, RequestChangeEmailCodeRequest request);
 
     ChangeEmailCommand toChangeEmailCommand(Long userId, ChangeEmailRequest request);
 
-    // ========== DTO → Response ==========
+    // ─── DTO → Response ───
 
     UserResponse toResponse(UserDTO dto);
 

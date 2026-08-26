@@ -4,16 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.assertRoundTrip;
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Version 值对象")
 class VersionTest {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Nested
     @DisplayName("构造")
@@ -39,7 +36,7 @@ class VersionTest {
     }
 
     @Nested
-    @DisplayName("校验")
+    @DisplayName("校验与异常")
     class Validation {
 
         @Test
@@ -65,30 +62,7 @@ class VersionTest {
     }
 
     @Nested
-    @DisplayName("缓存")
-    class Cache {
-
-        @Test
-        @DisplayName("of(0) 同 INITIAL")
-        void should_sameAsInitial() {
-            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
-        }
-
-        @Test
-        @DisplayName("缓存范围内相同实例")
-        void should_sameInstance_withinRange() {
-            assertThat(Version.of(5)).isSameAs(Version.of(5));
-        }
-
-        @Test
-        @DisplayName("缓存范围外不同实例")
-        void should_differentInstance_beyondRange() {
-            assertThat(Version.of(10000)).isNotSameAs(Version.of(10000));
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
+    @DisplayName("相等性与 hashCode")
     class Equality {
 
         @Test
@@ -102,16 +76,34 @@ class VersionTest {
         void should_notBeEqual_when_differentValue() {
             assertThat(Version.of(1)).isNotEqualTo(Version.of(2));
         }
+
+        @Test
+        @DisplayName("hashCode 与 equals 一致")
+        void should_haveConsistentHashCode() {
+            assertThat(Version.of(3)).hasSameHashCodeAs(Version.of(3));
+        }
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("缓存")
+    class Cache {
 
         @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(Version.of(42)).hasToString("Version[value=42]");
+        @DisplayName("of(0) 同 INITIAL")
+        void should_shareInitial_when_zero() {
+            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
+        }
+
+        @Test
+        @DisplayName("缓存范围内相同实例")
+        void should_beSameInstance_when_withinRange() {
+            assertThat(Version.of(5)).isSameAs(Version.of(5));
+        }
+
+        @Test
+        @DisplayName("缓存范围外不同实例")
+        void should_beDifferentInstance_when_beyondRange() {
+            assertThat(Version.of(10000)).isNotSameAs(Version.of(10000));
         }
     }
 
@@ -122,14 +114,9 @@ class VersionTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            assertRoundTrip(Version.of(42), Version.class);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Version.class))
-                    .isInstanceOf(JacksonException.class);
+            var original = Version.of(42);
+            var json = MAPPER.writeValueAsString(original);
+            assertThat(MAPPER.readValue(json, Version.class)).isEqualTo(original);
         }
 
         @Test
@@ -144,6 +131,14 @@ class VersionTest {
         void should_deserializeFromBareNumber() throws Exception {
             assertThat(MAPPER.readValue("42", Version.class)).isEqualTo(Version.of(42));
         }
+
+        @Test
+        @DisplayName("非法 JSON 拒绝")
+        void should_throw_when_invalidJson() {
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Version.class))
+                    .isInstanceOf(JacksonException.class);
+        }
+
     }
 
     @Nested
@@ -165,6 +160,17 @@ class VersionTest {
             var same = Version.of(42);
             assertThat(a.compareTo(same) == 0).isTrue();
             assertThat(a).isEqualTo(same);
+        }
+    }
+
+    @Nested
+    @DisplayName("调试")
+    class Debug {
+
+        @Test
+        @DisplayName("toString 格式正确")
+        void should_haveCorrectToString() {
+            assertThat(Version.of(42)).hasToString("Version[value=42]");
         }
     }
 }

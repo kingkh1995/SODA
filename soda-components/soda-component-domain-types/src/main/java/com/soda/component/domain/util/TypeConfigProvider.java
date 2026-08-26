@@ -6,8 +6,6 @@ package com.soda.component.domain.util;
  * 不提供 SPI 实现时使用接口的默认方法回退值。
  * 业务模块可通过 {@code META-INF/services/com.soda.component.domain.util.TypeConfigProvider}
  * 注册自定义实现。
- * <p>
- * 参考 kk-ddd 的 {@code TypeConstantsProvider} 设计。
  */
 public interface TypeConfigProvider {
 

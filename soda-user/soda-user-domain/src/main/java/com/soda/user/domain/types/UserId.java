@@ -12,6 +12,7 @@ import com.soda.component.domain.util.ValidateUtils;
  * <p>
  * 作为 {@link com.soda.component.domain.Entity Entity&lt;UserId&gt;} 的标识符。
  * 值对应 {@code system_user.id} 主键。
+ * 值域 value ≥ 1：0 与负数非法（与 {@link LongId} 同一校验器语义）。
  *
  * @see Identifier
  */

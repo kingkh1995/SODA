@@ -1,7 +1,29 @@
+---
+type: Research
+title: UT（单元测试）规范参考调研
+description: 锚点：制定或评审 SODA 单元测试规范（分层测什么、覆盖率政策、mock 边界、切片选型）时，以 Google SWE 书 ch11/12 为基准，其余作工具/反面参照执行。
+tags: [testing, ut, google-swe]
+status: stable
+generated:
+  by: wayfinder/08
+  at: 2026-08-16T00:00:00Z
+verified:
+  - by: human:mm
+    at: 2026-08-16T00:00:00Z
+sources:
+  - resource: https://abseil.io/resources/swe-book
+    id: swe-book
+    author: Google
+    title: Software Engineering at Google（ch11–12）
+---
 # UT（单元测试）规范参考调研（wayfinder 08）
 
-> 研究日期：2026-08-16。来源：Google Testing Blog、Software Engineering at Google（abseil.io 在线全书）、JaCoCo 官方文档（jacoco.org）、SonarQube 官方文档（docs.sonarsource.com）、Martin Fowler bliki（martinfowler.com）、Spring Boot 官方参考文档（docs.spring.io）、Khorikov《Unit Testing Principles, Practices, and Patterns》（作者官网摘录 + 逐章摘要）、仓库内参考项目源码（`yudao-cloud/`、`kk-ddd/`、`COLA/`，只读）。
-> 用途：为 SODA（Java 25 / Spring Boot 4 / Gradle / DDD 七子模块读写分离，V1 阶段，无 CI）确定 UT 规范参考基准，并把 `docs/dp-test-conventions.md`（仅领域层 DP）推广到 application / infrastructure / adapter / query-server 层。
+> 来源：Google Testing Blog、Software Engineering at Google（abseil.io 在线全书）、JaCoCo 官方文档（jacoco.org）、SonarQube
+> 官方文档（docs.sonarsource.com）、Martin Fowler bliki（martinfowler.com）、Spring Boot 官方参考文档（docs.spring.io）、Khorikov《Unit
+> Testing Principles, Practices, and Patterns》（作者官网摘录 + 逐章摘要）、仓库内参考项目源码（`yudao-cloud/`、`kk-ddd/`、
+> `COLA/`，只读）。
+> 用途：为 SODA（Java 25 / Spring Boot 4 / Gradle / DDD 七子模块读写分离，V1 阶段，无 CI）确定 UT 规范参考基准，并把
+> `docs/conventions/dp-test-conventions.md`（仅领域层 DP）推广到 application / infrastructure / adapter / query-server 层。
 
 ---
 
@@ -183,21 +205,24 @@
 
 理由（对应本节约束）：
 
-1. **与现状一致**：SODA 现有 63 个测试文件已天然呈现该组合——domain 层按 `dp-test-conventions.md` 测 DP；application 层（`UserServiceImplTest` 等）为 `@ExtendWith(MockitoExtension.class)` + `@Mock` 边界的纯 Mockito 单测；adapter 层（`UserControllerTest`）直接 new 控制器 + mock 服务 + MapStruct `Mappers.getMapper`；infrastructure 层（`VerificationGatewayImplTest`）mock repository 测 gateway 逻辑；start 层为 ModulithTest + 少量 @SpringBootTest E2E。推荐基准 = **把既有好实践显式化**，而非引入新范式。
+1. **与现状一致**：SODA 现有 63 个测试文件已天然呈现该组合——domain 层按 `dp-test-conventions.md` 测 DP；application 层（
+   `UserServiceImplTest` 等）为 `@ExtendWith(MockitoExtension.class)` + `@Mock` 边界的纯 Mockito 单测；adapter 层（
+   `UserControllerTest`）直接 new 控制器 + mock 服务 + MapStruct `Mappers.getMapper`；infrastructure 层 mock repository 测
+   gateway 逻辑；start 层为 ModulithTest + 少量 @SpringBootTest E2E。推荐基准 = **把既有好实践显式化**，而非引入新范式。
 2. **覆盖率为发现工具而非门禁**（Google SWE 书 / TotT / Fowler / Khorikov 四方一致）：V1 无 CI、无 JaCoCo，设数字门既无执行载体，又会诱发「凑覆盖率」行为（80% 天花板效应）。这与 `dp-test-conventions.md` 现状一致——该文档通篇无覆盖率要求。
 3. **Khorikov 第 7 章分类解决「各层测什么」**：这正是 `dp-test-conventions.md` 要推广到其他层时最缺的一环。
 
 ### 2.2 分层映射（七子模块 × 测什么 / 怎么测 / 工具）
 
-| 子模块 | Khorikov 分类 | 测什么 | 测试形态（与现有文件对应） | 工具 |
-|---|---|---|---|---|
-| api | Controllers（薄） | 命令/查询/DTO 契约 | 基本不直接测，由 application/adapter 测试覆盖（Google：helper 不单独成单元） | — |
-| domain | **Domain model and algorithms（重点）** | DP 按 `dp-test-conventions.md`；聚合/领域服务按行为测（given/when/then），聚合边界内不 mock（经典学派） | 纯 JUnit + AssertJ；`soda-user-domain` 现有 29 个 DP 测试为模板 | JUnit 5, AssertJ, JacksonTester |
-| application | Controllers（用例编排） | 用例服务的成功/失败路径、领域事件发布、跨模块调用 | **Mockito 单测**：`@Mock` gateway/eventBus/外部服务，验证状态与外部边界交互（`UserServiceImplTest` 为模板）；`*WiringTest` 类保持最少 | Mockito, AssertJ |
-| adapter（web/job/consumer） | Controllers（薄） | 请求→命令映射、DTO 组装、状态码/响应结构 | **Mockito 单测**：直接实例化 controller/assembler（`UserControllerTest` 为模板）；仅当需验证 MVC 映射/参数校验/序列化时用 `@WebMvcTest` + `@MockitoBean`（多切片不叠加） | Mockito, MapStruct `Mappers`, 可选 @WebMvcTest |
-| infrastructure | 混合：convertor/gateway 逻辑=domain-like；repository=边界 | convertor 双向映射 round-trip；gateway 状态机/守卫逻辑（mock repository）；repository 真库行为 | convertor/gateway 用 Mockito 单测（`UserConvertorTest`、`VerificationGatewayImplTest` 为模板）；repository 级验证用 `@DataJpaTest`（内嵌 H2，默认事务回滚，SODA 主数据源即 H2，见 ADR-0022） | Mockito, @DataJpaTest, TestEntityManager |
-| query-server | Controllers（读侧编排） | 读模型 DTO 映射、投影/查询组装逻辑 | **当前 `src/test` 为空——新增范围**：读侧查询组装用 Mockito 单测；读模型序列化用 `@JsonTest` | Mockito, @JsonTest |
-| start | —（组装） | 模块依赖（ModulithTest）、上下文可启动、关键端到端路径 | 保留现有 3 个测试；**数量受控**——E2E 是第二道防线（Fowler），新行为先在低层补单测再考虑 E2E | spring-modulith-starter-test, @SpringBootTest |
+| 子模块                      | Khorikov 分类                                             | 测什么                                                                                                  | 测试形态（与现有文件对应）                                                                                                                                                                                                                       | 工具                                           |
+|-----------------------------|-----------------------------------------------------------|---------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| api                         | Controllers（薄）                                         | 命令/查询/DTO 契约                                                                                      | 基本不直接测，由 application/adapter 测试覆盖（Google：helper 不单独成单元）                                                                                                                                                                     | —                                              |
+| domain                      | **Domain model and algorithms（重点）**                   | DP 按 `dp-test-conventions.md`；聚合/领域服务按行为测（given/when/then），聚合边界内不 mock（经典学派） | 纯 JUnit + AssertJ；`soda-user-domain` 现有 29 个 DP 测试为模板                                                                                                                                                                                  | JUnit 5, AssertJ, JacksonTester                |
+| application                 | Controllers（用例编排）                                   | 用例服务的成功/失败路径、领域事件发布、跨模块调用                                                       | **Mockito 单测**：`@Mock` gateway/eventBus/外部服务，验证状态与外部边界交互（`UserServiceImplTest` 为模板）；`*WiringTest` 类保持最少                                                                                                            | Mockito, AssertJ                               |
+| adapter（web/job/consumer） | Controllers（薄）                                         | 请求→命令映射、DTO 组装、状态码/响应结构                                                                | **Mockito 单测**：直接实例化 controller/assembler（`UserControllerTest` 为模板）；仅当需验证 MVC 映射/参数校验/序列化时用 `@WebMvcTest` + `@MockitoBean`（多切片不叠加）                                                                         | Mockito, MapStruct `Mappers`, 可选 @WebMvcTest |
+| infrastructure              | 混合：convertor/gateway 逻辑=domain-like；repository=边界 | convertor 双向映射 round-trip；gateway 状态机/守卫逻辑（mock repository）；repository 真库行为          | convertor 用 Mockito 单测（`UserConvertorTest` 为模板）；gateway/repository 真库行为矩阵用 `@DataJpaTest` 切片（`VerificationGatewayImplPersistenceTest` 为模板——内嵌 H2，默认事务回滚，SODA 主数据源即 H2，见 ADR-0022 开发阶段数据库管理约定） | Mockito, @DataJpaTest, TestEntityManager       |
+| query-server                | Controllers（读侧编排）                                   | 读模型 DTO 映射、投影/查询组装逻辑                                                                      | **当前 `src/test` 为空——新增范围**：读侧查询组装用 Mockito 单测；读模型序列化用 `@JsonTest`                                                                                                                                                      | Mockito, @JsonTest                             |
+| start                       | —（组装）                                                 | 模块依赖（ModulithTest）、上下文可启动、关键端到端路径                                                  | 保留现有 3 个测试；**数量受控**——E2E 是第二道防线（Fowler），新行为先在低层补单测再考虑 E2E                                                                                                                                                      | spring-modulith-starter-test, @SpringBootTest  |
 
 **通用规则（从 `dp-test-conventions.md` 直接推广，全层适用）**：AssertJ-only 断言；`@DisplayName` + `@Nested`（方法数 ≤6 平铺）；`should_expectedBehavior_when_condition` 命名；测试数据内联、不建 fixture 层；不为 DRY 写测试基类；`@ParameterizedTest` 仅 ≥4 组数据时用；每个方法一个逻辑断言；黑盒优先（只走公开 API，不测私有/实现细节——Google ch12）；状态断言优先于交互断言（Google ch12）；修 bug 先写复现单测再改码（Fowler）。
 
@@ -298,13 +323,13 @@
 
 ### 3.7 本仓库现状（核实基准）
 
-| 引用 | 路径 | 内容 |
-|---|---|---|
-| DP 测试规范 | `docs/dp-test-conventions.md` | AssertJ-only、@DisplayName/@Nested、should_*_when_*、无覆盖率要求、仅覆盖领域层 DP |
-| 现有测试分布 | `soda-user/**/src/test`、`soda-components/**/src/test` 共 63 个测试文件 | domain 29（DP）、application 5（Mockito）、adapter 2（直测）、infrastructure 4、start 3（Modulith/E2E）、components 20 |
-| 测试依赖 | 根 `build.gradle`（已核实事实，未重查） | JUnit 5（junit-platform-launcher）、spring-boot-starter-test、spring-modulith-starter-test、mapstruct test、Lombok testAnnotationProcessor；**无 JaCoCo** |
-| 数据层 | `soda-user/soda-user-infrastructure/build.gradle` | Spring Data JPA（Auditable 基类）+ Flyway + **H2 为主数据源（ADR-0022，MODE=MySQL），运行时含 h2 驱动** |
-| 参考风格文档 | `docs/research/okf-code-repo-adaptation.md` | 本文档风格参照（研究日期/来源/用途头注 + 表格 + 逐条归因） |
+| 引用         | 路径                                                                    | 内容                                                                                                                                                      |
+|--------------|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DP 测试规范  | `docs/conventions/dp-test-conventions.md`                               | AssertJ-only、@DisplayName/@Nested、should_*_when_*、无覆盖率要求、仅覆盖领域层 DP                                                                        |
+| 现有测试分布 | `soda-user/**/src/test`、`soda-components/**/src/test` 共 63 个测试文件 | domain 29（DP）、application 5（Mockito）、adapter 2（直测）、infrastructure 4、start 3（Modulith/E2E）、components 20                                    |
+| 测试依赖     | 根 `build.gradle`（已核实事实，未重查）                                 | JUnit 5（junit-platform-launcher）、spring-boot-starter-test、spring-modulith-starter-test、mapstruct test、Lombok testAnnotationProcessor；**无 JaCoCo** |
+| 数据层       | `soda-user/soda-user-infrastructure/build.gradle`                       | Spring Data JPA（Auditable 基类）+ Flyway + **H2 为主数据源（ADR-0022，MODE=MySQL），运行时含 h2 驱动**                                                   |
+| 参考风格文档 | `docs/research/okf-code-repo-adaptation.md`                             | 本文档风格参照（研究日期/来源/用途头注 + 表格 + 逐条归因）                                                                                                |
 
 ### 3.8 未验证缺口（明确声明）
 
@@ -314,4 +339,3 @@
 
 ---
 
-*（完）—— 本调研仅新增 `docs/research/ut-testing-standards.md` 一个文件；未修改任何代码、构建文件或其他文档。*

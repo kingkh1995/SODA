@@ -27,14 +27,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 返回后经 {@code markSent} 转 PENDING 并落库（"PENDING 蕴含已送达"不变量）。投递抛异常
  * 视为投递契约违反：记录保持 INITIALIZED（无变更不落库），用户重发请求自愈。
  * <p>
- * 异常传播（2026-08-11 实测）：Spring 7 的 {@code TransactionSynchronization.afterCompletion}
- * 回调异常被框架吞掉（记录 ERROR 日志，不传播给发布方）——调用方无法感知投递失败，
- * 只能靠记录保持 I 态 + 用户重发自愈（弱保证语义，2026-08-11 范围确认）。
+ * 异常传播：Spring 7 的 {@code TransactionSynchronization.afterCompletion} 回调异常被框架吞掉
+ * （记录 ERROR 日志，不传播给发布方）——调用方无法感知投递失败，只能靠记录保持 I 态 +
+ * 用户重发自愈（弱保证语义）。
  * <p>
- * 分派（2026-08-16，见 ADR-0026）：按投递端点（recipient 类型）选择通道 sender——
- * {@code SmsRecipient}→SmsSender、{@code EmailRecipient}→EmailSender（<b>channel 只在 VerificationRecipient</b>，
- * 判别源从 subject 迁至 recipient；持久化拆 channel+target 两列，2026-08-16 修订）。单类聚合无子类型分派
- * （2026-08-15 多态塌缩，见 ADR-0025）。
+ * 分派（见 ADR-0026）：按投递端点（recipient 类型）选择通道 sender——
+ * {@code SmsRecipient}→SmsSender、{@code EmailRecipient}→EmailSender（<b>channel 只在
+ * VerificationRecipient</b>；持久化拆 channel+target 两列）。
  */
 @Component
 @RequiredArgsConstructor

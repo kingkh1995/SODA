@@ -3,7 +3,7 @@ package com.soda.component.domain;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * 长整型字面量 DP 契约（2026-08-16，见 ADR-0028）— 单属性、包装一个不可变 {@code long} 字面量
+ * 长整型字面量 DP 契约（见 ADR-0028）— 单属性、包装一个不可变 {@code long} 字面量
  * （{@code LongId}/{@code UserId} 等标识符），暴露 {@link #value()} 裸值（原语，免装箱/拆箱）。
  * <p>
  * 与 {@link StringLiteralType}/{@link IntLiteralType}/{@link BooleanLiteralType}/{@link DoubleLiteralType}

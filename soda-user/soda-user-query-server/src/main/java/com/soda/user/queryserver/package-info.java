@@ -3,4 +3,5 @@
 package com.soda.user.queryserver;
 
 import org.jspecify.annotations.NullMarked;
+
 import org.springframework.modulith.ApplicationModule;

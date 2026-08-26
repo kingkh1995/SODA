@@ -166,8 +166,6 @@ class UserWebAssemblerTest {
         }
     }
 
-    // ==================== DTO → Response ====================
-
     @Nested
     @DisplayName("DTO → Response")
     class DtoToResponse {

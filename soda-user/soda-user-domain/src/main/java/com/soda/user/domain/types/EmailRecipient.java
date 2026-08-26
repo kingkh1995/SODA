@@ -17,10 +17,6 @@ public record EmailRecipient(Email target) implements VerificationRecipient<Emai
         ValidateUtils.notNull(target);
     }
 
-    public static EmailRecipient of(String target) {
-        return new EmailRecipient(new Email(target));
-    }
-
     @Override
     public VerificationChannel channel() {
         return VerificationChannel.E;

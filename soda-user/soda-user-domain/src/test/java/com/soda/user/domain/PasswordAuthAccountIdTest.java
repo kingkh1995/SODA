@@ -1,5 +1,6 @@
 package com.soda.user.domain;
 
+import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.UserId;
@@ -45,6 +46,18 @@ class PasswordAuthAccountIdTest {
         @DisplayName("authAccountType 返回 P")
         void should_returnP_when_authAccountType() {
             assertThat(PasswordAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.P);
+        }
+    }
+
+    @Nested
+    @DisplayName("路由")
+    class Routing {
+        @Test
+        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
+        void should_routeToPasswordSubtype_when_baseFactoryOrJson() throws Exception {
+            assertThat(AuthAccountId.of("P:42")).isInstanceOf(PasswordAuthAccountId.class);
+            assertThat(MAPPER.readValue("\"P:42\"", AuthAccountId.class))
+                    .isInstanceOf(PasswordAuthAccountId.class);
         }
     }
 

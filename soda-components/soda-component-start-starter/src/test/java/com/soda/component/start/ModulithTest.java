@@ -1,5 +1,7 @@
 package com.soda.component.start;
 
+import com.soda.support.test.ModulithTestSupport;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
@@ -18,7 +20,7 @@ import org.springframework.modulith.core.ApplicationModules;
  * │ api              │ OPEN     │ (none)                       │
  * │ domain           │ OPEN     │ (none)                       │
  * │ domain.types     │ CLOSED   │ domain, domain.util          │
- * │ domain.gateway   │ CLOSED   │ domain, domain.types         │
+ * │ domain.gateway   │ CLOSED   │ domain, domain.types, domain.util │
  * │ domain.util      │ CLOSED   │ (none)                       │
  * │ application      │ CLOSED   │ domain, api                  │
  * │ web              │ CLOSED   │ api                          │
@@ -29,17 +31,26 @@ import org.springframework.modulith.core.ApplicationModules;
  * │ start            │ CLOSED   │ (none)                       │
  * </pre>
  */
+@DisplayName("Spring Modulith 组件层模块结构")
 class ModulithTest {
 
     @Test
-    void verifyModuleStructure() {
+    @DisplayName("模块依赖符合声明约定时校验通过")
+    void should_verify_when_moduleStructureFollowsConvention() {
         var modules = ApplicationModules.of("com.soda.component");
         modules.verify();
     }
 
     @Test
-    void printModuleStructure() {
+    @DisplayName("打印组件层模块结构供人工核对")
+    void should_print_when_moduleStructureRendered() {
         var modules = ApplicationModules.of("com.soda.component");
         modules.forEach(System.out::println);
+    }
+
+    @Test
+    @DisplayName("CLOSED 模块无未声明依赖")
+    void shouldHaveNoUndeclaredDependenciesInClosedModules() {
+        ModulithTestSupport.assertNoUndeclaredDependenciesInClosedModules("com.soda.component");
     }
 }

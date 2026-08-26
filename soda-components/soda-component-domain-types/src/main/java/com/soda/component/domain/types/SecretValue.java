@@ -1,5 +1,6 @@
 package com.soda.component.domain.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.Type;
 import com.soda.component.domain.util.ValidateUtils;
 
@@ -7,10 +8,10 @@ import com.soda.component.domain.util.ValidateUtils;
  * 秘密值 DP —— 应用内部向 Gateway 传递原始敏感值（密码、API Key、Token）的通用载体，
  * 不绑定任何特定算法或业务场景。
  * <p>
- * 安全姿态（刻意与 {@link com.soda.component.domain.SensitiveValue} 相反）：
+ * 安全姿态（刻意与 {@link com.soda.component.domain.types.SensitiveValue} 相反）：
  * <ul>
- *   <li><b>不实现 {@code StringLiteralType}</b>——无 {@code @JsonValue value()}，Jackson 无法将其序列化</li>
- *   <li>访问器命名为 {@link #rawValue()} 而非 {@code value()}，规避序列化框架自动发现</li>
+ *   <li><b>不实现 {@code StringLiteralType}</b>——无 {@code @JsonValue value()}，无可检测属性，序列化输出空对象</li>
+ *   <li><b>构造器标 {@code @JsonCreator(mode = DISABLED)}</b>——隐式 delegating 反序列化被显式关闭，任何 JSON 绑定拒绝并抛 {@code JacksonException}</li>
  *   <li>{@code toString()} 全遮蔽输出 {@code SecretValue[***]}</li>
  *   <li>引用级相等（不声明 equals/hashCode）——秘密值不参与值比较</li>
  * </ul>
@@ -23,6 +24,7 @@ public final class SecretValue implements Type {
 
     private final String value;
 
+    @JsonCreator(mode = JsonCreator.Mode.DISABLED)
     public SecretValue(String value) {
         ValidateUtils.hasText(value);
         this.value = value;

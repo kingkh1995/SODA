@@ -34,18 +34,8 @@ public record Digest(String value) implements StringLiteralType {
      */
     private static final Pattern BASE64_STD_32B = Pattern.compile("^[A-Za-z0-9+/]{43}=$");
 
-    /**
-     * 唯一规范入口 —— 仅接受小写 hex-64 字面值；大写与 base64 拼写走显式转换工厂。
-     */
     public Digest {
         ValidateUtils.matches(value, HEX_64);
-    }
-
-    /**
-     * 工厂 —— 委托紧凑构造器（小写 hex-64 是唯一合法字面值）。
-     */
-    public static Digest of(String digest) {
-        return new Digest(digest);
     }
 
     /**

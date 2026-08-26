@@ -17,10 +17,10 @@ import java.math.RoundingMode;
  * 规范值为 {@link BigDecimal#toPlainString()} 的 String（{@code @JsonValue}，继承自
  * {@link StringLiteralType}，见 ADR-0028），{@link BigDecimal} 派生缓存。
  * <p>
- * 取值范围 {@code [0, 100]}（见 {@link #validate(BigDecimal)}），最多 2 位小数。
+ * 取值范围 {@code [0, 100]}（见 {@link #validate(BigDecimal)}），最多 2 位小数（SPI 可调，0-4）。
  * 需要舍入时使用 {@link #from(BigDecimal, RoundingMode)}。
  *
- * @see Type
+ * @see StringLiteralType
  * @see DecimalLiteralType
  */
 @EqualsAndHashCode(callSuper = true)

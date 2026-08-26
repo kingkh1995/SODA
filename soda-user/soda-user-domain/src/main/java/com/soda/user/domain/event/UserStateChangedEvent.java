@@ -7,7 +7,7 @@ import com.soda.user.domain.types.UserState;
 import java.time.Instant;
 
 /**
- * 用户状态变更事件 — 当 User 的状态被修改时触发。
+ * 用户状态变更事件 — 仅在状态实际迁移时注册（disable/enable 同态 no-op 不发事件）。
  *
  * @param entityId   状态变更的 User 标识符
  * @param occurredAt 事件发生时间

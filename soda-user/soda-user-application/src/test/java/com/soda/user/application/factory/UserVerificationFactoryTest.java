@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link UserVerificationFactory} 单元测试（2026-08-16，见 ADR-0026）。
+ * {@link UserVerificationFactory} 单元测试（见 ADR-0026）。
  * <p>
  * 验证：source 构造（scene→助记码串、userId→裸键串——槽位预检与构造共用同一映射点）、
  * 按场景构造方法（方法名即场景——scene=UCC 方法内写死）、UCC 专属策略
@@ -36,8 +36,8 @@ import static org.mockito.Mockito.when;
 class UserVerificationFactoryTest {
 
     private static final UserId USER_ID = new UserId(1L);
-    private static final Mobile MOBILE = new Mobile("13800138000");
-    private static final Email EMAIL = new Email("user@test.com");
+    private static final Mobile MOBILE = Mobile.of("13800138000");
+    private static final Email EMAIL = Email.of("user@test.com");
     private static final String VALID_CODE = "123456";
 
     @Mock

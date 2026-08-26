@@ -8,5 +8,6 @@
 @ApplicationModule(type = ApplicationModule.Type.CLOSED, allowedDependencies = {"domain", "api"})
 package com.soda.component.application;
 
-import org.springframework.modulith.ApplicationModule;
 import org.jspecify.annotations.NullMarked;
+
+import org.springframework.modulith.ApplicationModule;

@@ -29,16 +29,15 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
         this.userId = userId;
     }
 
+    /**
+     * 反序列化入口 — 格式 {@code "P:{userId}"}。
+     */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    /** 反序列化入口 — 格式 {@code "P:{userId}"}。 */
     public static PasswordAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, PREFIX);
         return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
     }
 
-    /**
-     * 从 {@link UserId} 构造密码认证账户标识符。
-     */
     public static PasswordAuthAccountId from(UserId userId) {
         ValidateUtils.notNull(userId);
         return new PasswordAuthAccountId(PREFIX + userId.value(), userId);

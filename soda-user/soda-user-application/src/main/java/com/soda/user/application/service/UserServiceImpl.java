@@ -32,7 +32,7 @@ import java.util.Optional;
 /**
  * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link PasswordHasher}。
  * <p>
- * 凭证/验证码相关操作迁至 {@link UserAuthServiceImpl}。
+ * 凭证/验证码用例由 {@link UserAuthServiceImpl} 承载，本类只管资料与状态机用例。
  */
 @Slf4j
 @Transactional
@@ -55,8 +55,8 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
     public UserDTO createUser(CreateUserCommand command) {
         log.info("createUser: command={}", command);
         var username = new Username(command.username());
-        var mobile = Optional.ofNullable(command.mobile()).map(Mobile::new).orElse(null);
-        var email = Optional.ofNullable(command.email()).map(Email::new).orElse(null);
+        var mobile = Optional.ofNullable(command.mobile()).map(Mobile::of).orElse(null);
+        var email = Optional.ofNullable(command.email()).map(Email::of).orElse(null);
         Assert.isTrue(!gateway.existsByUsername(username),
                 "Username already exists: " + command.username());
         if (mobile != null) {

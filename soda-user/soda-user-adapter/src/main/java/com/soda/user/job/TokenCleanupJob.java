@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class TokenCleanupJob {
 
     public void cleanExpiredTokens(JobContext<TokenCleanupParam> ctx) {
-        // 目前仅输出日志，后续接入调度框架后实现业务逻辑
+        // 占位实现：仅记录参数，接入调度框架后补业务逻辑
         var param = ctx.param();
         log.info("cleanExpiredTokens: daysBefore={}, batchSize={}, shard={}",
                 param.daysBefore(), param.batchSize(), ctx.shardIndex());

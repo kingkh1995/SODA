@@ -3,4 +3,5 @@
 package com.soda.component.domain.types;
 
 import org.jspecify.annotations.NullMarked;
+
 import org.springframework.modulith.ApplicationModule;

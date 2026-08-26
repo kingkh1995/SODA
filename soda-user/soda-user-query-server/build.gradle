@@ -4,5 +4,9 @@ apply plugin: 'org.springframework.boot'
 dependencies {
     implementation project(':soda-components:soda-component-query-server-starter')
     implementation project(':soda-user:soda-user-api')
+    // H2 内存库 MODE=MySQL（本部署单元 application.yml 数据源，ADR-0022）：运行时类路径必需
+    runtimeOnly 'com.h2database:h2'
     implementation project(':soda-user:soda-user-infrastructure')
+    // 启动冒烟测试编译期引用 domain（gateway 接口断言写侧装配复用）
+    testImplementation project(':soda-user:soda-user-domain')
 }

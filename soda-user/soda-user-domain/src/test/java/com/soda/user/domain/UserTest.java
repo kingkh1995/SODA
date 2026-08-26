@@ -78,8 +78,6 @@ class UserTest {
     private static final RandomStringGenerator
             CODE_GENERATOR = (length, alphabet) -> new RandomString("123456");
 
-    // ─── helpers ───
-
     private static PasswordAuthAccount stubPasswordAccount() {
         return PasswordAuthAccount.builder()
                 .id(PasswordAuthAccountId.from(USER_ID))
@@ -112,7 +110,7 @@ class UserTest {
     }
 
     private static User fullUserWithSmsAccount() {
-        var mobile = new Mobile("13800138000");
+        var mobile = Mobile.of("13800138000");
         var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
@@ -129,7 +127,7 @@ class UserTest {
     }
 
     private static User fullUserWithEmailAccount() {
-        var email = new Email("test@example.com");
+        var email = Email.of("test@example.com");
         var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
@@ -162,12 +160,12 @@ class UserTest {
     }
 
     private static User fullUserWithMixedAccounts() {
-        var mobile = new Mobile("13800138000");
+        var mobile = Mobile.of("13800138000");
         var smsAccount = SmsAuthAccount.builder()
                 .id(SmsAuthAccountId.from(mobile))
                 .active(Active.TRUE)
                 .build();
-        var email = new Email("test@example.com");
+        var email = Email.of("test@example.com");
         var emailAccount = EmailAuthAccount.builder()
                 .id(EmailAuthAccountId.from(email))
                 .active(Active.TRUE)
@@ -186,8 +184,6 @@ class UserTest {
                 .accounts(List.of(smsAccount, emailAccount, socialAccount))
                 .build();
     }
-
-    // ─── construction ───
 
     @Nested
     @DisplayName("构造")
@@ -242,8 +238,8 @@ class UserTest {
         @Test
         @DisplayName("携带可选字段创建")
         void should_includeOptionalFields_when_provided() {
-            var mobile = new Mobile("13800138000");
-            var email = new Email("test@example.com");
+            var mobile = Mobile.of("13800138000");
+            var email = Email.of("test@example.com");
             var avatar = new Avatar("https://example.com/avatar.png");
             var user = User.createBuilder()
                     .username(USERNAME)
@@ -278,8 +274,6 @@ class UserTest {
         }
     }
 
-    // ─── restoration ───
-
     @Nested
     @DisplayName("恢复")
     class Restoration {
@@ -287,8 +281,8 @@ class UserTest {
         @Test
         @DisplayName("恢复后状态与持久化一致")
         void should_restoreAllFields_when_usingBuilder() {
-            var mobile = new Mobile("13800138000");
-            var email = new Email("test@example.com");
+            var mobile = Mobile.of("13800138000");
+            var email = Email.of("test@example.com");
             var avatar = new Avatar("https://example.com/avatar.png");
             var user = User.builder()
                     .id(USER_ID)
@@ -300,7 +294,6 @@ class UserTest {
                     .sex(Sex.F)
                     .avatar(avatar)
                     .state(UserState.D)
-                    .passwordAccount(stubPasswordAccount())
                     .passwordAccount(stubPasswordAccount())
                     .build();
 
@@ -339,8 +332,6 @@ class UserTest {
         }
     }
 
-    // ─── events ───
-
     @Nested
     @DisplayName("领域事件")
     class Events {
@@ -374,8 +365,6 @@ class UserTest {
             assertThat(event.entityId()).isEqualTo(userId);
         }
     }
-
-    // ─── state transitions ───
 
     @Nested
     @DisplayName("状态跃迁")
@@ -594,12 +583,12 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("修改密码成功并注册 PasswordChangedEvent")
-        void should_changePassword() {
+        @DisplayName("changeMobile 验证通过后更新手机号")
+        void should_changeMobile_when_verifiedSmsVerification() {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -608,7 +597,7 @@ class UserTest {
 
             user.changeMobile(verification);
 
-            assertThat(user.getMobile()).hasValue(new Mobile("13900139000"));
+            assertThat(user.getMobile()).hasValue(Mobile.of("13900139000"));
         }
 
         @Test
@@ -617,7 +606,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -633,7 +622,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("ULG", Long.toString(USER_ID.value())))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -651,7 +640,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", "999"))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -669,7 +658,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -691,12 +680,12 @@ class UserTest {
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
-                    .mobile(new Mobile("13900139000"))
+                    .mobile(Mobile.of("13900139000"))
                     .passwordAccount(stubPasswordAccount())
                     .build();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new SmsRecipient(new Mobile("13900139000")))
+                    .recipient(new SmsRecipient(Mobile.of("13900139000")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_SMS)
                     .build();
@@ -714,7 +703,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new EmailRecipient(new Email("new@test.com")))
+                    .recipient(new EmailRecipient(Email.of("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
@@ -723,7 +712,7 @@ class UserTest {
 
             user.changeEmail(verification);
 
-            assertThat(user.getEmail()).hasValue(new Email("new@test.com"));
+            assertThat(user.getEmail()).hasValue(Email.of("new@test.com"));
         }
 
         @Test
@@ -732,7 +721,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new EmailRecipient(new Email("new@test.com")))
+                    .recipient(new EmailRecipient(Email.of("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
@@ -748,7 +737,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("ULG", Long.toString(USER_ID.value())))
-                    .recipient(new EmailRecipient(new Email("new@test.com")))
+                    .recipient(new EmailRecipient(Email.of("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
@@ -766,7 +755,7 @@ class UserTest {
             var user = fullUserWithPasswordAccount();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", "999"))
-                    .recipient(new EmailRecipient(new Email("new@test.com")))
+                    .recipient(new EmailRecipient(Email.of("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
@@ -787,12 +776,12 @@ class UserTest {
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
-                    .email(new Email("new@test.com"))
+                    .email(Email.of("new@test.com"))
                     .passwordAccount(stubPasswordAccount())
                     .build();
             var verification = Verification.createBuilder()
                     .source(VerificationSource.of("UCC", Long.toString(USER_ID.value())))
-                    .recipient(new EmailRecipient(new Email("new@test.com")))
+                    .recipient(new EmailRecipient(Email.of("new@test.com")))
                     .generator(CODE_GENERATOR)
                     .policy(VerificationCodePolicy.DEFAULT_EMAIL)
                     .build();
@@ -821,9 +810,6 @@ class UserTest {
             assertThat(user.getAvatar()).hasValue(newAvatar);
         }
     }
-
-
-    // ─── serialization ───
 
     @Nested
     @DisplayName("序列化")
@@ -904,8 +890,6 @@ class UserTest {
                     .isInstanceOf(JacksonException.class);
         }
     }
-
-    // ─── identity ───
 
     @Nested
     @DisplayName("相等性")

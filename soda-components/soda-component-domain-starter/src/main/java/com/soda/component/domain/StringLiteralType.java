@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * （手机号、邮箱、用户名、URL 等），暴露 {@link #value()} 裸值。
  * <p>
  * 与 {@link EnumType} 平行：枚举短名 DP 实现 {@code EnumType}（封闭常量集，常量自身即值，
- * 不包装字面量——非本接口子契约，见 ADR-0028 修订注记）；单值字面量 DP
+ * 不包装字面量——非本接口子契约，见 ADR-0028）；单值字面量 DP
  * 实现本接口（{@code Mobile}/{@code Email}/{@code Uuid} 等）。字面量家族接口
  * （{@code StringLiteralType}/{@code LongLiteralType}/{@code IntLiteralType}/{@code BooleanLiteralType}/
  * {@code DoubleLiteralType}）互不关联（IntSupplier 式，无共享根），按字面量基本类型各归一族，

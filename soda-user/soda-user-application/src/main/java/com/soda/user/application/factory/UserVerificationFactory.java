@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 
 /**
- * 用户侧验证构造工厂（2026-08-16，见 ADR-0026）— <b>调用方词汇 → 领域构造</b>的薄映射层。
+ * 用户侧验证构造工厂（见 ADR-0026）— <b>调用方词汇 → 领域构造</b>的薄映射层。
  * <p>
  * 职责：
  * <ul>
@@ -24,7 +24,7 @@ import java.time.Duration;
  *       槽位预检/消费反查与构造方法共用，杜绝服务侧两处映射漂移</li>
  *   <li><b>按场景的构造方法</b>（如 {@link #newCredentialChangeVerification(UserId, VerificationRecipient)}）——
  *       scene 在方法内写死（方法名即场景），策略按场景选择（<b>不引用通道默认
- *       DEFAULT_SMS/DEFAULT_EMAIL</b>——策略决策属调用方场景，2026-08-16 会话修订，见 ADR-0026）</li>
+ *       DEFAULT_SMS/DEFAULT_EMAIL</b>——策略决策属调用方场景，见 ADR-0026）</li>
  * </ul>
  * 边界：<b>纯构造</b>——业务前置（跨实例查询）与持久化/事件发布由 AppService 执行。
  * 当前仅 UCC；ULG/UPR/URG（未来票）落地时按各自场景加构造方法。
@@ -34,8 +34,8 @@ import java.time.Duration;
 public class UserVerificationFactory {
 
     /**
-     * UCC（User Credential Change，换绑联系方式/凭证变更）专属码形策略（2026-08-16 会话修订，
-     * 见 ADR-0026）：换绑场景<b>无论通道（手机/邮箱）统一纯数字、短时效</b>——6 位数字 / 5 分钟
+     * UCC（User Credential Change，换绑联系方式/凭证变更）专属码形策略（见 ADR-0026）：
+     * 换绑场景<b>无论通道（手机/邮箱）统一纯数字、短时效</b>——6 位数字 / 5 分钟
      * 过期。不引用通道默认（{@link VerificationCodePolicy#DEFAULT_SMS}/
      * {@link VerificationCodePolicy#DEFAULT_EMAIL}）——策略按场景（用例）而非通道选择。
      */

@@ -1,6 +1,6 @@
 package com.soda.component.domain.types;
 
-import com.soda.component.domain.SensitiveValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -32,7 +32,7 @@ public final class Email extends SensitiveValue {
     @Getter
     private final String domain;
 
-    public Email(String value) {
+    private Email(String value) {
         super(value == null ? null : value.toLowerCase(Locale.ROOT));
         ValidateUtils.matches(value(), PATTERN);
         var v = value();
@@ -44,5 +44,13 @@ public final class Email extends SensitiveValue {
     @Override
     public String maskedValue() {
         return MaskedEmail.from(this).value();
+    }
+
+    /**
+     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static Email of(String raw) {
+        return new Email(raw);
     }
 }

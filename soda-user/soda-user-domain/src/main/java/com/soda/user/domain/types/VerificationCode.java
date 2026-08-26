@@ -14,9 +14,8 @@ import java.time.Instant;
  * 不可变、自校验、可序列化、可比较。
  * <p>
  * {@code code} 为普通字符串：码形（非空非空白）在此自校验，随机性与字符集由生成侧
- * （{@link RandomString} + {@code RandomStringGenerator}，见 ADR-0018）负责，
- * DP 不持有生成包装——工厂入口（{@link #from}）与匹配入口（{@link #matches}）
- * 仍以 {@link RandomString} 收参，签名不变。JSON 形状为字符串，保持不变。
+ * （{@link RandomString} + {@code RandomStringGenerator}，见 ADR-0018）保证，
+ * DP 不持有生成包装；{@link #from} 与 {@link #matches} 以 {@link RandomString} 收参。
  *
  * @see Type
  * @see RandomString

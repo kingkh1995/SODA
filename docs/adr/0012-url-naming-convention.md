@@ -1,80 +1,18 @@
-# 0012 — URL 命名规范：遵循 Google AIP camelCase
+---
+type: Decision Record
+title: URL 与 HTTP 方法规范：Google AIP 风格
+description: 定义 URL 与 HTTP 方法时读——全程 camelCase，自定义方法冒号后缀 POST /{id}:action，更新一律 PATCH 禁 PUT，资源标识符走路径不进请求体。
+tags: [url, api, aip]
+status: stable
+---
 
-URL 路径中的资源集合名和自定义方法动词统一使用 camelCase，遵循 Google AIP 规范，不使用主流 REST 的 kebab-case。
+# 0012 — URL 与 HTTP 方法规范：Google AIP 风格
 
-**Status**: accepted
-
-## Context
-
-URL 命名有两种主流风格：
-
-| 风格 | 示例 | 来源 |
-|---|---|---|
-| camelCase | `/userAccounts/{id}`、`:changePassword` | Google AIP (gRPC transcoding) |
-| kebab-case | `/user-accounts/{id}`、`:change-password` | 主流 REST 惯例 |
-
-Google AIP 是 gRPC 优先的设计规范——protobuf RPC 名是 camelCase，HTTP transcoding 保持这个格式。AIP-122 要求集合标识符使用 camelCase，AIP-136 要求自定义方法动词使用 camelCase。
-
-SODA 虽然是纯 REST API，但选择遵循 AIP 规范，原因：
-1. **一致性** — 团队已采用 AIP 作为 API 设计规范，URL 风格应保持一致
-2. **未来兼容** — 如果未来引入 gRPC，URL 格式无需变更
-3. **工具链兼容** — Google Cloud 客户端库、API Gateway 等工具期望 camelCase
-
-## Decision
-
-### 命名规则
-
-| 场景 | 规范 | 示例 | AIP |
-|---|---|---|---|
-| 资源类型名（protobuf/message） | PascalCase | `UserAccount` | AIP-123 |
-| 集合标识符（URL 路径中的集合名） | camelCase | `userAccounts` | AIP-122 |
-| 资源 ID 段（系统生成 Long 类型） | 数字（无格式约束） | `42`（URL 渲染为 `/users/42`） | AIP-122 |
-| 资源 ID 段（用户指定 string 类型） | 全小写+中划线 | `vhugo1802`, `my-instance` | AIP-122 |
-| 自定义方法动词（URL 中 `:` 后） | camelCase | `:changePassword` | AIP-136 |
-
-### URL 示例
-
-```
-GET    /users/{id}                    ← 集合名 camelCase（单单词）
-PATCH  /users/{id}
-POST   /users/{id}:changePassword     ← 自定义方法 camelCase
-
-GET    /authAccounts/{id}             ← 集合名 camelCase（多单词）
-PATCH  /authAccounts/{id}
-```
-
-### 资源 ID 格式说明
-
-| ID 类型 | 来源 | 示例 URL | 规则 |
-|---|---|---|---|
-| Long（数字） | 系统自动生成（自增/序列） | `/users/42` | 数字本身无格式问题，无需转换 |
-| UUID（字符串） | 系统自动生成 | `/users/a1b2c3d4-...` | 全小写+中划线保持 AIP 规范 |
-| 语义化 ID（字符串） | 用户指定 | `/authAccounts/vhugo1802` | 必须全小写+中划线，正则 `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$` |
-
-自定义方法动词统一首字母小写 camelCase，如 `:changePassword` 而非 `:change-password` 或 `:ChangePassword`。
-
-### 对照表
-
-| 操作 | AIP (camelCase) | 主流 REST (kebab-case) |
-|---|---|---|
-| 获取用户列表 | `GET /users` | `GET /users` |
-| 获取单个用户 | `GET /users/{id}` | `GET /users/{id}` |
-| 修改密码 | `POST /users/{id}:changePassword` | `POST /users/{id}:change-password` |
-| 发送换绑验证码 | `POST /users/{id}:requestChangeMobileCode` | `POST /users/{id}:request-change-mobile-code` |
-
-> 注（2026-08-10）：示例动词随端点改名更新（原 `:verifyMobile` → `:requestChangeMobileCode`，见 ADR-0011 2026-08-10 修订）；约定本身（camelCase 自定义方法）不变。
-
-> 注（2026-08-16，见 ADR-0026）：**集合级自定义方法**新形态——预认证/无资源场景（ULG/UPR/URG 发码）用 `POST /collection:verb`（如 `POST /api/users:requestRegisterCode`），无 `{id}`（资源尚不存在，contact 在 body，不违反「资源标识符在路径上」——无资源可寻址）。依据：AIP-136「Custom methods can be associated with resources, collections, or services」+ 条件性 parent 规则（「If the collection's resource has a parent...」——顶层集合无父无此变量）+ Google 生产先例（Firebase Identity Toolkit `POST /v1/accounts:signUp`、`POST /v1/accounts:sendOobCode`）。
-
-## Considered Options
-
-- **camelCase (AIP)** — 符合 Google AIP 规范，gRPC 兼容，但与主流 REST 惯例冲突。选择。
-- **kebab-case (主流 REST)** — curl/浏览器友好，行业共识，但违反 AIP-136 硬性要求。拒绝。
+URL 与 HTTP 方法遵循 Google AIP——集合名 camelCase（`userAccounts` 而非 `user-accounts`），自定义方法为资源上的冒号后缀
+`POST /{id}:action`（`:changePassword`、`:requestChangeMobileCode`，AIP-136），资源标识符走路径不进请求体；更新一律 PATCH
+字段级部分更新、禁 PUT——全量替换语义在新增字段时会静默丢数据（AIP-134），触发领域逻辑的操作（校验旧凭证、状态迁移）用 POST
+冒号方法，纯字段修改才用 PATCH。选 AIP 而非主流 REST kebab-case，为的是 API 设计规范全局一致，未来引入 gRPC 时 URL 形态不变。
 
 ## Consequences
 
-- 所有 URL 路径统一使用 camelCase，无 kebab-case 混用
-- 自定义方法动词使用 camelCase，如 `:changePassword` 而非 `:change-password`
-- 集合标识符使用 camelCase，如 `userAccounts` 而非 `user-accounts`
-- 如果未来引入 gRPC，URL 格式无需变更
-- 前端调用时需注意 camelCase 拼写（如 `changePassword` 而非 `change-password`）
+- 现行端点全部为资源级（`/{id}:action`）；无资源可寻址场景（注册/登录发码）的集合级自定义方法形态归 ADR-0026 记载。

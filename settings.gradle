@@ -25,6 +25,8 @@ include 'soda-components:soda-component-query-server-starter'
 // —— Shared domain types (concrete DPs, SPI, utilities, gateway interfaces) ——
 include 'soda-components:soda-component-domain-types'
 
+// —— Optional modules ——
+include 'soda-supports:soda-support-modulith'
 
 // —— Business modules (added incrementally) ——
 include 'soda-user'

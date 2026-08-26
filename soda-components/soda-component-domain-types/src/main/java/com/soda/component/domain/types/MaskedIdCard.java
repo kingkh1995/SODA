@@ -7,8 +7,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * 已脱敏身份证号 —— 存储格式为 {@code 110101********1234}，保留前 6 位（地区码）和后 4 位、
- * 校验位 X 大写归一化的掩码唯一权威实现（见 ADR-0032）。
+ * 已脱敏身份证号 —— 存储格式为 {@code 110101********1234}（保留前 6 位地址码与后 4 位，中间 8 位替换为 *），掩码唯一权威实现（见 ADR-0032）。
  *
  * @see IdCard 原始值 DP
  * @see Ciphertext 可逆加密信封
@@ -24,10 +23,9 @@ public record MaskedIdCard(String value) implements StringLiteralType {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    public static MaskedIdCard of(String value) {
-        return new MaskedIdCard(value);
-    }
-
+    /**
+     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
+     */
     public static MaskedIdCard from(IdCard idCard) {
         return new MaskedIdCard(maskOf(idCard.value()));
     }

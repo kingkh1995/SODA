@@ -23,10 +23,10 @@ import java.time.Instant;
  * D→R 注销迁移时由 {@link UserGatewayImpl#save} 同事务写入：捕获释放前的原键值
  * （username/mobile/email）快照，供审计/合规查询；{@code user} 表 R 行此后三键置空。
  * 纯审计存储（insert-only，不参与业务读写路径）；保存期限届满后由清除 job 处理
- * （个保法 19 条最短期限，演进路径，见 ADR-0023）。
+ * （个保法 19 条最短期限，见 ADR-0023）。
  * <p>
  * 时间戳语义：insert-only 表无 update 概念——单一 {@code archive_time}（{@code @CreatedDate}
- * 由 Spring Data auditing 填充，2026-08-13；归档时刻 = 行创建时刻），不复用审计列对
+ * 由 Spring Data auditing 填充；归档时刻 = 行创建时刻），不复用审计列对
  * （created_date/last_modified_date），故继承 {@link AbstractPersistable}（isNew=id==null 判定，
  * ADR-0024）而非审计基类。
  * 主键 = 原用户 ID（表名 {@code user_archive} 已含 user 语义，列名即 {@code id}；

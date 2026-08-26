@@ -3,11 +3,11 @@ package com.soda.component.domain;
 /**
  * 状态机对象契约接口 — 聚合根的状态机声明（与枚举侧 {@link StateEnumType} 对称）。
  * <p>
- * 实现类声明「我是状态机对象」：暴露当前状态枚举（{@link #getState()}，**非空契约**——
+ * 实现类声明「我是状态机对象」：暴露当前状态枚举（{@link #getState()}，<b>非空契约</b>——
  * 状态机实体恒有状态），终态（吸收态）判定经 {@link #isTerminal()} 委托
  * {@link StateEnumType#terminal()}——终态逻辑单一事实源在状态枚举，聚合侧只是消费接缝。
  * <p>
- * 由 {@link Aggregate} 基类实现（**聚合根能力**：身份 + 状态机 + 领域事件源，见
+ * 由 {@link Aggregate} 基类实现（<b>聚合根能力</b>：身份 + 状态机 + 领域事件源，见
  * {@link Aggregate}）：{@code getState()} 由具体聚合经 Lombok {@code @Getter} 生成的
  * {@code getState()} 满足（协变返回各自状态枚举，具体类型在具体聚合上可见，无需泛型参数）——
  * 命名遵循仓库 Getter 约定，零显式方法。普通实体（如 {@code AuthAccount}，仅布尔

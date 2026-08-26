@@ -5,8 +5,6 @@ import java.util.ServiceLoader;
 
 /**
  * Type 配置持有者 — 通过 SPI 加载 {@link TypeConfigProvider}，无实现时回退默认值。
- * <p>
- * 参考 kk-ddd 的 {@code Constants.TYPE} 设计。
  */
 public final class TypeConfig {
 

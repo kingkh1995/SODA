@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.Map;
 
 /**
- * 错误详情结构，遵循 AIP-193。
+ * 错误详情结构，遵循 AIP-193（见 ADR-0013）。
  * <p>
  * {@code metadata} 为 null 时随 {@link Result} 的 null 省略策略一并省略。
  *

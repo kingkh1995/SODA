@@ -26,8 +26,8 @@ import java.math.RoundingMode;
  * 构造期规范化：null 校验 → maxScale → {@code setScale(UNNECESSARY)} → {@link #validate(BigDecimal)} 钩子。
  * 子类提供 {@code SCALE}（构造器参）+ {@link #validate(BigDecimal)} 不变量钩子（默认空）+ 工厂/单位换算。
  * <p>
- * 沿用「abstract 基类承载家族不变量」模式（原以 AbstractEncryptedValue 为先例，现见
- * {@link com.soda.component.domain.SensitiveValue}，ADR-0033）。
+ * 沿用「abstract 基类承载家族不变量」模式（同
+ * {@link com.soda.component.domain.types.SensitiveValue}，ADR-0033）。
  *
  * @see StringLiteralType
  * @see WanYuan

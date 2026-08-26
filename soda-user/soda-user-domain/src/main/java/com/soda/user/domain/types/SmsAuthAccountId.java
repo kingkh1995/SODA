@@ -30,16 +30,15 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
         this.mobile = mobile;
     }
 
+    /**
+     * 反序列化入口 — 格式 {@code "S:{mobile}"}。
+     */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    /** 反序列化入口 — 格式 {@code "S:{mobile}"}。 */
     public static SmsAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, PREFIX);
-        return new SmsAuthAccountId(value, new Mobile(suffix));
+        return new SmsAuthAccountId(value, Mobile.of(suffix));
     }
 
-    /**
-     * 从 {@link Mobile} 构造短信认证账户标识符。
-     */
     public static SmsAuthAccountId from(Mobile mobile) {
         ValidateUtils.notNull(mobile);
         return new SmsAuthAccountId(PREFIX + mobile.value(), mobile);

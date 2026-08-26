@@ -1,9 +1,9 @@
 package com.soda.component.domain.gateway;
 
 import com.soda.component.domain.Gateway;
-import com.soda.component.domain.SensitiveValue;
 import com.soda.component.domain.types.Digest;
 import com.soda.component.domain.types.SecretValue;
+import com.soda.component.domain.types.SensitiveValue;
 
 /**
  * 等值摘要器 Gateway —— 快摘要族的统一生产端口（ADR-0033）。

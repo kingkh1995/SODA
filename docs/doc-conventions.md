@@ -1,9 +1,9 @@
 ---
 type: Convention
 title: Doc Conventions — 文档体系标准
-description: SODA 文档体系标准：知识分层模型、frontmatter schema 契约、bundle 布局、链接约定、写作原则、ADR 模板、合规基准。
+description: 写/改任何文档、ADR 或 frontmatter 时读——SODA 文档体系唯一标准落盘处：分层模型、schema 契约、bundle 布局、链接约定、写作原则、ADR 模板、合规基准。
 tags: [convention, docs, okf]
-status: draft
+status: stable
 ---
 
 # Doc Conventions
@@ -12,12 +12,12 @@ SODA 文档体系标准（OKF v0.2 适配 × Google 注释规范 × agent 写作
 
 ## 1. 知识分层模型（四类知识各归其位）
 
-| 知识类型 | 归属 | 载体 |
-|---|---|---|
-| **词汇**（概念是什么、用什么词） | `CONTEXT.md`（业务词汇） | 定义 + `_Avoid_`。**框架层无词汇**——类型即代码，定义在 javadoc；防混淆是命名约定（framework-conventions §2） |
-| **决策**（为什么这样设计） | `docs/adr/` | Context / Decision / Consequences（V1 阶段限制见 §9） |
-| **契约**（不变量、前置、副作用） | **与代码同处的注释**（Javadoc） | STYLEGUIDE §4 规范 |
-| **约定**（怎么写代码 / 怎么写文档 / 框架怎么用） | `STYLEGUIDE.md`、`docs/doc-conventions.md`、`docs/framework-conventions.md`（索引）+ `docs/conventions/*`（类型规范族） | 规则 + 示例 |
+| 知识类型                                         | 归属                                                                                                                    | 载体                                                                                                                                    |
+|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| **词汇**（概念是什么、用什么词）                 | `CONTEXT.md`（业务词汇）                                                                                                | 定义 + `_Avoid_`。**框架层无词汇**——类型即代码，定义在 javadoc；防混淆是命名约定（`framework-conventions.md` §4 类型与契约，DP 清单表） |
+| **决策**（为什么这样设计）                       | `docs/adr/`                                                                                                             | Context / Decision / Consequences（V1 阶段限制见 §9）                                                                                   |
+| **契约**（不变量、前置、副作用）                 | **与代码同处的注释**（Javadoc）                                                                                         | STYLEGUIDE §4 规范                                                                                                                      |
+| **约定**（怎么写代码 / 怎么写文档 / 框架怎么用） | `STYLEGUIDE.md`、`docs/doc-conventions.md`、`docs/framework-conventions.md`（索引）+ `docs/conventions/*`（类型规范族） | 规则 + 示例                                                                                                                             |
 
 禁止跨层重复：词汇的语义不进 ADR 正文；实现细节不进词汇表；决策的理由不进注释（注释只留 ADR 锚点）；同一种约定不写进两份约定文档。判断标准——一处改了，别处不需要跟着改。
 
@@ -25,44 +25,33 @@ SODA 文档体系标准（OKF v0.2 适配 × Google 注释规范 × agent 写作
 
 **docs/ 为 OKF bundle**（`type` 是唯一必填 frontmatter 键）。`.scratch/`（tracker 工作流数据）与根文档在 bundle 之外——bundle 合规只约束 docs/ 内文件。
 
-```
-docs/
-├── index.md                  ← bundle 入口（渐进披露，无 frontmatter，仅目录）
-├── adr/                      ← 决策记录（000N-slug.md，极简模板见 §4）
-├── research/                 ← 研究笔记（引用外部材料）
-├── agents/                   ← agent 技能契约（setup 产物，不在 OKF schema 约束内）
-├── framework-conventions.md  ← 约定索引：分层总览 + Modulith 治理 + 类型清单表（覆盖清单）+ 导航
-├── test-conventions.md       ← 测试规范：分层映射 + 通用写法 + 覆盖率政策
-├── conventions/              ← 类型设计规范族（按复杂度拆分，模板见 §2.4）
-│   ├── entity-aggregate.md   ├── domain-marker-types.md   ├── domain-service-event.md
-│   ├── gateway.md            ├── dp-conventions.md        ├── dp-spec-simple.md
-│   ├── dp-spec-composite.md  ├── dp-spec-identifier.md    ├── dp-spec-cache-util.md
-│   ├── dp-test-conventions.md├── application.md           ├── adapter.md
-│   └── infrastructure.md
-└── doc-conventions.md        ← 本文件
-```
+docs/ 树本身是事实源（filesystem 即真相，块内文件清单将漂移）；下表只标 **语义归属**：
 
-`docs/index.md` 只列一级条目（目录 + 一句话定位，不承载正文——OKF §8）；conventions/ 族经 framework-conventions 类型清单表触达，不在 index 展开：
+| 路径                                      | 语义归属                                                                                            |
+|-------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `index.md`                                | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                     |
+| `adr/`                                    | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计） |
+| `research/`                               | 研究笔记（引用外部材料）                                                                            |
+| `agents/`                                 | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                |
+| `framework-conventions.md`                | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                   |
+| `test-conventions.md`                     | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                          |
+| `dp-conventions.md`                       | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                     |
+| `conventions/`                            | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                         |
+| `conventions/framework-type-contracts.md` | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                    |
+| `conventions/framework-crosscutting.md`   | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                |
+| `conventions/dp-json-conventions.md`      | DP 序列化契约族（字面量 / record / SensitiveValue / 自描述 ID）                                     |
+| `doc-conventions.md`                      | 本文件                                                                                              |
 
-```markdown
-# docs — Soda 文档库
-
-| 位置 | 内容 |
-|---|---|
-| adr/ | 架构决策记录（000N-slug 顺序编号，极简模板） |
-| research/ | 外部规范 / 来源研究笔记 |
-| agents/ | agent 技能契约（setup 技能产物） |
-| framework-conventions.md | 约定索引：分层总览 + Modulith 治理 + 类型清单表 |
-| test-conventions.md | 测试规范：分层映射 + 通用写法 + 覆盖率政策 |
-| conventions/ | 类型设计规范族（entity-aggregate / dp 谱系 / application / adapter / infrastructure…） |
-| doc-conventions.md | 本文档体系标准 |
-```
+`docs/index.md` 只列一级条目（目录 + 一句话定位，不承载正文——OKF §8）；conventions/ 族在 index 的 conventions/
+条目下列举（adapter / dp-test-conventions / framework-type-contracts / framework-crosscutting /
+dp-validation-conventions），详细契约经 framework-type-contracts.md 类型清单表触达。
 
 **不引入 `log.md`**（OKF §9 为 MAY，非合规必需）：变更史由 git log/blame 承载；V1 零残留条款（§9）禁止历史回溯内容入库——log 条目本身即历史回溯。
 
 ### 2.4 类型设计规范模板
 
-每个基类 / 接口标记类型（domain-starter 基类、AbstractAppService 等）**必须有一份设计规范**——覆盖清单见 `framework-conventions.md` 类型清单表（合规第 8 条）。条目模板：
+每个基类 / 接口标记类型（domain-starter 基类、AbstractAppService 等） **必须有一份设计规范**——覆盖清单见
+`conventions/framework-type-contracts.md` 类型清单表（合规第 8 条）。条目模板：
 
 - **识别行**：类型名 + 包 + 角色（基类 / 标记接口 / DP）
 - **设计规则**：不变式、契约、怎么写子类 / 实现
@@ -91,31 +80,32 @@ docs/
 
 ### 3.1 type 词表（6 值，自解释）
 
-| type | 文档类 | 必填键 | 按类可选键 |
-|---|---|---|---|
-| `Repo Overview` | 根 README | type, title, description | tags, status |
-| `Agent Guide` | AGENTS.md | type, title, description | tags, status |
-| `Glossary` | CONTEXT.md | type, title, description | tags, status |
-| `Convention` | STYLEGUIDE / framework-conventions / test-conventions / dp-conventions / dp-test-conventions / doc-conventions | type, title, description | tags, status |
-| `Decision Record` | docs/adr/* | type, title, description | tags, status |
-| `Research` | docs/research/* | type, title, description, **sources** | tags, status, generated, verified |
+| type              | 文档类                                                      | 必填键                                | 按类可选键                        |
+|-------------------|-------------------------------------------------------------|---------------------------------------|-----------------------------------|
+| `Repo Overview`   | 根 README                                                   | type, title, description              | tags, status                      |
+| `Agent Guide`     | AGENTS.md                                                   | type, title, description              | tags, status                      |
+| `Glossary`        | CONTEXT.md                                                  | type, title, description              | tags, status                      |
+| `Convention`      | 约定类文档（root 规范＋docs/ 下规范文，含 conventions/ 族） | type, title, description              | tags, status                      |
+| `Decision Record` | docs/adr/*                                                  | type, title, description              | tags, status                      |
+| `Research`        | docs/research/*                                             | type, title, description, **sources** | tags, status, generated, verified |
 
 未知 type 必须被宽容消费（OKF §11）——词表可扩展，不集中注册。OKF 的 `resource` 键（数据目录的资源绑定语义）不采纳：research 的 provenance 由 `sources` 覆盖，代码仓库中代码本身是事实源。
 
 ### 3.2 键契约
 
-| 键 | 必填 | 语义 | 说明 |
-|---|---|---|---|
-| `type` | ✅ | 文档类（§3.1 词表） | 唯一必填键（OKF §4.1） |
-| `title` | 除 index 外 ✅ | 人类标题 | |
-| `description` | ✅ | 一句话定位，**即 context pointer** | 措辞决定 agent 何时触达（writing-for-agents） |
-| `tags` | | 主题标签 | 数组 |
-| `status` | 推荐（含 ADR；OKF 仅 `type` 必填，可省略） | draft \| stable \| deprecated \| superseded | 生命周期（OKF §5.4 词表为 draft/stable/deprecated；**superseded 为项目扩展**——承 matt ADR「被替代，链接指向替代者」语义），**全文档类统一词表**（ADR 同表，不用 matt 的 proposed/accepted）。**V1 阶段仅用 draft/stable**（过时即删，不设 deprecated/superseded）——见 §9 |
-| `sources` | Research ✅ | `[{resource, id, title, author}]` | provenance（OKF §5.1）；research 必用，其余不用 |
-| `generated` | agent 独立产物时 | `{by, at}` | 整份文档由 agent 生成为独立产物时填（research 输出等）；人写/结对文档不填（git blame 已覆盖） |
-| `verified` | agent 生成文档经人工复核后 | `[{by, at}]` | `by` 用 `human:<id>`——人类复核提升信任层级（OKF §5.3） |
-| `stale_after` | 引用易变外部事实时 | ISO 日期 | 默认省略 |
-| 扩展键 | | 任意 | 消费者不得拒绝（OKF §4.1 Extensions / §11）；`usage_count` 等 OKF 数据目录键留扩展、不预置（01） |
+| 键            | 必填                                       | 语义                                                                  | 说明                                                                                                                                                                                                                                                                     |
+|---------------|--------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `type`        | ✅                                         | 文档类（§3.1 词表）                                                   | 唯一必填键（OKF §4.1）                                                                                                                                                                                                                                                   |
+| `title`       | 除 index 外 ✅                             | 人类标题                                                              |                                                                                                                                                                                                                                                                          |
+| `description` | ✅                                         | 一句话定位，**即 context pointer**                                    | 措辞决定 agent 何时触达（writing-for-agents）                                                                                                                                                                                                                            |
+| `tags`        |                                            | 主题标签                                                              | 数组                                                                                                                                                                                                                                                                     |
+| `status`      | 推荐（含 ADR；OKF 仅 `type` 必填，可省略） | draft \| stable \| deprecated \| superseded（V1 §9 限 draft\|stable） | 生命周期（OKF §5.4 词表为 draft/stable/deprecated；**superseded 为项目扩展**——承 matt ADR「被替代，链接指向替代者」语义），**全文档类统一词表**（ADR 同表，不用 matt 的 proposed/accepted）。**V1 阶段仅用 draft/stable**（过时即删，不设 deprecated/superseded）——见 §9 |
+| `sources`     | Research ✅                                | `[{resource, id, title, author}]`                                     | provenance（OKF §5.1）；research 必用，其余不用                                                                                                                                                                                                                          |
+| `generated`   | agent 独立产物时                           | `{by, at}`                                                            | 整份文档由 agent 生成为独立产物时填（research 输出等）；人写/结对文档不填（git blame 已覆盖）                                                                                                                                                                            |
+| `verified`    | agent 生成文档经人工复核后                 | `[{by, at}]`                                                          | `by` 用 `human:<id>`——人类复核提升信任层级（OKF §5.3）                                                                                                                                                                                                                   |
+| `stale_after` | 引用易变外部事实时                         | ISO 8601 datetime（显式 UTC 偏移，如 `2026-06-30T14:00:00Z`）         | 默认省略                                                                                                                                                                                                                                                                 |
+| 扩展键        |                                            | 任意                                                                  | 消费者不得拒绝（OKF §4.1 Extensions / §11）；`usage_count` 等 OKF 数据目录键留扩展、不预置（01）                                                                                                                                                                         |
+
 
 **actor 约定**（`generated.by` / `verified[].by` 取值，照采纳 OKF §7）：
 
@@ -133,7 +123,7 @@ docs/
 ---
 type: Decision Record
 title: Verification 聚合根认定与 VerificationService 拓扑
-description: Verification 重分类为独立聚合根；requestCode 成为发码唯一入口。
+description: Verification 重分类为独立聚合根；发码用例按场景归属用户侧应用服务。
 tags: [verification, aggregate-root]
 status: stable
 ---
@@ -148,13 +138,14 @@ sources:
   - resource: https://github.com/GoogleCloudPlatform/knowledge-catalog
     id: okf-spec
     title: OKF v0.2 SPEC.md
+    author: GoogleCloudPlatform
 status: stable
 generated:
   by: wayfinder/01
-  at: 2026-08-14
+  at: 2026-08-14T00:00:00Z
 verified:
   - by: human:mm
-    at: 2026-08-14
+    at: 2026-08-14T00:00:00Z
 ---
 ```
 
@@ -185,12 +176,9 @@ status: stable    # 推荐键（OKF 仅 type 必填，可省略）；V1 阶段�
 
 ## 5. 写作原则
 
-- **agent 两负荷**：常驻上下文只放指针（AGENTS.md 每会话加载——每行都是触发词，不是正文）；正文经指针披露（progressive disclosure）
-- **单源**：同一含义只在一处（§1 分层模型）；文档之间只互相指，不互相抄
-- **入口措辞即触达**：`description` 与 AGENTS.md 指针写"何时读"的分支，不写文档身份
-- **no-op 测试**：删掉某句，读者是否失去信息？——失去则留，否则删整句
-- **人类可读**：渐进披露的层级对人类也是索引；认知负荷是人的选择成本，不追求为零
-- **语言**：中文正文；术语/代码标识符保留英文原文，对齐 CONTEXT.md
+- **`description` 与 AGENTS.md 每行指针写「何时读」的分支**（用上文触发词），不写文档身份；措辞决定 agent 何时加载正文
+- **同一种约定不写进两份约定文档**（同 §1 禁止跨层重复的落地版）——一处改了别处不需要跟着改
+- **正文以中文撰写**；术语 / 代码标识符保留英文原文，对齐 `CONTEXT.md`
 
 ## 6. 注释规范
 
@@ -198,27 +186,35 @@ status: stable    # 推荐键（OKF 仅 type 必填，可省略）；V1 阶段�
 
 ## 7. 合规基准（机械可检查）
 
-docs/ 内每个非保留名 .md：
+docs/ 内每个非保留名 .md（docs/agents/ 除外——setup 产物，见 §2）：
 
 - [ ] YAML frontmatter 可解析，`type` 非空且在词表（或明确扩展）
 - [ ] `title`/`description` 非空（index.md 除外）
-- [ ] ADR：`status` ∈ {draft, stable}（V1 阶段，§9；推荐键可省略）；文件名 `000N-slug.md` 顺序递增；正文 1-3 句 + 可选 Consequences（§4）
+- [ ] ADR：`status` ∈ {draft, stable}（V1 阶段，§9；推荐键可省略）；文件名 `000N-slug.md` 顺序递增（下划线前缀导航文件除外）；正文
+  1-3 句 + 可选 Consequences（§4）
 - [ ] Research：`sources` 非空
 - [ ] 分层合规：CONTEXT.md 只含业务词汇（无实现细节）；ADR 无代码片段
-- [ ] 链接：全部相对路径（从所在文件出发，§2.5）；无根相对 `/…` 链接
+- [ ] 链接与锚点：markdown 链接全相对路径（从所在文件出发，§2.5）、无根相对 `/…`、目标可达；「见 ADR-NNNN」prose 锚点须对应 adr/
+  现存文件且语义一致；本判据适用 **全仓**（根四文档＋代码注释），编号空洞合法——V1
+  过时即删，引用不得悬空
 - [ ] 不破坏技能契约：CONTEXT.md 含 `## Language`；ADR 位置/编号不变；docs/agents/ 三件套存在
-- [ ] 类型覆盖：framework-conventions 类型清单表中的每个基类/接口标记类型都有对应规范文档（conventions/ 族，§2.4）
+- [ ] 类型覆盖：framework-type-contracts.md 清单表覆盖 types 包全部 DP（表即 DP 覆盖清单，逐行核对）；基类/标记接口由
+  conventions/framework-type-contracts.md
+  小节承载，人工审计核存在性；已有专项规范的在行内锚点可达（conventions/ 族、dp-conventions）
+- [ ] 渲染完整性：代码围栏逐对闭合（围栏行数偶数、无孤立开口）；无编辑残迹（行首 `*NN:` 前缀、代码块内孤立 `…`
+  行）；关键模板区（dp-conventions §2/§3 模板、conventions/ 完整示例）抽查渲染
 
 检查方式：
 
-- **代码 + 注释**：code-review 标准轴按 `STYLEGUIDE.md` 核查——注释规范自动生效，无需额外机制
-- **文档变更**：在 code-review 中按本基准核查（spec 轴外新增基准轴；不引入新技能）
-- **机械项**（frontmatter / 词表 / status / ADR 编号 / `## Language` / 链接）：脚本检查，07 交接方案定义验证协议（可作 CI 步骤）
+- **代码侧锚点**：code-review 标准轴按本规范 §7 核查——新增「见 ADR-NNNN」锚点对应 adr/ 现存文件且语义一致，commit 时点拦截错配
+- **机械项**（frontmatter / 词表 / status / ADR 编号 / `## Language` / 链接与锚点 / 围栏配对与残迹）：脚本检查不做，由 agent
+  审计按上方基准逐项承载；漂移复发至人工不可承受时再评估工具化
 - **内容过期不是 lint 项**：分层模型（§1）保证文档不重复代码/环境事实——过期源在设计上消除；git blame 是唯一辅助工具
 
 ## 8. 文档生命周期
 
-- **新增文档**：按 §3 契约补 frontmatter → 落 bundle 位置 → 在 `docs/index.md` 加一行 → 在 AGENTS.md 加指针（如需要触发）
+- **新增文档**（完成判据——任一不满足即未完工）：按 §3 契约补 frontmatter → 落 bundle 位置 → 在 `docs/index.md` 加一行（bundle
+  入口）→ 在 AGENTS.md 加指针行（如需要触发，触发词与正文描述一致）→ `frontmatter` 通过 §7 基准 → `git grep` 验证锚点可达。
 - **status 流转**：draft（起草）→ stable（定案）→ deprecated / superseded（被替代，正文链接指向替代者）。**V1 阶段例外见 §9**（仅 draft/stable，过时即删，决策变更就地更新）
 - **删除**：过时/被替代文档删除（git 历史保留；index.md 移除条目）。**V1 阶段**：过时即删，零残留（§9）
 
