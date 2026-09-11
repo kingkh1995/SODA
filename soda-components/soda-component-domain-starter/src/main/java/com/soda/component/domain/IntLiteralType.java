@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * 整型字面量 DP 契约（见 ADR-0028）— 单属性、包装一个不可变 {@code int} 字面量
- * （{@code Fen}/{@code Version}/{@code PositiveInt} 等），暴露 {@link #value()} 裸值（原语，免装箱/拆箱）。
+ * （{@code Fen}/{@code ConcurrencyVersion}/{@code PositiveInt} 等），暴露 {@link #value()} 裸值（原语，免装箱/拆箱）。
  * <p>
  * 与 {@link StringLiteralType}/{@link LongLiteralType}/{@link BooleanLiteralType}/{@link DoubleLiteralType}
  * 平行（IntSupplier 式，互不关联、无共享根）。{@link JsonValue} 继承自本接口——实现类获得标量 JSON

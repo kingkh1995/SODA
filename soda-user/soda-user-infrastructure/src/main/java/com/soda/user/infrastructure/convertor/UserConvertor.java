@@ -1,11 +1,11 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Sex;
-import com.soda.component.domain.types.Version;
 import com.soda.user.domain.AuthAccount;
 import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.PasswordAuthAccount;
@@ -37,6 +37,9 @@ import java.util.Optional;
  * 注销键释放（ADR-0023）：R 行三键（username/mobile/email）由 {@code UserGatewayImpl.save}
  * 置空——{@code username} 列为空时恢复为领域默认值 {@link Username#REMOVED}（该值只存在于
  * 领域内存，从不落库）；{@code mobile}/{@code email} 经 Optional 链式转换，null → Optional.empty。
+ * <p>
+ * 审计列（{@code created_date}/{@code last_modified_date}）属基础设施表示，不入领域聚合
+ * （ADR-0031）——两方向均不搬运，列值由 Spring Data auditing 全权维护。
  */
 public final class UserConvertor {
 
@@ -72,7 +75,7 @@ public final class UserConvertor {
         }
         return User.builder()
                 .id(userId)
-                .version(Version.of(e.getVersion()))
+                .version(ConcurrencyVersion.of(e.getVersion()))
                 .username(e.getUsername() == null ? Username.REMOVED : new Username(e.getUsername()))
                 .nickname(new Nickname(e.getNickname()))
                 .state(UserState.of(e.getState()))
@@ -102,7 +105,9 @@ public final class UserConvertor {
      */
     public static UserPO toPersistence(User user) {
         var entity = new UserPO();
-        Optional.ofNullable(user.getId()).ifPresent(id -> entity.setId(id.value()));
+        if (user.isIdentified()) {
+            entity.setId(user.getId().value());
+        }
         entity.setUsername(user.getUsername().value());
         entity.setNickname(user.getNickname().value());
         entity.setState(user.getState().name());

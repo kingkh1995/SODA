@@ -28,7 +28,9 @@ Verification 双概念模型）。
 
 ### Entity
 
-具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。使用
+具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。
+`Identifiable.getId()` 返回 `@NonNull`（未标识时抛 `NullPointerException`，防御编程：调用方 bug，异常类型即语义）；瞬态语义由
+`isIdentified()` 表达。使用
 Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)`
 继承父类字段。 **双 Builder 模式**：业务模块 Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化
 ID，由服务端 `assignId()` 填补），`builder()`（Lombok 默认命名，挂全参数恢复构造器）暴露全部持久化字段（含 ID）。 **JSON
@@ -64,8 +66,8 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 
 ### Identifiable
 
-可标识的领域对象标记接口（`domain.Identifiable`），提供 `getId()` 和 `isIdentified()` 查询契约。所有 Entity 和 Aggregate
-必须实现此接口。
+可标识的领域对象标记接口（`domain.Identifiable`），提供 `getId()`（返回 `@NonNull`，未标识时抛 `NullPointerException`）和
+`isIdentified()` 查询契约。所有 Entity 和 Aggregate 必须实现此接口。
 
 ### Type
 
@@ -103,32 +105,33 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 
 每行：类型 + 一句话契约。完整定义在代码 javadoc，决策理由在 ADR 描述（按主题索引见 `docs/adr/_index.md`）。
 
-| 类型                                                                                             | 一句话契约                                                                                   |
-|--------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `StringLiteralType` 等五字面量家族                                                               | 单属性字面量 DP 契约：包装不可变基本类型，`value()` 裸值＋标量 JSON 双向                     |
-| `DecimalLiteralType`                                                                             | 小数字面量基类（规范值 String、BigDecimal 为派生缓存）                                       |
-| `LongId` / `Uuid`                                                                                | 长整型 / UUID 标识符 DP（Uuid 归一化小写、客户端生成）                                       |
-| `Version`                                                                                        | 乐观锁版本号 DP（int、缓存 [0,99]、`next()` 步进）                                           |
-| `PositiveInt`                                                                                    | 正整数 DP（≥ 1）                                                                             |
-| `RandomString` / `Alphabet`                                                                      | 随机字符串 / 字符集 DP；字符池常量收拢于 Alphabet，随机源归生成器                            |
-| `SensitiveValue`（位于 `domain.types` 子包）                                                     | 敏感数据 DP 基类：toString 恒脱敏（Mobile/Email 等继承）；位于 types 模块、与具体 DP 同包    |
-| `SecretValue`                                                                                    | 瞬态凭证载体：永不序列化、引用级相等、toString 全遮蔽                                        |
-| `PasswordHash`                                                                                   | PHC 口令哈希（哈希族唯一 SensitiveValue 特例，遮蔽至盐段前）                                 |
-| `Ciphertext`                                                                                     | JWE 可逆加密信封（alg=dir＋A256GCM＋kid 自验证、类型擦除解密）                               |
-| `Digest`                                                                                         | 32 字节等值摘要：敏感原值的单向替代品（hex／标准 base64）                                    |
-| `Active`                                                                                         | boolean 值封装（TRUE/FALSE 单例、`negate()`）                                                |
-| `Email`                                                                                          | 邮箱地址 DP（格式校验＋小写归一化）                                                          |
-| `Percentage` / `Fen` / `WanYuan`                                                                 | 百分比 / 分（负值合法退款冲正）/ 万元金额 DP（DecimalLiteralType 系，超 Fen 值域用 WanYuan） |
-| `EpochMilli`                                                                                     | epoch 毫秒绝对时间点 DP（毫秒精度互逆 `instant()`；契约就位、暂无生产消费方）                |
-| `SoftwareVersion`                                                                                | 三段式版本号 DP（小写 v 前缀、逐段比较与步进、999 封顶不进位）                               |
-| `SmsContent` / `EmailContent`                                                                    | 短信内容（≤70 字符）/ 邮件内容（subject ≤255＋body）                                         |
-| `Masked*` 五族（MaskedMobile / MaskedBankCard / MaskedIdCard / MaskedChineseName / MaskedEmail） | 敏感值的展示伴生 DP：PATTERN 星号掩码输出（星号段有上界）、原值不可逆推                      |
-| `Mobile` / `BankCard` / `IdCard` / `ChineseName`                                                 | 敏感字面量具体族：格式校验＋归一化＋toString 脱敏（SensitiveValue 系）；等值查询走盲索引     |
-| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson `name()` 短名）                                   |
+| 类型                                                                                             | 一句话契约                                                                                          |
+|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `StringLiteralType` 等五字面量家族                                                               | 单属性字面量 DP 契约：包装不可变基本类型，`value()` 裸值＋标量 JSON 双向                            |
+| `DecimalLiteralType`                                                                             | 小数字面量基类（规范值 String、BigDecimal 为派生缓存）                                              |
+| `LongId` / `Uuid`                                                                                | 长整型 / UUID 标识符 DP（Uuid 归一化小写、客户端生成）                                              |
+| `ConcurrencyVersion`                                                                             | 乐观锁版本号 DP（int、缓存 [0,99]、`next()` 步进）                                                  |
+| `PositiveInt`                                                                                    | 正整数 DP（≥ 1）                                                                                    |
+| `RandomString` / `Alphabet`                                                                      | 随机字符串 / 字符集 DP；字符池常量收拢于 Alphabet，随机源归生成器                                   |
+| `SensitiveValue`（位于 `domain.types` 子包）                                                     | 敏感数据 DP 基类：toString 恒脱敏（Mobile/Email 等继承）；位于 types 模块、与具体 DP 同包           |
+| `SecretValue`                                                                                    | 瞬态凭证载体：永不序列化、引用级相等、toString 全遮蔽                                               |
+| `PasswordHash`                                                                                   | PHC 口令哈希（哈希族唯一 SensitiveValue 特例，遮蔽至盐段前）                                        |
+| `Ciphertext`                                                                                     | JWE 可逆加密信封（alg=dir＋A256GCM＋kid 自验证、类型擦除解密）                                      |
+| `Digest`                                                                                         | 32 字节等值摘要：敏感原值的单向替代品（hex／标准 base64）                                           |
+| `Active`                                                                                         | boolean 值封装（TRUE/FALSE 单例、`negate()`）                                                       |
+| `Email`                                                                                          | 邮箱地址 DP（格式校验＋小写归一化）                                                                 |
+| `Percentage` / `Fen` / `WanYuan`                                                                 | 百分比 / 分（负值合法退款冲正）/ 万元金额 DP（DecimalLiteralType 系，超 Fen 值域用 WanYuan）        |
+| `EpochMilli`                                                                                     | epoch 毫秒绝对时间点 DP（毫秒精度互逆 `instant()`；契约就位、暂无生产消费方）                       |
+| `SoftwareVersion`                                                                                | 三段式版本号 DP（小写 v 前缀、逐段比较与步进、999 封顶不进位）                                      |
+| `UpdateMask`                                                                                     | update_mask 归一化 DP（字段名集合；省略 / 字段集 / `*` 三语态，`covers` 单一判定入口，见 ADR-0038） |
+| `SmsContent` / `EmailContent`                                                                    | 短信内容（≤70 字符）/ 邮件内容（subject ≤255＋body）                                                |
+| `Masked*` 五族（MaskedMobile / MaskedBankCard / MaskedIdCard / MaskedChineseName / MaskedEmail） | 敏感值的展示伴生 DP：PATTERN 星号掩码输出（星号段有上界）、原值不可逆推                             |
+| `Mobile` / `BankCard` / `IdCard` / `ChineseName`                                                 | 敏感字面量具体族：格式校验＋归一化＋toString 脱敏（SensitiveValue 系）；等值查询走盲索引            |
+| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson `name()` 短名）                                          |
 
 **命名/使用约定**：不把 `Alphabet` 称 Policy（与验证码策略词冲突）或 charset（与 `java.nio.charset.Charset` 混淆）；`Fen`/
 `WanYuan` 单位明示、不裸称「元」；不把 `EpochMilli` 叫 Timestamp（JDBC 类型歧义），领域时间字段不用裸 `Instant`（线上格式不受 DP
-边界保护）；`SoftwareVersion` 不是 Version（乐观锁计数器）也不是 SemVer（无 pre-release/build）；审计列属基础设施、保持裸
+边界保护）；`SoftwareVersion` 不是 `ConcurrencyVersion`（乐观锁计数器）也不是 SemVer（无 pre-release/build）；审计列属基础设施、保持裸
 `Instant`。`ArrayTypeCache` / `MapTypeCache` 是类型缓存设施、非 Domain Primitive，不入本表。
 
 ### Cacheable
@@ -152,11 +155,10 @@ Entity/Aggregate 上添加与缓存相关的接口或基类方法。
 
 ### Gateway
 
-标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。 **接口 Javadoc 契约原则（ADR-0038）**
+标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。 **接口 Javadoc 契约原则**
 ：只承载调用方契约（方法语义、前后置、异常语义、领域 ADR 交叉引用），禁止引用基础设施实现类、基础设施 ADR，或以 `@see`
 指向基础设施包——接口是稳定契约面，与基础设施实现解耦。Javadoc 写法与不得写什么的契约见 [STYLEGUIDE](../../STYLEGUIDE.md)
 §4.5（意图与契约）。
-
 ### EntityGateway
 
 实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。提供 `save(T)`、`findById(ID)`、
@@ -174,12 +176,12 @@ merge，insert 多一次 PK SELECT，低频可接受；⑦ 持久化防御编程
 
 api / adapter 层类型的契约语义归专项文档与 javadoc，此处只作寻址：
 
-| 类型                   | 定位                                                                                                  | 去哪                                                             |
-|------------------------|-------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `Result` / `ErrorInfo` | REST 统一信封 `{code, msg, data, error}` 与错误结构（reason/domain/metadata）                         | javadoc（`com.soda.component.web`）、ADR-0013                    |
-| `Command`              | 写操作命令 marker（api 层，不带校验注解——校验在 Request `@Valid` 与 DP 构造器）                       | [adapter.md](adapter.md) §1、ADR-0009                            |
-| `Request` / `Response` | HTTP 协议体专用类型（adapter 层，Response 不含信封）                                                  | [adapter.md](adapter.md) §1                                      |
-| `WebAssembler`         | MapStruct 协议转换器（Request→Command 入站、DTO→Response 出站，`to{Action}Command` 命名、同参不同名） | [adapter.md](adapter.md)、[STYLEGUIDE](../../STYLEGUIDE.md) §3.4 |
+| 类型                                                                                  | 定位                                                                                                                          | 去哪                                                                                        |
+|---------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `Command`                                                                             | 写操作命令 marker（api 层，不带校验注解——校验在 Request `@Valid` 与 DP 构造器）                                               | [adapter.md](adapter.md) §1、ADR-0009                                                       |
+| `Request` / `Response`                                                                | HTTP 协议体专用类型（adapter 层，Response 不含信封）                                                                          | [adapter.md](adapter.md) §1                                                                 |
+| `WebAssembler`                                                                        | MapStruct 协议转换器（Request→Command 入站、DTO→Response 出站，`to{Action}Command` 命名、同参不同名）                         | [adapter.md](adapter.md)、[STYLEGUIDE](../../STYLEGUIDE.md) §3.4                            |
+| `HttpValidatorSource` / `@IfMatch` / `IfMatchResolver` / `HttpValidatorHeadersAdvice` | 条件请求 validator 源（`version`→`ETag` 强验证器）＋入站归一化（`@IfMatch Integer` 参数注入）＋响应头统一派生（只写头不求值） | javadoc（`com.soda.component.web` 公开入口 + `conditional` 内部实现）、RFC 7232 §2、AIP-154 |
 
 ### AbstractPersistable / AbstractAuditable（基础设施持久化基类）
 
@@ -263,3 +265,28 @@ ADR-0015）。
 
 领域事件来源标记接口，泛型 `<ID extends Identifier<?>>`。`Aggregate`（聚合根）实现此接口表明自身可作为领域事件来源——普通实体如
 `AuthAccount` 不实现。通过 `flushEvents()` 取出已注册事件。
+
+### Versioned / VersionAwareCommand
+
+识别行：`com.soda.component.domain.Versioned`（领域能力接口）＋ `com.soda.component.api.command.VersionAwareCommand`（命令契约）＋
+`AbstractAppService.requireIfMatch`（应用层加载型守卫，见 ADR-0037）。
+
+设计规则：聚合侧 `Versioned` 暴露 `IntLiteralType getVersion()`（application-starter 对 domain-types 零依赖，`User`
+凭协变返回零样板满足）
+与 `boolean ifMatch(IntLiteralType)`（判等原语：不加载、不抛，失配处置归调用方），并声明 `void assignVersion(IntLiteralType)`
+供基础设施
+flush 后回填权威版本——落库版本单调不减，回退即基础设施 bug 抛裸 ISE（同 `Entity.assignId` 回填语义，写一次、异值抛 ISE）；命令侧
+`VersionAwareCommand` 承载
+`@Nullable Integer expectedVersion`
+（api 不沾 DP，null = 未携带）；比对收敛在基类 `requireIfMatch(ID, IntLiteralType)`——加载实体、`instanceof Versioned` 判定
+（非版本化聚合 fail-loud 拒绝，不静默丢弃 If-Match）、
+比对失配由 `requireIfMatch` 直抛 `PreconditionFailedException.versionMismatch(expected, current)`
+（`com.soda.component.api.error`，412；见 ADR-0015 / ADR-0037 / ADR-0039）。
+
+反模式：命令侧用 DP 类型；把可空期望版本下沉进领域（「未携带」是传输缺席语义，不属聚合状态）；在领域侧抛传输状态异常
+（domain-starter 看不见 api-starter 的异常族；抛出点只在 app-service 与组件守卫，见 ADR-0015 / ADR-0037）。
+
+测试要求：失配抛 `PreconditionFailedException` 且 `save` 未调用；匹配放行；缺失（null）= 放行，三分组见 `UserServiceImplTest`。
+
+关联 ADR：ADR-0037；基类便捷方法清单（`require` / `requireNotTerminal` / `requireIfMatch` / `saveAndPublishEvents`）见
+[framework-crosscutting.md](framework-crosscutting.md) §5「基类便捷方法」。

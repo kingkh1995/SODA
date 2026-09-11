@@ -1,5 +1,6 @@
 package com.soda.user.application.service;
 
+import com.soda.component.api.error.ConflictException;
 import com.soda.component.application.AbstractAppService;
 import com.soda.component.domain.DomainEventBus;
 import com.soda.component.domain.gateway.PasswordHasher;
@@ -11,8 +12,8 @@ import com.soda.user.api.UserAuthService;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
-import com.soda.user.api.command.RequestChangeEmailCodeCommand;
-import com.soda.user.api.command.RequestChangeMobileCodeCommand;
+import com.soda.user.api.command.RequestChangeEmailCommand;
+import com.soda.user.api.command.RequestChangeMobileCommand;
 import com.soda.user.application.factory.UserVerificationFactory;
 import com.soda.user.domain.User;
 import com.soda.user.domain.Verification;
@@ -35,7 +36,7 @@ import java.util.List;
  * 用户凭证相关的 ApplicationService 实现 — UCC 发码与消费的编排方
  * （主体为 User，Verification 是协助方聚合，见 ADR-0026）。
  * <p>
- * 发码（{@link #requestChangeMobileCode}/{@link #requestChangeEmailCode}）：前置
+ * 发码（{@link #requestChangeMobile}/{@link #requestChangeEmail}）：前置
  * （加载用户启用态 + 非终态 + target ≠ 当前值 + 目标全局唯一 + 无活跃验证）→
  * {@link UserVerificationFactory} 构造 INITIALIZED 验证聚合 → 同事务惰性 DELETE 腾槽 →
  * save → 发布 {@code VerificationCreatedEvent}（物理发送由投递侧监听器在事务提交后执行，见 ADR-0011）。
@@ -54,7 +55,7 @@ public class UserAuthServiceImpl
 
     private final VerificationGateway verificationGateway;
     private final CredentialChangeDomainService credentialChangeService;
-    private final DomainEventBus domainEventBus;
+
     private final PasswordHasher passwordHasher;
     private final UserVerificationFactory userVerificationFactory;
 
@@ -64,10 +65,9 @@ public class UserAuthServiceImpl
                                DomainEventBus domainEventBus,
                                PasswordHasher passwordHasher,
                                UserVerificationFactory userVerificationFactory) {
-        super(User.class, userGateway);
+        super(User.class, userGateway, domainEventBus);
         this.verificationGateway = verificationGateway;
         this.credentialChangeService = credentialChangeService;
-        this.domainEventBus = domainEventBus;
         this.passwordHasher = passwordHasher;
         this.userVerificationFactory = userVerificationFactory;
     }
@@ -75,26 +75,28 @@ public class UserAuthServiceImpl
     // ─── UCC 发码 ───
 
     @Override
-    public void requestChangeMobileCode(RequestChangeMobileCodeCommand command) {
-        log.info("requestChangeMobileCode: command={}", command);
+    public void requestChangeMobile(RequestChangeMobileCommand command) {
+        log.info("requestChangeMobile: command={}", command);
         var user = requireEnabled(new UserId(command.userId()));
         var target = Mobile.of(command.newMobile());
         Assert.isTrue(!target.equals(user.getMobile().orElse(null)),
                 "Cannot change to the same mobile");
-        Assert.isTrue(!gateway.existsByMobile(target),
-                "Mobile already exists: " + target.value());
+        if (gateway.existsByMobile(target)) {
+            throw ConflictException.alreadyExists("Mobile", target.value());
+        }
         requestCode(user.getId(), new SmsRecipient(target));
     }
 
     @Override
-    public void requestChangeEmailCode(RequestChangeEmailCodeCommand command) {
-        log.info("requestChangeEmailCode: command={}", command);
+    public void requestChangeEmail(RequestChangeEmailCommand command) {
+        log.info("requestChangeEmail: command={}", command);
         var user = requireEnabled(new UserId(command.userId()));
         var target = Email.of(command.newEmail());
         Assert.isTrue(!target.equals(user.getEmail().orElse(null)),
                 "Cannot change to the same email");
-        Assert.isTrue(!gateway.existsByEmail(target),
-                "Email already exists: " + target.value());
+        if (gateway.existsByEmail(target)) {
+            throw ConflictException.alreadyExists("Email", target.value());
+        }
         requestCode(user.getId(), new EmailRecipient(target));
     }
 
@@ -106,8 +108,7 @@ public class UserAuthServiceImpl
         var user = requireEnabled(new UserId(command.userId()));
         user.changePassword(new SecretValue(command.oldPassword()),
                 new SecretValue(command.newPassword()), passwordHasher);
-        gateway.save(user);
-        domainEventBus.publishAll(user.flushEvents());
+        saveAndPublishEvents(user);
     }
 
     @Override

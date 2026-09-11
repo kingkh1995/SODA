@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
@@ -44,8 +44,8 @@ public class VerificationGatewayImpl implements VerificationGateway {
     @Transactional
     public Uuid save(Verification verification) {
         // 客户端生成 id 聚合 save 前置：必须已标识（ADR-0024；无 id 即契约违反，fail-fast）
-        // 防御编程：Objects.requireNonNull → NPE（调用方按契约调用，异常类型即语义）
-        var id = Objects.requireNonNull(verification.getId());
+        // getId() 内部 requireNonNull 防御编程：未标识时抛 NPE（调用方按契约调用，异常类型即语义）
+        var id = verification.getId();
         // 终态守卫（同 UserGatewayImpl.save 基础设施兜底，ADR-0023）：findById 仅为读取持久化态
         // ——merge 不需要既有行基线（save(toPersistence(...)) 对 id 有值走 em.merge，路由与乐观
         // 锁由框架内建；Verification 无版本字段，跨加载竞态由状态机单调幂等兜底，见 ADR-0024；

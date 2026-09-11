@@ -10,7 +10,7 @@ status: stable
 
 Verification 是独立聚合根——判据为能否脱离 user 独立存在（RG 发码先于用户创建）与生命周期是否一致（验证码分钟级 vs
 用户永久），它是验证码生命周期的协助方聚合、发码主体是用户。发码用例按场景归属用户侧应用服务（如
-`UserAuthService.requestChangeMobileCode`），无聚合级统一入口、api 按用例拆命令；发送走 AFTER_COMMIT 事件，消费经
+`UserAuthService.requestChangeMobile`），无聚合级统一入口、api 按用例拆命令；发送走 AFTER_COMMIT 事件，消费经
 `CredentialChangeDomainService` 编排、同事务双 save。
 
 ## Consequences

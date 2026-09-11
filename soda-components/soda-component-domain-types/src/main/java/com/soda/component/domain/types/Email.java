@@ -41,16 +41,16 @@ public final class Email extends SensitiveValue {
         this.domain = v.substring(at + 1);
     }
 
-    @Override
-    public String maskedValue() {
-        return MaskedEmail.from(this).value();
-    }
-
     /**
      * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Email of(String raw) {
         return new Email(raw);
+    }
+
+    @Override
+    public String maskedValue() {
+        return MaskedEmail.from(this).value();
     }
 }

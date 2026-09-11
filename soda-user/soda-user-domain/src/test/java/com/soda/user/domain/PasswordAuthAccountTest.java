@@ -86,7 +86,7 @@ class PasswordAuthAccountTest {
             var a = PasswordAuthAccount.createBuilder()
                     .passwordHash(HASH)
                     .build();
-            assertThat(a.getId()).isNull();
+            assertThat(a.isIdentified()).isFalse();
             assertThat(a.isActive()).isTrue();
             assertThat(a.getPasswordHash()).isEqualTo(HASH);
         }

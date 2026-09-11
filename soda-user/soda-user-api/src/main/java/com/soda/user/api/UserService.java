@@ -24,15 +24,17 @@ public interface UserService {
     UserDTO createUser(CreateUserCommand command);
 
     /**
-     * 更新用户资料 —— nickname/sex/avatar 可选字段，null 即不修改对应字段。
+     * 更新用户资料 —— 掩码语态见 ADR-0038：省略掩码 = 仅写非 null 字段；命中掩码的字段传 null = 清空
+     * （nickname 必填、不可清空）；`*` = 全量替换（必填字段不可缺）。
      */
-    void updateUser(UpdateUserCommand command);
+    UserDTO updateUser(UpdateUserCommand command);
 
     /**
      * 注销用户 —— 终态迁移，前置必须禁用态 D（严格迁移）；R 为吸收态拒绝（见 ADR-0017）。
      * 键释放由基础设施表示决策负责，领域不感知（见 ADR-0023）。
+     * 返回 R 态完整资源（AIP-164 软删除分支 should；内存快照，键为释放前原值，见实现注释）。
      */
-    void deregisterUser(DeregisterUserCommand command);
+    UserDTO deregisterUser(DeregisterUserCommand command);
 
     /**
      * 禁用用户 —— E→D 发状态事件；已是 D 则 no-op；R 拒绝（吸收态，见 ADR-0017）。

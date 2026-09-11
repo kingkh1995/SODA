@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,7 +55,8 @@ class CrossTypeEqualityTest {
                 new RandomString("Abc123"),
                 new SmsContent("hello"),
                 new Uuid("550e8400-e29b-41d4-a716-446655440000"),
-                Version.of(3),
+                new UpdateMask(Set.of("nickname")),
+                ConcurrencyVersion.of(3),
                 WanYuan.of("1"));
     }
 

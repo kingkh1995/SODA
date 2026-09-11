@@ -1,5 +1,6 @@
 package com.soda.user.infrastructure.gateway.persistence;
 
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.user.domain.User;
@@ -25,7 +26,9 @@ import java.util.stream.StreamSupport;
  * 编排：查询 → {@link UserConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
  * <p>
  * 乐观锁：JPA {@code @Version} 自动校验 {@code WHERE version = ?} 并递增（领域层
- * 「递增由基础设施层负责」契约，IDDD ConcurrencySafeEntity 同款）；冲突抛
+ * 「递增由基础设施层负责」契约，IDDD ConcurrencySafeEntity 同款），flush 后经
+ * {@code Versioned.assignVersion} 把落库版本回填聚合（聚合令牌与行版本恒一致——响应
+ * {@code ETag} / 下次 {@code If-Match} 自洽的前提）；冲突抛
  * {@code ObjectOptimisticLockingFailureException}。
  * <p>
  * 注销终态（ADR-0017/0023）：无删除契约，终态 R 由 {@code save} 持久化 state 列；
@@ -46,12 +49,12 @@ public class UserGatewayImpl implements UserGateway {
     @Override
     @Transactional
     public UserId save(User user) {
-        var id = user.getId();
-        if (id == null) {
+        if (!user.isIdentified()) {
             // 创建路径（服务端生成 id）：id==null → isNew=true → persist（IDENTITY 立即生成 id，INSERT 后回填）
             var saved = userRepository.saveAndFlush(UserConvertor.toPersistence(user));
             var generatedId = new UserId(saved.getId());
             user.assignId(generatedId);
+            user.assignVersion(ConcurrencyVersion.of(saved.getVersion()));
             return generatedId;
         }
         // 更新路径：findById 仅为终态守卫读取持久化态（merge 不需要既有行基线——
@@ -59,7 +62,7 @@ public class UserGatewayImpl implements UserGateway {
         // 审计列由 auditing + updatable=false 自动处理，见 UserConvertor javadoc；
         // 不原地改托管实例——会绕过乐观锁快照）
         // 防御编程：行不存在 → orElseThrow NSE（框架无删除契约，id 有效则行必在，缺失即调用方 bug）
-        var persisted = userRepository.findById(id.value()).orElseThrow();
+        var persisted = userRepository.findById(user.getId().value()).orElseThrow();
         // 基础设施兜底：终态（吸收态）行不可写——领域守卫之外的任何写路径在此被拒（ADR-0023）。
         // 检查持久化行状态（非聚合状态）：D→R 迁移合法地把聚合写成终态 R，行状态才是权威——
         // 拦截「域状态与行状态不一致」的绕过路径（陈旧聚合/双重注销）——防御编程兜底：
@@ -75,12 +78,16 @@ public class UserGatewayImpl implements UserGateway {
             entity.setUsername(null);
             entity.setMobile(null);
             entity.setEmail(null);
-            userRepository.save(entity);
-            return id;
+            var merged = userRepository.saveAndFlush(entity);
+            user.assignVersion(ConcurrencyVersion.of(merged.getVersion()));
+            return user.getId();
         }
-        // 常规 update：id 有值 → merge（@Version 校验自动）
-        userRepository.save(UserConvertor.toPersistence(user));
-        return id;
+        // 常规 update：id 有值 → merge（@Version 校验自动）；flush 后把落库的真实版本回填聚合。
+        // 回填而非自增：是否发 UPDATE（从而递增）由持久化层按脏字段 / 审计列决定，聚合自增会与行版本漂移
+        // （响应 ETag 随之陈旧或超前，客户端回带 If-Match 必失配）。
+        var merged = userRepository.saveAndFlush(UserConvertor.toPersistence(user));
+        user.assignVersion(ConcurrencyVersion.of(merged.getVersion()));
+        return user.getId();
     }
 
     @Override

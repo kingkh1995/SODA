@@ -26,16 +26,16 @@ public final class Mobile extends SensitiveValue {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    @Override
-    public String maskedValue() {
-        return MaskedMobile.from(this).value();
-    }
-
     /**
      * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Mobile of(String raw) {
         return new Mobile(raw);
+    }
+
+    @Override
+    public String maskedValue() {
+        return MaskedMobile.from(this).value();
     }
 }

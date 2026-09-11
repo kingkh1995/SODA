@@ -6,8 +6,8 @@ import com.soda.user.web.request.ChangeMobileRequest;
 import com.soda.user.web.request.ChangePasswordRequest;
 import com.soda.user.web.request.ChangeUsernameRequest;
 import com.soda.user.web.request.CreateUserRequest;
-import com.soda.user.web.request.RequestChangeEmailCodeRequest;
-import com.soda.user.web.request.RequestChangeMobileCodeRequest;
+import com.soda.user.web.request.RequestChangeEmailRequest;
+import com.soda.user.web.request.RequestChangeMobileRequest;
 import com.soda.user.web.request.UpdateUserRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -68,14 +68,16 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("UpdateUserRequest 映射到 UpdateUserCommand（userId 来自额外参数）")
         void should_mapUpdateUserRequest_when_toUpdateCommand() {
-            var request = new UpdateUserRequest("新昵称", "2", null);
+            var request = new UpdateUserRequest(null, "新昵称", "2", null);
 
-            var cmd = assembler.toUpdateCommand(1L, request);
+            var cmd = assembler.toUpdateCommand(1L, request, 3);
 
             assertThat(cmd.userId()).isEqualTo(1L);
+            assertThat(cmd.updateMask()).isNull();
             assertThat(cmd.nickname()).isEqualTo("新昵称");
             assertThat(cmd.sex()).isEqualTo("2");
             assertThat(cmd.avatar()).isNull();
+            assertThat(cmd.expectedVersion()).isEqualTo(3);
         }
 
         @Test
@@ -126,10 +128,10 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("RequestChangeMobileCodeRequest 映射到 RequestChangeMobileCodeCommand（userId 来自路径）")
-        void should_mapRequestChangeMobileCodeRequest_when_toRequestChangeMobileCodeCommand() {
-            var request = new RequestChangeMobileCodeRequest("13900139000");
-            var cmd = assembler.toRequestChangeMobileCodeCommand(1L, request);
+        @DisplayName("RequestChangeMobileRequest 映射到 RequestChangeMobileCommand（userId 来自路径）")
+        void should_mapRequestChangeMobileRequest_when_toRequestChangeMobileCommand() {
+            var request = new RequestChangeMobileRequest("13900139000");
+            var cmd = assembler.toRequestChangeMobileCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
             assertThat(cmd.newMobile()).isEqualTo("13900139000");
@@ -146,10 +148,10 @@ class UserWebAssemblerTest {
         }
 
         @Test
-        @DisplayName("RequestChangeEmailCodeRequest 映射到 RequestChangeEmailCodeCommand（userId 来自路径）")
-        void should_mapRequestChangeEmailCodeRequest_when_toRequestChangeEmailCodeCommand() {
-            var request = new RequestChangeEmailCodeRequest("new@test.com");
-            var cmd = assembler.toRequestChangeEmailCodeCommand(1L, request);
+        @DisplayName("RequestChangeEmailRequest 映射到 RequestChangeEmailCommand（userId 来自路径）")
+        void should_mapRequestChangeEmailRequest_when_toRequestChangeEmailCommand() {
+            var request = new RequestChangeEmailRequest("new@test.com");
+            var cmd = assembler.toRequestChangeEmailCommand(1L, request);
 
             assertThat(cmd.userId()).isEqualTo(1L);
             assertThat(cmd.newEmail()).isEqualTo("new@test.com");

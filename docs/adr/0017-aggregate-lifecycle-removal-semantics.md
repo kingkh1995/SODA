@@ -18,3 +18,6 @@ status: stable
 
 - disable / enable 为 set-state 幂等（已处目标态 no-op 不发事件）；R 态下行为方法抛带消息 IAE（mustEnable 覆盖）
 - 注销后的键释放与归档审计同为基础设施表示决策，见 [0023](0023-terminal-key-release-and-archive.md)
+- 软删除（AIP-164）是基础设施持久化策略（标记删除、可 `:undelete`、无业务含义），注销是领域行为（`deregister()` D→R 吸收态迁移，经
+  `POST /{resource}/{id}:deregister` 承载，不用标准 Delete）——『资源是否支持软删除』是 gateway 的 save
+  表示决策，『注销后是否可恢复』取决于领域终态是否吸收（R 是吸收态、不可逆）。

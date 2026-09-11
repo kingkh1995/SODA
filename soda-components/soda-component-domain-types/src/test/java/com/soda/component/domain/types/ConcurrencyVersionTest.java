@@ -9,8 +9,8 @@ import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@DisplayName("Version 值对象")
-class VersionTest {
+@DisplayName("ConcurrencyVersion 值对象")
+class ConcurrencyVersionTest {
 
     @Nested
     @DisplayName("构造")
@@ -19,19 +19,19 @@ class VersionTest {
         @Test
         @DisplayName("of(0) 创建 INITIAL")
         void should_create_when_zero() {
-            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
+            assertThat(ConcurrencyVersion.of(0)).isSameAs(ConcurrencyVersion.INITIAL);
         }
 
         @Test
         @DisplayName("of(42) 创建实例")
         void should_create_when_validValue() {
-            assertThat(Version.of(42).value()).isEqualTo(42);
+            assertThat(ConcurrencyVersion.of(42).value()).isEqualTo(42);
         }
 
         @Test
         @DisplayName("parse 创建实例")
         void should_create_when_parse() {
-            assertThat(Version.parse("5")).isEqualTo(Version.of(5));
+            assertThat(ConcurrencyVersion.parse("5")).isEqualTo(ConcurrencyVersion.of(5));
         }
     }
 
@@ -42,21 +42,29 @@ class VersionTest {
         @Test
         @DisplayName("of(-1) 拒绝")
         void should_throw_when_negativeValue() {
-            assertThatThrownBy(() -> Version.of(-1))
+            assertThatThrownBy(() -> ConcurrencyVersion.of(-1))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("parse(null) 拒绝")
         void should_throw_when_parseNull() {
-            assertThatThrownBy(() -> Version.parse(null))
+            assertThatThrownBy(() -> ConcurrencyVersion.parse(null))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("of(null) 拒绝（缺失版本不可表示，放行语义归调用方）")
+        void should_throw_when_ofNull() {
+            assertThatThrownBy(() -> ConcurrencyVersion.of(null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("must not be null");
         }
 
         @Test
         @DisplayName("parse 非法字符串拒绝")
         void should_throw_when_parseInvalidString() {
-            assertThatThrownBy(() -> Version.parse("not-a-number"))
+            assertThatThrownBy(() -> ConcurrencyVersion.parse("not-a-number"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -68,19 +76,19 @@ class VersionTest {
         @Test
         @DisplayName("相同值相等")
         void should_beEqual_when_sameValue() {
-            assertThat(Version.of(3)).isEqualTo(Version.of(3));
+            assertThat(ConcurrencyVersion.of(3)).isEqualTo(ConcurrencyVersion.of(3));
         }
 
         @Test
         @DisplayName("不同值不等")
         void should_notBeEqual_when_differentValue() {
-            assertThat(Version.of(1)).isNotEqualTo(Version.of(2));
+            assertThat(ConcurrencyVersion.of(1)).isNotEqualTo(ConcurrencyVersion.of(2));
         }
 
         @Test
         @DisplayName("hashCode 与 equals 一致")
         void should_haveConsistentHashCode() {
-            assertThat(Version.of(3)).hasSameHashCodeAs(Version.of(3));
+            assertThat(ConcurrencyVersion.of(3)).hasSameHashCodeAs(ConcurrencyVersion.of(3));
         }
     }
 
@@ -91,19 +99,19 @@ class VersionTest {
         @Test
         @DisplayName("of(0) 同 INITIAL")
         void should_shareInitial_when_zero() {
-            assertThat(Version.of(0)).isSameAs(Version.INITIAL);
+            assertThat(ConcurrencyVersion.of(0)).isSameAs(ConcurrencyVersion.INITIAL);
         }
 
         @Test
         @DisplayName("缓存范围内相同实例")
         void should_beSameInstance_when_withinRange() {
-            assertThat(Version.of(5)).isSameAs(Version.of(5));
+            assertThat(ConcurrencyVersion.of(5)).isSameAs(ConcurrencyVersion.of(5));
         }
 
         @Test
         @DisplayName("缓存范围外不同实例")
         void should_beDifferentInstance_when_beyondRange() {
-            assertThat(Version.of(10000)).isNotSameAs(Version.of(10000));
+            assertThat(ConcurrencyVersion.of(10000)).isNotSameAs(ConcurrencyVersion.of(10000));
         }
     }
 
@@ -114,28 +122,28 @@ class VersionTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            var original = Version.of(42);
+            var original = ConcurrencyVersion.of(42);
             var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Version.class)).isEqualTo(original);
+            assertThat(MAPPER.readValue(json, ConcurrencyVersion.class)).isEqualTo(original);
         }
 
         @Test
         @DisplayName("序列化为裸数字")
         void should_serializeToBareNumber() throws Exception {
-            var json = MAPPER.writeValueAsString(Version.of(42));
+            var json = MAPPER.writeValueAsString(ConcurrencyVersion.of(42));
             assertThat(json).isEqualTo("42");
         }
 
         @Test
         @DisplayName("从裸数字反序列化")
         void should_deserializeFromBareNumber() throws Exception {
-            assertThat(MAPPER.readValue("42", Version.class)).isEqualTo(Version.of(42));
+            assertThat(MAPPER.readValue("42", ConcurrencyVersion.class)).isEqualTo(ConcurrencyVersion.of(42));
         }
 
         @Test
         @DisplayName("非法 JSON 拒绝")
         void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Version.class))
+            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", ConcurrencyVersion.class))
                     .isInstanceOf(JacksonException.class);
         }
 
@@ -148,16 +156,16 @@ class VersionTest {
         @Test
         @DisplayName("compareTo 按数值比较")
         void should_compareByNumericValue() {
-            assertThat(Version.of(1).compareTo(Version.of(2)) < 0).isTrue();
-            assertThat(Version.of(5).compareTo(Version.of(5)) == 0).isTrue();
-            assertThat(Version.of(8).compareTo(Version.of(6)) > 0).isTrue();
+            assertThat(ConcurrencyVersion.of(1).compareTo(ConcurrencyVersion.of(2)) < 0).isTrue();
+            assertThat(ConcurrencyVersion.of(5).compareTo(ConcurrencyVersion.of(5)) == 0).isTrue();
+            assertThat(ConcurrencyVersion.of(8).compareTo(ConcurrencyVersion.of(6)) > 0).isTrue();
         }
 
         @Test
         @DisplayName("compareTo 与 equals 一致")
         void should_beConsistentWithEquals() {
-            var a = Version.of(42);
-            var same = Version.of(42);
+            var a = ConcurrencyVersion.of(42);
+            var same = ConcurrencyVersion.of(42);
             assertThat(a.compareTo(same) == 0).isTrue();
             assertThat(a).isEqualTo(same);
         }
@@ -170,7 +178,7 @@ class VersionTest {
         @Test
         @DisplayName("toString 格式正确")
         void should_haveCorrectToString() {
-            assertThat(Version.of(42)).hasToString("Version[value=42]");
+            assertThat(ConcurrencyVersion.of(42)).hasToString("ConcurrencyVersion[value=42]");
         }
     }
 }

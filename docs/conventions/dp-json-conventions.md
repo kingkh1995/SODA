@@ -17,6 +17,7 @@ status: stable
 | 实现形态                           | `@JsonValue`（序列化）                  | `@JsonCreator`（反序列化）                                         | Jackson 3 说明                                                                               |
 |------------------------------------|-----------------------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
 | Record + 单字段（字面量家族）      | 继承自家族接口（record 隐式访问器即可） | —                                                                  | 零 Jackson 代码（ADR-0028；`@JsonValue` 不能在 record component 上，家族接口声明于抽象方法） |
+| Record + 单字段（非家族，如集合）  | 显式覆写访问器并标注 `@JsonValue`       | —（典范构造器推断为 delegating）                                   | 标量/数组字面量（`UpdateMask`）；无 `@JsonValue` 时退化为对象形态 `{"field":…}`              |
 | Record + 多字段                    | —                                       | `(mode = PROPERTIES)` 紧凑构造器或省略                             | Jackson 3 RecordDeserializer 能从典范构造器推断，`@JsonProperty` 冗余                        |
 | Class + 单字段无缓存（字面量家族） | 继承自家族接口                          | —                                                                  | 零 Jackson 代码（单 public 构造器推断实证）                                                  |
 | Class + 单字段有缓存（字面量家族） | 继承自家族接口                          | `(mode = DELEGATING)` 静态 `of(T)`                                 | private 构造器 Jackson 不可见，creator 必须显式                                              |

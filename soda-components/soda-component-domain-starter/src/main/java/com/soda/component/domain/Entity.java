@@ -5,6 +5,8 @@ import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
+import java.util.Objects;
+
 /**
  * 领域实体的抽象基类 — 身份标识载体。
  * <p>
@@ -23,6 +25,7 @@ import org.springframework.util.Assert;
  * @see Aggregate
  * @see Identifiable
  */
+
 @JsonAutoDetect(
         fieldVisibility = JsonAutoDetect.Visibility.ANY,
         getterVisibility = JsonAutoDetect.Visibility.NONE,
@@ -49,19 +52,31 @@ public abstract class Entity<ID extends Identifier<?>> implements Identifiable<I
     }
 
     @Override
-    public final @Nullable ID getId() {
-        return id;
+    public final ID getId() {
+        return Objects.requireNonNull(id, "id not assigned yet");
     }
 
     /**
-     * 持久化后由 Repository 填补 ID。
+     * 是否已分配标识符。
      * <p>
-     * 仅限服务端生成场景调用（{@link #Entity()} 构造），已有 ID 时忽略。
+     * 创建瞬态（服务端生成路径）为 false，持久化后由 {@link #assignId} 填补为 true。
+     */
+    public boolean isIdentified() {
+        return id != null;
+    }
+
+    /**
+     * 持久化后由 Repository 填补 ID —— 基础设施回调，写一次。
+     * <p>
+     * 同值重复回填幂等（重试/多路径 save 安全）；异值即两个持久化身份被赋予同一实体，
+     * 抛裸 {@link IllegalStateException}（防御编程不携消息，见 ADR-0015）。
      */
     public final void assignId(ID id) {
-        if (isIdentified()) {
-            return;
+        Objects.requireNonNull(id, "id must not be null");
+        if (this.id == null) {
+            this.id = id;
+        } else if (!this.id.equals(id)) {
+            throw new IllegalStateException();
         }
-        this.id = id;
     }
 }

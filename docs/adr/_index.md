@@ -63,11 +63,15 @@ status: stable
 
 - **[0009](0009-adapter-web-req-resp-pattern.md)** — Adapter 层 Request/Response + WebAssembler 模式
 - **[0012](0012-url-naming-convention.md)** — URL 与 HTTP 方法规范（Google AIP 风格）
-- **[0013](0013-error-response-structure.md)** — 错误响应结构（ErrorInfo 语义详情）
+- **[0013](0013-error-response-structure.md)** — 错误响应结构（RFC 9457 ProblemDetail 最小集 / 状态码承载语义 /
+  ProblemDetailAdvice 唯一翻译层）
+- **[0038](0038-update-mask-domain-primitive.md)** — update_mask 语义与归一化（`UpdateMask` DP 单源）
+- **[0039](0039-conditional-request-transport-contract.md)** — 条件请求传输契约（ETag 派生 / If-Match 归一化）
 
 ## 异常与守卫
 
-- **[0015](0015-exception-class-convention.md)** — 异常类使用约定（构造器校验 / 方法零守卫）
+- **[0015](0015-exception-class-convention.md)** — 异常类使用约定（IAE 校验通道 / ProblemDetailException 族 404·409·412）
+- **[0037](0037-optimistic-lock-version-guard.md)** — 乐观锁版本校验收敛（Versioned / VersionAwareCommand / 基类守卫）
 
 ## 枚举
 

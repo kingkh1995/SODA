@@ -4,7 +4,7 @@ import com.soda.component.domain.gateway.SmsSender;
 import com.soda.user.api.UserAuthService;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.CreateUserCommand;
-import com.soda.user.api.command.RequestChangeMobileCodeCommand;
+import com.soda.user.api.command.RequestChangeMobileCommand;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
@@ -52,8 +52,8 @@ class VerificationFailureResendTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private static RequestChangeMobileCodeCommand codeCommand(long userId, String target) {
-        return new RequestChangeMobileCodeCommand(userId, target);
+    private static RequestChangeMobileCommand codeCommand(long userId, String target) {
+        return new RequestChangeMobileCommand(userId, target);
     }
 
     @BeforeEach
@@ -75,7 +75,7 @@ class VerificationFailureResendTest {
 
         // 第一次发码：send 抛异常（投递契约违反）→ Spring 7 afterCompletion 吞异常（记录 ERROR 日志）、
         // 记录保持 I（send 失败未 markSent，PENDING 蕴含已送达不变量不破坏）
-        assertThatCode(() -> userAuthService.requestChangeMobileCode(codeCommand(userId, "13900139114")))
+        assertThatCode(() -> userAuthService.requestChangeMobile(codeCommand(userId, "13900139114")))
                 .doesNotThrowAnyException();
 
         // I 滞留：未过期 I 存在（占槽）→ existsBySource 计入 I 拒绝重发
@@ -83,7 +83,7 @@ class VerificationFailureResendTest {
                         source, List.of(VerificationState.I))
                 .orElseThrow();
         assertThat(stuck.getState()).isEqualTo(VerificationState.I);
-        assertThatThrownBy(() -> userAuthService.requestChangeMobileCode(codeCommand(userId, "13900139115")))
+        assertThatThrownBy(() -> userAuthService.requestChangeMobile(codeCommand(userId, "13900139115")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("active verification already exists");
 
@@ -91,7 +91,7 @@ class VerificationFailureResendTest {
         jdbcTemplate.update("UPDATE verification SET expire_at = ?",
                 Instant.now().minus(10, ChronoUnit.MINUTES));
         // 重发：gateway.save 内同事务惰性 DELETE 过期 I 行（腾槽）→ 新 I 落库（发送仍失败）
-        assertThatCode(() -> userAuthService.requestChangeMobileCode(codeCommand(userId, "13900139115")))
+        assertThatCode(() -> userAuthService.requestChangeMobile(codeCommand(userId, "13900139115")))
                 .doesNotThrowAnyException();
 
         var latest = verificationGateway.findLatestBySourceAndStateIn(

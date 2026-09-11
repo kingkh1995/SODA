@@ -1,10 +1,10 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
-import com.soda.component.domain.types.Version;
 import com.soda.user.domain.PasswordAuthAccount;
 import com.soda.user.domain.User;
 import com.soda.user.domain.types.Nickname;
@@ -28,7 +28,7 @@ class UserArchiveConvertorTest {
     void should_archivePersistOriginalKeys() {
         var user = User.builder()
                 .id(new UserId(46L))
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(new Username("grace"))
                 .nickname(new Nickname("Grace"))
                 .state(UserState.D)

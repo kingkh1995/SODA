@@ -90,7 +90,7 @@ ADR-0011）。
 **Verification**:
 验证聚合根，独立于 User 存在——注册场景的验证先于用户诞生；封装一次验证码的生命周期：`I` 已创建待投递 → `P` 待验证 → `V`
 已验证 → `U` 已使用，过期是派生判断不落状态（见 ADR-0021/0026）。 _Avoid_: `verifyXxx` 作为发起验证码的动词（发起动词是
-`requestChangeMobileCode` / `requestChangeEmailCode`）
+`requestChangeMobile` / `requestChangeEmail`）
 
 **VerificationChannel**:
 验证通道枚举：`S`（SMS，短信）、`E`（Email，邮箱）。通道判别栖身于 `VerificationRecipient`，业务逻辑按 recipient 模式匹配分派、不按

@@ -8,7 +8,7 @@ import java.util.function.IntFunction;
 /**
  * DP 实例缓存 — 数组 O(1) 索引查找，无 auto-boxing。
  * <p>
- * 用于 int 范围映射的 DP（如 {@link Version}、{@link PositiveInt}），
+ * 用于 int 范围映射的 DP（如 {@link ConcurrencyVersion}、{@link PositiveInt}），
  * 在类初始化时预分配数组，工厂方法优先返回缓存命中。
  *
  * @param <V> DP 类型

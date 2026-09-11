@@ -24,6 +24,7 @@ public record MaskedEmail(String value) implements StringLiteralType {
     public MaskedEmail {
         ValidateUtils.matches(value, PATTERN);
     }
+
     /**
      * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
      */

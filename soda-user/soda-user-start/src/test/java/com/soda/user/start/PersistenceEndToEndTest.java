@@ -8,7 +8,8 @@ import com.soda.user.api.UserService;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.CreateUserCommand;
 import com.soda.user.api.command.DeregisterUserCommand;
-import com.soda.user.api.command.RequestChangeMobileCodeCommand;
+import com.soda.user.api.command.RequestChangeMobileCommand;
+import com.soda.user.api.command.UpdateUserCommand;
 import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.SmsAuthAccount;
 import com.soda.user.domain.User;
@@ -40,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 写侧持久化端到端集成测试（H2 内存库 MODE=MySQL + Flyway）。
  * <p>
- * 验证写侧核心链路：create → findByXxx → requestChangeMobileCode（CC/S 场景，见 ADR-0026）
+ * 验证写侧核心链路：create → findByXxx → requestChangeMobile（CC/S 场景，见 ADR-0026）
  * → changeMobile（I→P→USED，AFTER_COMMIT 监听器真实投递落 P）→ deregister（R 态落库）；
  * 单表账户派生组装、唯一约束、乐观锁冲突。
  * 边际用途：跨模块装配守门员（Spring 装配＋派生组装语义）；行级行为矩阵归 infrastructure 切片。
@@ -121,14 +122,14 @@ class PersistenceEndToEndTest {
     class ChangeMobileFlow {
 
         @Test
-        @DisplayName("端到端：requestChangeMobileCode（I→P，监听器投递）→ changeMobile（USED，mobile 更新 + Sms 账户联动）")
+        @DisplayName("端到端：requestChangeMobile（I→P，监听器投递）→ changeMobile（USED，mobile 更新 + Sms 账户联动）")
         void should_changeMobile_endToEnd() {
             var created = userService.createUser(new CreateUserCommand(
                     "carol", "Passw0rd!", "Carol", "13900139002", null, null, null));
             var userId = created.id();
 
             // 第一步：发码 → 提交后 AFTER_COMMIT 监听器投递（log 桩）→ P 落库
-            userAuthService.requestChangeMobileCode(new RequestChangeMobileCodeCommand(userId, "13900139111"));
+            userAuthService.requestChangeMobile(new RequestChangeMobileCommand(userId, "13900139111"));
             var pending = verificationGateway.findLatestBySourceAndStateIn(
                             VerificationSource.of("UCC", Long.toString(userId)),
                             List.of(VerificationState.P))
@@ -158,20 +159,20 @@ class PersistenceEndToEndTest {
                     "heidi", "Passw0rd!", "Heidi", "13900139003", null, null, null));
             var userId = created.id();
 
-            userAuthService.requestChangeMobileCode(new RequestChangeMobileCodeCommand(userId, "13900139112"));
+            userAuthService.requestChangeMobile(new RequestChangeMobileCommand(userId, "13900139112"));
             // AFTER_COMMIT 后存在未过期 P——槽位被占
 
             // 同主体换 target 重发：source 维度拒绝（每用户每场景至多一条活跃）
-            assertThatThrownBy(() -> userAuthService.requestChangeMobileCode(
-                    new RequestChangeMobileCodeCommand(userId, "13900139113")))
+            assertThatThrownBy(() -> userAuthService.requestChangeMobile(
+                    new RequestChangeMobileCommand(userId, "13900139113")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("active verification already exists");
 
             // 跨主体同 target：允许（UCC 无 target 维度——码是持码凭证，输家收不到码无法消费）
             var other = userService.createUser(new CreateUserCommand(
                     "heidi2", "Passw0rd!", "Heidi2", null, null, null, null));
-            assertThatCode(() -> userAuthService.requestChangeMobileCode(
-                    new RequestChangeMobileCodeCommand(other.id(), "13900139112")))
+            assertThatCode(() -> userAuthService.requestChangeMobile(
+                    new RequestChangeMobileCommand(other.id(), "13900139112")))
                     .doesNotThrowAnyException();
         }
 
@@ -182,15 +183,15 @@ class PersistenceEndToEndTest {
                     "ivys", "Passw0rd!", "Ivy", "13900139009", null, null, null));
             var userId = created.id();
 
-            userAuthService.requestChangeMobileCode(new RequestChangeMobileCodeCommand(userId, "13900139114"));
+            userAuthService.requestChangeMobile(new RequestChangeMobileCommand(userId, "13900139114"));
 
             // 过期化：直改库（expire_at 置过去时刻——DATETIME 秒精度，H2 MODE=MySQL）
             jdbcTemplate.update("UPDATE `verification` SET expire_at = '2020-01-01 00:00:00' WHERE subject = ?",
                     Long.toString(userId));
 
             // 过期 P 不阻塞：existsBySource（active_key + expire_at 残余过滤）放过 → save 内惰性 DELETE 腾槽
-            assertThatCode(() -> userAuthService.requestChangeMobileCode(
-                    new RequestChangeMobileCodeCommand(userId, "13900139115")))
+            assertThatCode(() -> userAuthService.requestChangeMobile(
+                    new RequestChangeMobileCommand(userId, "13900139115")))
                     .doesNotThrowAnyException();
 
             // 旧码失效、新码生效——领域级观察：消费反查只见重发后的新 P 行
@@ -225,7 +226,10 @@ class PersistenceEndToEndTest {
                     "dave", "Passw0rd!", "Dave", "13900139004", null, null, null));
 
             userService.disableUser(new com.soda.user.api.command.DisableUserCommand(created.id()));
-            userService.deregisterUser(new DeregisterUserCommand(created.id()));
+            var deregistered = userService.deregisterUser(new DeregisterUserCommand(created.id()));
+            // Delete 返 R 态快照：state=R + 释放前原键（内存语义，非 DB 行形态）
+            assertThat(deregistered.state()).isEqualTo("R");
+            assertThat(deregistered.username()).isEqualTo("dave");
 
             // R 态可恢复，username 为领域默认值 REMOVED（键释放，ADR-0023）
             var removed = userGateway.findById(new UserId(created.id())).orElseThrow();
@@ -349,6 +353,26 @@ class PersistenceEndToEndTest {
             userService.changeUsername(new com.soda.user.api.command.ChangeUsernameCommand(created.id(), "grace2"));
 
             assertThat(userGateway.findById(userId).orElseThrow().getVersion().value()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("更新响应携带落库版本：连续两次条件 PATCH（回带上一次响应的 version）均成功")
+        void should_chainConditionalPatches_withReturnedVersion() {
+            var created = userService.createUser(new CreateUserCommand(
+                    "henry", "Passw0rd!", "Henry", null, null, null, null));
+            var userId = created.id();
+
+            var first = userService.updateUser(new UpdateUserCommand(userId, null, "Henry2", null, null, created.version()));
+
+            // 响应 version 即行版本（HttpValidatorHeadersAdvice 据此发 ETag）
+            assertThat(first.version())
+                    .isEqualTo(userGateway.findById(new UserId(userId)).orElseThrow().getVersion().value());
+
+            var second = userService.updateUser(new UpdateUserCommand(userId, null, "Henry3", null, null, first.version()));
+
+            assertThat(second.nickname()).isEqualTo("Henry3");
+            assertThat(second.version())
+                    .isEqualTo(userGateway.findById(new UserId(userId)).orElseThrow().getVersion().value());
         }
     }
 

@@ -1,10 +1,10 @@
 package com.soda.user.infrastructure.convertor;
 
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
-import com.soda.component.domain.types.Version;
 import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.PasswordAuthAccount;
 import com.soda.user.domain.SmsAuthAccount;
@@ -116,7 +116,7 @@ class UserConvertorTest {
     void should_restoreRemovedUsername_when_keyReleased() {
         var user = User.builder()
                 .id(new UserId(43L))
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(Username.REMOVED)
                 .nickname(new Nickname("Removed_User"))
                 .state(UserState.R)

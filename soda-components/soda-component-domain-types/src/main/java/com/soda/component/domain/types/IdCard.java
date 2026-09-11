@@ -26,16 +26,16 @@ public final class IdCard extends SensitiveValue {
         ValidateUtils.matches(value(), PATTERN);
     }
 
-    @Override
-    public String maskedValue() {
-        return MaskedIdCard.from(this).value();
-    }
-
     /**
      * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static IdCard of(String raw) {
         return new IdCard(raw);
+    }
+
+    @Override
+    public String maskedValue() {
+        return MaskedIdCard.from(this).value();
     }
 }

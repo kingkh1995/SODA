@@ -9,13 +9,13 @@ status: stable
 本文承载「跨切面约定」：编排（DomainService / AppService）、异常、Logging、数据库开发、Code Style。 **先按下方目录定位到关注点**
 ——文件 200 行，章节彼此独立无共享概念。
 
-| 关注点                             | 章节    | 内容                                               |
-|------------------------------------|---------|----------------------------------------------------|
-| 编排（DomainService / AppService） | §5 上半 | 跨聚合编排规则、AppService 编排前置、终态守卫      |
-| 异常 + JSpecify + 参数契约         | §5 下半 | 异常类使用约定、nullness 注解、AppService 入参约定 |
-| Logging                            | §6      | web / application 入口日志                         |
-| 数据库开发                         | §7      | 一行指针 → ADR-0022                                |
-| Code Style                         | §8      | Import 规范（通配符禁用）                          |
+| 关注点                             | 章节    | 内容                                                     |
+|------------------------------------|---------|----------------------------------------------------------|
+| 编排（DomainService / AppService） | §5 上半 | 跨聚合编排规则、AppService 编排前置、终态守卫            |
+| 异常 + JSpecify + 参数契约         | §5 下半 | 异常类型族与校验通道、nullness 注解、AppService 入参约定 |
+| Logging                            | §6      | web / application 入口日志                               |
+| 数据库开发                         | §7      | 一行指针 → ADR-0022                                      |
+| Code Style                         | §8      | Import 规范（通配符禁用）                                |
 
 ## 5. 编排与异常约定
 
@@ -39,7 +39,7 @@ status: stable
 - 命名：`XxxDomainService`（COLA 风格，如 `CredentialChangeDomainService`），避免与聚合内方法重名
 
 **示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify →
-user.changeXxx → use）；验证码发起（UCC）由 `UserAuthService.requestChangeMobileCode`/`requestChangeEmailCode`
+user.changeXxx → use）；验证码发起（UCC）由 `UserAuthService.requestChangeMobile`/`requestChangeEmail`
 编排（前置查询拦截 → `UserVerificationFactory.newCredentialChangeVerification` 构造 INITIALIZED 聚合、注册
 `VerificationCreatedEvent`，见 ADR-0026 Verification 双概念模型），物理发送由投递侧监听器在事务提交后按 recipient 分派（见
 ADR-0011 验证是独立于用户聚合的可复用领域概念/ADR-0026 Verification 双概念模型）。AppService 负责查询前置、加载与 save 顺序（先
@@ -72,6 +72,15 @@ user 后 verification）。
 save 内行终态判定裸抛的 ISE（防御编程不携消息）。用例级状态前置（如 CC
 发码要求启用态）仍为用例业务断言，不进通用守卫。Stateful / StateEnumType 契约单一源在两者 javadoc（终态判定收在枚举
 `terminal()`），新增状态机聚合零额外样板；现行实现方：`User`（R 终态）、`Verification`（U 终态）。
+
+**基类便捷方法（`AbstractAppService`）**：加载型守卫与用例末梢固定在基类，子类不自铺样板——
+`require(id)`（加载失败抛 `NotFoundException.entityNotFound(实体类型名, id)` → 404，见 ADR-0015）、
+`requireNotTerminal(id)`（上面终态守卫，抛 IAE）、`requireIfMatch(id, expectedVersion)`
+（条件请求版本守卫，失配抛 `PreconditionFailedException.versionMismatch` → 412，见
+[ADR-0037](../adr/0037-optimistic-lock-version-guard.md)）、
+`saveAndPublishEvents(agg)`（持久化 + 发布聚合刷出的事件，替代
+`gateway.save(agg); domainEventBus.publishAll(agg.flushEvents());`
+二件套）。子类只需在构造器把 `gateway` 与 `DomainEventBus` 交给基类。
 
 典型反例：AppService 直接 `verification.verify(code)` 再 `user.changeMobile(...)`——verify 修改外部聚合状态，必须经
 `CredentialChangeDomainService`。
@@ -149,17 +158,19 @@ ServiceImpl 按 Command 拆出 `command/*Processor`（COLA 风格），但对外
 
 ### Exception（异常类约定）
 
-写侧（ApplicationService / DomainService / Entity）异常约定： **构造器校验（DP 式）+ 方法零守卫**（详见 ADR-0015
-异常类使用约定：构造器校验与方法零守卫）：
+写侧（ApplicationService / DomainService / Entity）异常约定： **构造器校验（DP 式）+ 方法零守卫**（类型体系详见 ADR-0015
+异常类使用约定：类型族与 IAE 校验通道）：
 
-| 类别                                                                   | 机制                                                                                                                     | 异常                |
-|------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|---------------------|
-| 业务参数校验（输入值不合法 / 业务规则拒绝 / 状态机前置，客户端可预期） | `Assert.isTrue` / `Assert.notNull`                                                                                       | IAE（带消息）       |
-| 构造器参数校验（创建与恢复路径统一）                                   | `ValidateUtils.notNull`（判空角色与固定消息见 [STYLEGUIDE §2.3](../../STYLEGUIDE.md#23-空值校验角色)）                   | IAE                 |
-| 方法参数 null 契约违反                                                 | 无守卫 — jspecify `@NullMarked` 契约 + 调用方遵守                                                                        | NPE                 |
-| 聚合内部结构不变量                                                     | 类型化（构造器必填字段，如 `User.passwordAccount`）+ JSON schema（全部非空字段 `required = true`，可空字段 `@Nullable`） | 不可表示 / 边界拒绝 |
+| 类别                                                                       | 机制                                                                                                                     | 异常                                           |
+|----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| 业务参数校验（输入值不合法 / 状态机前置 / 未类型化业务拒绝，客户端可预期） | `Assert.isTrue` / `Assert.notNull`                                                                                       | IAE（带消息）                                  |
+| 构造器参数校验（创建与恢复路径统一）                                       | `ValidateUtils.notNull`（判空角色与固定消息见 [STYLEGUIDE §2.3](../../STYLEGUIDE.md#23-空值校验角色)）                   | IAE                                            |
+| 方法参数 null 契约违反                                                     | 无守卫 — jspecify `@NullMarked` 契约 + 调用方遵守                                                                        | NPE                                            |
+| 聚合内部结构不变量                                                         | 类型化（构造器必填字段，如 `User.passwordAccount`）+ JSON schema（全部非空字段 `required = true`，可空字段 `@Nullable`） | 不可表示 / 边界拒绝                            |
+| 需 HTTP 状态细分的业务拒绝（资源不存在 / 唯一键占用 / 条件请求失配）       | app-service 与组件守卫的场景静态工厂（见 [ADR-0015](../adr/0015-exception-class-convention.md)）                         | `ProblemDetailException` 族（404 / 409 / 412） |
 
-判定原则（检查对象）：检查「参数值 / 业务状态是否允许操作」→ IAE 校验（客户端可预期的一切：错码、过期、重复用户名、未请求验证码、状态前置）；「值是否为
+判定原则（检查对象）：检查「参数值 / 业务状态是否允许操作」→ 客户端可预期的一切（错码、过期、无待用验证码、状态前置）抛带消息
+IAE，需状态细分的拒绝（不存在 / 唯一键占用 / 条件失配）抛 `ProblemDetailException` 族；「值是否为
 null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
 
 规则：
@@ -170,19 +181,21 @@ null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
   NSE / 不支持的操作 `UnsupportedOperationException`
   ）不携消息，非客户端反馈通道，契约违反即调用方 bug，异常类型 + 栈帧即诊断
 - 操作语义：set-state（`disable` / `enable`）幂等 no-op、不发事件；transition（`verify` / `use`）业务状态前置失败抛带消息 IAE；
-  `changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015 异常类使用约定：构造器校验与方法零守卫）
-- requireXXX 模式只在 appservice：网关加载后 null 校验 → IAE（User not found / No pending）；可空查找返回 `Optional`
+  `changeMobile` / `changeEmail` 同值换绑抛 IAE（产品决策，见 ADR-0015 异常类使用约定：类型族与 IAE 校验通道）
+- requireXXX 模式只在 appservice：`require` 守卫抛 `NotFoundException`（404），其余网关加载结果的存在性 / 状态前置校验抛带消息
+  IAE（如 No pending）；可空查找返回 `Optional`
 - `Objects.requireNonNullElse` 仅用于默认值模式（如 `User` 构造器 accounts 缺省），不属于守卫
 - AppService 的 `Assert` 只用于网关加载结果的存在性 / 状态前置检查，不做 Command 属性级校验（见「参数契约」）；Adapter 层不做
   Assert（协议边界由 `@Valid` 负责）；Infrastructure 用 `Optional` 表达可空，正常流程不抛异常
-- HTTP 映射：IAE → 400 `INVALID_ARGUMENT`，NPE / NoSuchElementException → 500 `INTERNAL`，
-  `MethodArgumentNotValidException` → 400
+- HTTP 映射：IAE → 400 `INVALID_ARGUMENT`，`ProblemDetailException` 族按 `ex.status()`（404 / 409 / 412，见 ADR-0015 /
+  ADR-0013），
+  NPE / NoSuchElementException → 500 `INTERNAL`，`MethodArgumentNotValidException` → 400
 
 ### JSpecify（nullness 注解规范）
 
 规则单一权威侧在根 [STYLEGUIDE](../../STYLEGUIDE.md) §3.2（AGENTS 注解/JSpecify
 触发词路由彼处），本节仅指不述。写侧异常与守卫配套约定见上文「Exception（异常类约定）」，决策路线见 ADR-0015
-异常类使用约定：构造器校验与方法零守卫。
+异常类使用约定：类型族与 IAE 校验通道。
 
 ### 参数契约
 

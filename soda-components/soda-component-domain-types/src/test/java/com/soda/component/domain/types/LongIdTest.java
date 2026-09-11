@@ -103,6 +103,7 @@ class LongIdTest {
         void should_deserializeFromBareNumber() throws Exception {
             assertThat(MAPPER.readValue("42", LongId.class)).isEqualTo(new LongId(42));
         }
+
         @Test
         @DisplayName("序列化为裸数字")
         void should_serializeAsNumber() throws Exception {

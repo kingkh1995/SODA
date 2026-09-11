@@ -104,6 +104,34 @@ class UserGatewayImplPersistenceTest {
             assertThat(row.getNickname()).isEqualTo("新昵称");
             assertThat(row.getVersion()).isEqualTo(1);
         }
+
+        @Test
+        @DisplayName("更新路径：save 回填落库版本到聚合（聚合令牌恒等于行版本）")
+        void should_assignPersistedVersion_when_saved() {
+            var id = gateway.save(newUser());
+            em.flush();
+            em.clear();
+
+            var loaded = gateway.findById(id).orElseThrow();
+            loaded.changeNickname(new Nickname("新昵称"));
+            gateway.save(loaded);
+            em.flush();
+            em.clear();
+
+            // 聚合令牌 == 行版本（响应 ETag / 下次 If-Match 自洽的前提）
+            assertThat(loaded.getVersion().value())
+                    .isEqualTo(userRepository.findById(id.value()).orElseThrow().getVersion());
+
+            // 同值再存：是否发 UPDATE / 递增归持久化层决定，聚合只接受落库值，不得自行推导
+            var unchanged = gateway.findById(id).orElseThrow();
+            unchanged.changeNickname(unchanged.getNickname());
+            gateway.save(unchanged);
+            em.flush();
+            em.clear();
+
+            assertThat(unchanged.getVersion().value())
+                    .isEqualTo(userRepository.findById(id.value()).orElseThrow().getVersion());
+        }
     }
 
     @Nested

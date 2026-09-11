@@ -3,8 +3,8 @@ package com.soda.user.api;
 import com.soda.user.api.command.ChangeEmailCommand;
 import com.soda.user.api.command.ChangeMobileCommand;
 import com.soda.user.api.command.ChangePasswordCommand;
-import com.soda.user.api.command.RequestChangeEmailCodeCommand;
-import com.soda.user.api.command.RequestChangeMobileCodeCommand;
+import com.soda.user.api.command.RequestChangeEmailCommand;
+import com.soda.user.api.command.RequestChangeMobileCommand;
 
 /**
  * 用户凭证相关的 ApplicationService 接口。
@@ -12,8 +12,8 @@ import com.soda.user.api.command.RequestChangeMobileCodeCommand;
  * 管理手机号 / 邮箱 / 密码的修改。手机号 / 邮箱换绑走两步验证流程（发码与消费归位
  * User 侧，见 ADR-0026）：
  * <ol>
- *   <li>发送验证码 → {@link #requestChangeMobileCode(RequestChangeMobileCodeCommand)} /
- *       {@link #requestChangeEmailCode(RequestChangeEmailCodeCommand)}</li>
+ *   <li>发送验证码 → {@link #requestChangeMobile(RequestChangeMobileCommand)} /
+ *       {@link #requestChangeEmail(RequestChangeEmailCommand)}</li>
  *   <li>核验并修改 → {@link #changeMobile(ChangeMobileCommand)} / {@link #changeEmail(ChangeEmailCommand)}</li>
  * </ol>
  * 密码修改走单步流程 → {@link #changePassword(ChangePasswordCommand)}。
@@ -27,12 +27,12 @@ public interface UserAuthService {
     /**
      * 请求发送换绑手机号验证码（两步验证第一步，scene=UCC、channel=S 由方法语义隐式）。
      */
-    void requestChangeMobileCode(RequestChangeMobileCodeCommand command);
+    void requestChangeMobile(RequestChangeMobileCommand command);
 
     /**
      * 请求发送换绑邮箱验证码（两步验证第一步，scene=UCC、channel=E 由方法语义隐式）。
      */
-    void requestChangeEmailCode(RequestChangeEmailCodeCommand command);
+    void requestChangeEmail(RequestChangeEmailCommand command);
 
     /**
      * 修改密码（单步，校验原密码）。

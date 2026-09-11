@@ -25,16 +25,16 @@ public final class BankCard extends SensitiveValue {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    @Override
-    public String maskedValue() {
-        return MaskedBankCard.from(this).value();
-    }
-
     /**
      * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static BankCard of(String raw) {
         return new BankCard(raw);
+    }
+
+    @Override
+    public String maskedValue() {
+        return MaskedBankCard.from(this).value();
     }
 }

@@ -16,7 +16,7 @@ import java.time.Instant;
  * 无字段无 gateway 依赖（{@code DomainService} 约定——纯内存编排；跨实例查询由
  * AppService 前置拦截，见 ADR-0026）。
  * <p>
- * 发码不在本服务：由 {@code UserAuthService.requestChangeMobileCode/requestChangeEmailCode}
+ * 发码不在本服务：由 {@code UserAuthService.requestChangeMobile/requestChangeEmail}
  * 编排（应用层前置 + {@code UserVerificationFactory} 构造 INITIALIZED 验证），物理发送由
  * 投递侧监听器在事务提交后执行（见 ADR-0011/0026）。本服务只承载消费编排：
  * <ul>

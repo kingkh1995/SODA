@@ -6,10 +6,6 @@ tags: [user, naming, api]
 status: stable
 ---
 
-> 沿革注记：本 ADR 在旧版端点表中曾记录"自助改密不实现旧密码校验——admin
-> 重置场景无旧密码语义"决策项；该决策已被 [ADR-0027 自助改密原密码守卫](0027-password-change-old-credential-guard.md) 撤销（仅限
-> `POST /users/{id}:changePassword` 自助路径，admin 重置仍走独立命令）。本 ADR 当前 stable 形态不再展开端点表与原密码策略细节。
-
 # 0010 — User 意图揭示方法
 
 User 聚合根的方法按业务意图命名：属性修改统一 `changeXxx`（参数一律 Domain Primitive，由应用层从 Command

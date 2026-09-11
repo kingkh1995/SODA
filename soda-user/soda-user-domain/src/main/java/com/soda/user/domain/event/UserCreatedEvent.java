@@ -13,9 +13,9 @@ import java.time.Instant;
  * {@link com.soda.component.domain.Aggregate#registerEvent} 注册。
  * <p>
  * {@code entityId} 通过 {@link #user()} 实体引用延迟求值——事件注册时 ID 可能尚未分配
- * （由 Repository 的 {@code save()} 调用 {@code assignId()} 填补），
- * 调用方须在 {@code assignId()} 之后（如 ApplicationService 持久化后 flush）再取 {@code entityId()}，
- * 此前调用返回 {@code null}（jspecify 契约，见 ADR-0015）。
+ * （由 Repository 的 {@code save()} 调用 {@code assignId()} 填补）。
+ * 调用方须在 {@code assignId()} 之后（如 ApplicationService 持久化后 flush）再取 {@code entityId()}；
+ * 此前调用抛 {@link NullPointerException}（{@code User.getId()} 防御编程，异常类型即语义）。
  *
  * @param user       创建的用户实体
  * @param occurredAt 事件发生时间

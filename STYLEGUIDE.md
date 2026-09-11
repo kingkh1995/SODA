@@ -60,7 +60,15 @@ Entity 承载业务状态，判空应明确哪个字段为 null；DP 类型简�
 
 ### 2.6 异常
 
-优先 `IllegalArgumentException` / `IllegalStateException`（不使用已废弃异常）；不在非异常路径上构造异常；工具类内联 IAE 消息，不引入工厂类。
+优先 `IllegalArgumentException` / `IllegalStateException`（不使用已废弃异常）；不在非异常路径上构造异常；工具类内联 IAE
+消息，不引入消息工厂类。 **需要被 HTTP 状态码细分的业务拒绝**走 `ProblemDetailException` 族（静态工厂按场景创建，见
+ADR-0015），其余拒绝维持 IAE / ISE。
+
+### 2.7 成员顺序
+
+**静态初始化依赖优先于可见性排序**：`static final` 常量若在构造/初始化表达式中引用另一静态字段，被引用者必须先声明——静态初始化按文本顺序执行，倒序即
+`NullPointerException` → `ExceptionInInitializerError`（类首次使用即崩，编译期不报）。 **禁止无功能理由的成员重排**
+：提交中的成员移位必须由本规范条款或可观察行为驱动，不得混入顺手的「整理」——无规则的排序审美正是上条事故的成因。
 
 ## 3. 注解
 
@@ -87,9 +95,13 @@ Entity JSON 契约见 conventions/framework-type-contracts.md「Entity」条目�
 | `@NullUnmarked` | 退出 `@NullMarked` | ❌ 禁止 |
 
 **标注位置**：字段类型、参数、返回、类型参数（`List<@Nullable T>`）、record 组件。 **必须加 `@Nullable`**：实体的可选字段（getter
-返回 `Optional<T>`）、未持久化标识符（`private @Nullable ID id`——瞬态字段的使用点由调用方保证非空，方法路径无运行时窄化守卫）、工厂/构造器中对应可选字段的参数、立即校验拒绝
-null 的工具参数。
-**禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为 null）。 **不返回
+返回 `Optional<T>`）、瞬态字段（`private @Nullable ID id`——创建路径为 null，由 `isIdentified()`
+窄化守卫）、工厂/构造器中对应可选字段的参数、立即校验拒绝
+null 的工具参数。 **禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为
+null）。 **`getId()` 例外**：`Identifiable.getId()` 返回 `@NonNull`，未标识时抛 `NullPointerException`（防御编程：调用方
+bug，异常类型即语义）；瞬态语义由 `isIdentified()` 表达。 **`assignId` 参数守卫**：`Entity.assignId` 用
+`Objects.requireNonNull` 抛 NPE（基础设施回调，DB 生成 ID 失败 = 系统 bug，非业务决策分支）；同值重复回填幂等，异值回填抛裸
+`IllegalStateException`（两个持久化身份赋给同一实体 = 基础设施 bug）。 **不返回
 `Optional<@Nullable T>`**——Optional 本身表达可空返回。
 **局部变量**：根类型不标注，由赋值推断。
 **外部库互操作**：未标 `@NullMarked` 的库返回值是 unspecified nullness——调用点显式检查或 `Optional.ofNullable()` 包装。

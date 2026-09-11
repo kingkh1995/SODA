@@ -10,9 +10,9 @@ import com.soda.component.api.command.Command;
  * {@code userId} 由 adapter 从路径参数 {@code {id}} 注入（资源级端点必填）；
  * {@code newMobile} 格式校验由 AppService 构造 {@code Mobile} 时进行（领域规则留在 DP 构造器）。
  *
- * @see com.soda.user.api.UserAuthService#requestChangeMobileCode
+ * @see com.soda.user.api.UserAuthService#requestChangeMobile
  */
-public record RequestChangeMobileCodeCommand(
+public record RequestChangeMobileCommand(
         @JsonProperty("userId") Long userId,
         @JsonProperty("newMobile") String newMobile
 ) implements Command {

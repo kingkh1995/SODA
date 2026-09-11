@@ -86,7 +86,7 @@ ClassName[field1=value1, field2=value2, ...]
 | 实现形态                     | 规则                                                             | 示例                                      |
 |------------------------------|------------------------------------------------------------------|-------------------------------------------|
 | Record（所有字段）           | 不重写，使用 JDK 自动生成                                        | `LongId[value=42]`                        |
-| Class 单字段                 | 手动：`"ClassName[value=" + value + "]"`                         | `Version[value=42]`                       |
+| Class 单字段                 | 手动：`"ClassName[value=" + value + "]"`                         | `ConcurrencyVersion[value=42]`            |
 | Class 多字段                 | 手动：`"ClassName[field1=" + f1 + ", field2=" + f2 + "]"`        | `EmailContent[subject=Hello, body=World]` |
 | 密封继承                     | 基类模板：`getClass().getSimpleName() + "[value=" + value + "]"` | `PasswordAuthAccountId[value=P:42]`       |
 | SecretValue（独立 final 类） | 脱敏：`"SecretValue[***]"`，不得暴露内部值                       | `SecretValue[***]`                        |
@@ -125,7 +125,7 @@ ClassName[field1=value1, field2=value2, ...]
 - **`from(原始值 DP)`**：由原始值 DP 派生的唯一公开通道——`MaskedMobile.from(Mobile)` 内部经 `private static String maskOf(String)` 生成脱敏串后构造；原始值 DP 的 `maskedValue()` 即 `MaskedXxx.from(this).value()`。
 - **`maskOf(String)`**：`private`，掩码算法的**单一事实源**，与格式正则同址于各 `MaskedXxx` 记录内，仅服务 `from(原始值 DP)`——外部不得直接调用。
 - 设计依据见 ADR-0032 Masked Value DP 与脱敏命名（ADR-0030 数据保护 DP 四分类与 SensitiveValue 基类将 Masked 族委派至此）；原始值
-  DP 不再缓存脱敏实例、`redacted()` 已删除。
+  DP 不缓存脱敏实例、不设 `redacted()`。
 
 按以下顺序决策：
 
@@ -296,7 +296,7 @@ public final class Xxx implements IntLiteralType, Serializable {  // Serializabl
 
 | 方法 | 语义 | `@JsonCreator` | 示例 |
 |---|---|---|---|
-| `of(...)` | 参数即底层值 | class/enum 挂这里 | `Version.of(1)`、`XxxEnum.of("A")` |
+| `of(...)` | 参数即底层值 | class/enum 挂这里 | `ConcurrencyVersion.of(1)`、`XxxEnum.of("A")` |
 | `from(...)` | 参数 ≠ 底层值，跨类型转换 | ❌ | `PasswordAuthAccountId.from(UserId)` |
 | `parse(String)` | 字符串输入需解析/转换 | ❌ | `UserId.parse("123")` |
 
@@ -335,7 +335,7 @@ from(BigDecimal)`中 `notNull`与构造器中 `notNull`的区分）见 [conventi
 
 JDK 包装类常见 `MIN`/`MAX`/`ZERO`/`EPOCH`/`random()`/`now()` 等常量或便捷工厂。DP 中按需暴露，**不强制**：
 
-- 数量/版本/金额型 DP（如 `Version`、`WanYuan`）可暴露 `ZERO`/`ONE`/`MIN`/`MAX`，如果有领域意义；
+- 数量/版本/金额型 DP（如 `ConcurrencyVersion`、`WanYuan`）可暴露 `ZERO`/`ONE`/`MIN`/`MAX`，如果有领域意义；
 - 标识符 DP 通常不需要 `UserId.ZERO` 这类常量；
 - 时间型 DP 可按 `LocalDate` 惯例暴露 `now()`、`MIN`/`MAX`；
 - 随机生成型 DP（如 `Uuid`）保留 `random()` 或 `generate(...)`；
@@ -484,9 +484,9 @@ public int compareTo(Uuid other) {
     return this.value.compareTo(other.value);
 }
 
-// 基本类型单字段（如 Version）
+// 基本类型单字段（如 ConcurrencyVersion）
 @Override
-public int compareTo(Version other) {
+public int compareTo(ConcurrencyVersion other) {
     return Integer.compare(this.value, other.value);
 }
 
@@ -503,11 +503,11 @@ public int compareTo(Xxx other) {
 
 ## 附录 B：对比一致性示例
 
-| DP | 实现 | `Comparable` | 缓存 | `Serializable` |
-|---|---|---|---|---|
-| `LongId` | record | ✅ | 无 | 不显式 |
-| `Uuid` | record | ✅ | 无 | 不显式 |
-| `Fen` | record | ✅ | 无 | 不显式 |
-| `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式 |
-| `Version` | class | ✅ | `[0, 99]` | ✅ 显式 |
-| `SoftwareVersion` | class | ✅ | 无 | 不显式 |
+| DP                             | 实现                   | `Comparable`     | 缓存                                 | `Serializable` |
+|--------------------------------|------------------------|------------------|--------------------------------------|----------------|
+| `LongId`                       | record                 | ✅               | 无                                   | 不显式         |
+| `Uuid`                         | record                 | ✅               | 无                                   | 不显式         |
+| `Fen`                          | record                 | ✅               | 无                                   | 不显式         |
+| `Mobile` / `Email` / `WanYuan` | record / class / class | ❌（无领域顺序） | 无（WanYuan 缓存 BigDecimal 派生值） | 不显式         |
+| `ConcurrencyVersion`           | class                  | ✅               | `[0, 99]`                            | ✅ 显式        |
+| `SoftwareVersion`              | class                  | ✅               | 无                                   | 不显式         |

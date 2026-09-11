@@ -3,13 +3,13 @@ package com.soda.user.domain;
 import com.soda.component.domain.gateway.PasswordHasher;
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Active;
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Sex;
-import com.soda.component.domain.types.Version;
 import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserCreatedEvent;
 import com.soda.user.domain.event.UserDeregisteredEvent;
@@ -89,7 +89,7 @@ class UserTest {
     private static User fullUserWithPasswordAccount() {
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -101,7 +101,7 @@ class UserTest {
     private static User disabledUser() {
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.D)
@@ -117,7 +117,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -134,7 +134,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -150,7 +150,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -176,7 +176,7 @@ class UserTest {
                 .build();
         return User.builder()
                 .id(USER_ID)
-                .version(Version.of(1))
+                .version(ConcurrencyVersion.of(1))
                 .username(USERNAME)
                 .nickname(NICKNAME)
                 .state(UserState.E)
@@ -198,7 +198,7 @@ class UserTest {
                     .passwordHash(STUB_HASH)
                     .build();
 
-            assertThat(user.getId()).isNull();
+            assertThat(user.isIdentified()).isFalse();
             assertThat(user.getUsername()).isEqualTo(USERNAME);
             assertThat(user.getNickname()).isEqualTo(NICKNAME);
             assertThat(user.getState()).isEqualTo(UserState.E);
@@ -212,7 +212,7 @@ class UserTest {
         void should_rejectConstruction_when_missingPasswordAccount() {
             assertThatThrownBy(() -> User.builder()
                     .id(USER_ID)
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -231,8 +231,9 @@ class UserTest {
             var events = user.flushEvents();
             assertThat(events).hasSize(1);
             assertThat(events.getFirst()).isInstanceOf(UserCreatedEvent.class);
-            // entityId 延迟求值：assignId 前返回 null（jspecify 契约，见 ADR-0015）
-            assertThat(events.getFirst().entityId()).isNull();
+            // entityId 延迟求值：assignId 前抛 NPE（User.getId() 防御编程，异常类型即语义）
+            assertThatThrownBy(() -> events.getFirst().entityId())
+                    .isInstanceOf(NullPointerException.class);
         }
 
         @Test
@@ -270,7 +271,7 @@ class UserTest {
                     .passwordHash(STUB_HASH)
                     .build();
 
-            assertThat(user.getVersion()).isSameAs(Version.INITIAL);
+            assertThat(user.getVersion()).isSameAs(ConcurrencyVersion.INITIAL);
         }
     }
 
@@ -286,7 +287,7 @@ class UserTest {
             var avatar = new Avatar("https://example.com/avatar.png");
             var user = User.builder()
                     .id(USER_ID)
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .mobile(mobile)
@@ -305,7 +306,7 @@ class UserTest {
             assertThat(user.getSex()).hasValue(Sex.F);
             assertThat(user.getAvatar()).hasValue(avatar);
             assertThat(user.getState()).isEqualTo(UserState.D);
-            assertThat(user.getVersion()).isEqualTo(Version.of(1));
+            assertThat(user.getVersion()).isEqualTo(ConcurrencyVersion.of(1));
             assertThat(user.getPasswordAccount()).isNotNull();
             assertThat(user.getAccounts()).isEmpty();
             // restore 不应产生新事件
@@ -317,7 +318,7 @@ class UserTest {
         void should_restoreNullOptionals_when_notProvided() {
             var user = User.builder()
                     .id(USER_ID)
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -329,6 +330,34 @@ class UserTest {
             assertThat(user.getEmail()).isEmpty();
             assertThat(user.getSex()).isEmpty();
             assertThat(user.getAvatar()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("身份回填")
+    class Identity {
+
+        @Test
+        @DisplayName("创建瞬态未标识，回填幂等；异值回填拒绝")
+        void should_acceptSameId_when_assignId() {
+            var user = User.createBuilder()
+                    .username(USERNAME)
+                    .nickname(NICKNAME)
+                    .passwordHash(STUB_HASH)
+                    .build();
+            assertThat(user.isIdentified()).isFalse();
+
+            user.assignId(USER_ID);
+            assertThat(user.getId()).isEqualTo(USER_ID);
+
+            // 同值重复回填幂等（重试 / 多路径 save 安全）
+            user.assignId(USER_ID);
+            assertThat(user.getId()).isEqualTo(USER_ID);
+
+            // 异值 = 两个持久化身份赋给同一实体，基础设施 bug（防御编程裸抛 ISE）
+            assertThatThrownBy(() -> user.assignId(new UserId(99L)))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(user.getId()).isEqualTo(USER_ID);
         }
     }
 
@@ -389,7 +418,7 @@ class UserTest {
         void should_doNothing_when_alreadyDisabled() {
             var user = User.builder()
                     .id(new UserId(1L))
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
@@ -407,7 +436,7 @@ class UserTest {
         void should_enableUser_when_stateIsD() {
             var user = User.builder()
                     .id(new UserId(1L))
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.D)
@@ -676,7 +705,7 @@ class UserTest {
         void should_rejectChangeMobile_when_sameMobile() {
             var user = User.builder()
                     .id(USER_ID)
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -772,7 +801,7 @@ class UserTest {
         void should_rejectChangeEmail_when_sameEmail() {
             var user = User.builder()
                     .id(USER_ID)
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -902,7 +931,7 @@ class UserTest {
             var b = fullUserWithPasswordAccount();
             var user2 = User.builder()
                     .id(new UserId(2L))
-                    .version(Version.of(1))
+                    .version(ConcurrencyVersion.of(1))
                     .username(USERNAME)
                     .nickname(NICKNAME)
                     .state(UserState.E)
@@ -910,6 +939,32 @@ class UserTest {
                     .build();
             assertThat(a).isEqualTo(b);
             assertThat(a).isNotEqualTo(user2);
+        }
+    }
+
+    @Nested
+    @DisplayName("乐观锁版本回填")
+    class VersionBackfill {
+
+        @Test
+        @DisplayName("回填落库版本：同值与递增接受，回退拒绝")
+        void should_acceptMonotonic_when_assignVersion() {
+            var user = fullUserWithPasswordAccount();
+            var initial = user.getVersion();
+
+            var bumped = ConcurrencyVersion.of(initial.value() + 1);
+            user.assignVersion(bumped);
+            assertThat(user.getVersion()).isEqualTo(bumped);
+            assertThat(user.ifMatch(bumped)).isTrue();
+
+            // 同值 = 本次未发 UPDATE 的等价写，幂等
+            user.assignVersion(bumped);
+            assertThat(user.getVersion()).isEqualTo(bumped);
+
+            // 回退 = 基础设施 bug（防御编程裸抛 ISE）
+            assertThatThrownBy(() -> user.assignVersion(initial))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(user.getVersion()).isEqualTo(bumped);
         }
     }
 

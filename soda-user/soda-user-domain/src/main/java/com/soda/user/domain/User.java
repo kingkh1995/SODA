@@ -3,13 +3,15 @@ package com.soda.user.domain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.soda.component.domain.Aggregate;
+import com.soda.component.domain.IntLiteralType;
+import com.soda.component.domain.Versioned;
 import com.soda.component.domain.gateway.PasswordHasher;
+import com.soda.component.domain.types.ConcurrencyVersion;
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.types.Sex;
-import com.soda.component.domain.types.Version;
 import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.event.PasswordChangedEvent;
 import com.soda.user.domain.event.UserCreatedEvent;
@@ -52,7 +54,7 @@ import java.util.function.Predicate;
  */
 @Getter
 @EqualsAndHashCode(callSuper = true)
-public class User extends Aggregate<UserId> {
+public class User extends Aggregate<UserId> implements Versioned {
 
     private final PasswordAuthAccount passwordAccount;
     private Username username;
@@ -64,11 +66,11 @@ public class User extends Aggregate<UserId> {
     private @Nullable Avatar avatar;
     private List<AuthAccount<?>> accounts;
     /**
-     * 乐观锁版本号（持久化状态）— 创建路径恒为 {@link Version#INITIAL}，恢复路径随持久化数据流转。
+     * 乐观锁版本号（持久化状态）— 创建路径恒为 {@link ConcurrencyVersion#INITIAL}，恢复路径随持久化数据流转。
      * 递增由基础设施层负责（写入时 {@code WHERE version = ?} 校验后落 version + 1），
      * 领域逻辑不触碰（Vernon IDDD：手动递增会泄漏基础设施关注点到模型）。
      */
-    private Version version;
+    private ConcurrencyVersion version;
 
     // ─── 构造器 ───
 
@@ -85,7 +87,7 @@ public class User extends Aggregate<UserId> {
     @Builder
     private User(
             @JsonProperty(value = "id", required = true) UserId id,
-            @JsonProperty(value = "version", required = true) Version version,
+            @JsonProperty(value = "version", required = true) ConcurrencyVersion version,
             @JsonProperty(value = "username", required = true) Username username,
             @JsonProperty(value = "nickname", required = true) Nickname nickname,
             @JsonProperty(value = "state", required = true) UserState state,
@@ -107,7 +109,7 @@ public class User extends Aggregate<UserId> {
      * <p>
      * {@code passwordAccount} 为必填字段（ADR-0004：User 必有密码账户，类型化保证，无守卫）；
      * {@code accounts} 仅存放可选账户（Sms / Email / Social），不允许包含密码账户。
-     * {@code version} 创建路径恒为 {@link Version#INITIAL}（乐观锁递增归基础设施层）。
+     * {@code version} 创建路径恒为 {@link ConcurrencyVersion#INITIAL}（乐观锁递增归基础设施层）。
      */
     private User(Username username, Nickname nickname, UserState state, @Nullable Mobile mobile, @Nullable Email email, @Nullable Sex sex, @Nullable Avatar avatar, PasswordAuthAccount passwordAccount, @Nullable List<AuthAccount<?>> accounts) {
         ValidateUtils.notNull(username);
@@ -123,7 +125,7 @@ public class User extends Aggregate<UserId> {
         this.avatar = avatar;
         this.passwordAccount = passwordAccount;
         this.accounts = new LinkedList<>(Objects.requireNonNullElse(accounts, List.of()));
-        this.version = Version.INITIAL;
+        this.version = ConcurrencyVersion.INITIAL;
     }
 
     // ─── 创建 builder（public，只暴露业务字段）───
@@ -377,5 +379,26 @@ public class User extends Aggregate<UserId> {
         var oldState = state;
         this.state = UserState.E;
         registerEvent(new UserStateChangedEvent(getId(), oldState, UserState.E));
+    }
+
+    @Override
+    public boolean ifMatch(IntLiteralType expected) {
+        return version.equals(expected);
+    }
+
+    /**
+     * 回填权威版本 —— 基础设施在写库 flush 后调用（{@code @Version} 递增归持久化层；PO/聚合分离下
+     * JPA 无法像映射实体那样自动回写，本方法即该机制的显式出口）。
+     * <p>
+     * 落库版本单调不减：同值 = 本次未发 UPDATE 的等价写（允许），回退 = 基础设施 bug，抛裸
+     * {@link IllegalStateException}（防御编程不携消息，见 ADR-0015）。
+     */
+    @Override
+    public void assignVersion(IntLiteralType version) {
+        var persisted = ConcurrencyVersion.of(version.value());
+        if (persisted.compareTo(this.version) < 0) {
+            throw new IllegalStateException();
+        }
+        this.version = persisted;
     }
 }
