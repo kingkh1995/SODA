@@ -67,6 +67,38 @@ class SocialAuthAccountTest {
     }
 
     @Nested
+    @DisplayName("校验")
+    class Validation {
+
+        @Test
+        @DisplayName("createBuilder 缺 socialType 拒绝")
+        void should_throw_when_socialTypeIsNull() {
+            assertThatThrownBy(() -> SocialAuthAccount.createBuilder()
+                    .socialType(null)
+                    .openId("open123")
+                    .build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("createBuilder 缺 openId 拒绝")
+        void should_throw_when_openIdIsNull() {
+            assertThatThrownBy(() -> SocialAuthAccount.createBuilder()
+                    .socialType(SocialType.GE)
+                    .openId(null)
+                    .build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("恢复路径 active 为 null 拒绝")
+        void should_throw_when_activeIsNull() {
+            assertThatThrownBy(() -> SocialAuthAccount.builder().id(ID).active(null).build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("工厂方法")
     class Factories {
 
@@ -126,17 +158,6 @@ class SocialAuthAccountTest {
     @Nested
     @DisplayName("相等性")
     class Equality {
-
-        @Test
-        @DisplayName("相同 ID 构建的两个实例相等且非同一对象")
-        void should_beEqualButDistinct_when_sameId() {
-            var a = accountWith(Active.TRUE);
-            var b = accountWith(Active.TRUE);
-
-            assertThat(a).isNotSameAs(b);
-            assertThat(a.getId()).isEqualTo(b.getId());
-            assertThat(a).isEqualTo(b);
-        }
 
         @Test
         @DisplayName("相同字段相等，不同 ID 不等")

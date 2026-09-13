@@ -1,18 +1,23 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("字符集值对象")
-class AlphabetTest {
+class AlphabetTest extends DomainPrimitiveContractTest<Alphabet> {
+
+    @Override
+    protected Contract<Alphabet> contract() {
+        return new Contract<>(Alphabet.class, () -> new Alphabet("abc"), "\"abc\"",
+                "Alphabet[value=abc]", "{}", () -> new Alphabet("abd"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -47,7 +52,7 @@ class AlphabetTest {
 
         @ParameterizedTest
         @NullAndEmptySource
-        @DisplayName("null / 空白拒绝")
+        @DisplayName("null / 空字符串拒绝")
         void should_throw_when_blank(String invalid) {
             assertThatThrownBy(() -> new Alphabet(invalid))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -69,37 +74,8 @@ class AlphabetTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-
-        @Test
-        @DisplayName("相同字符集相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new Alphabet("abc")).isEqualTo(new Alphabet("abc"));
-        }
-
-        @Test
-        @DisplayName("不同字符集不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new Alphabet("abc")).isNotEqualTo(new Alphabet("abd"));
-        }
-
-        @Test
-        @DisplayName("字符顺序不同不等（索引语义随顺序）")
-        void should_notBeEqual_when_differentOrder() {
-            assertThat(new Alphabet("abc")).isNotEqualTo(new Alphabet("cba"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new Alphabet("abc")).hasSameHashCodeAs(new Alphabet("abc"));
-        }
-    }
-
-    @Nested
-    @DisplayName("索引与大小")
-    class Indexing {
+    @DisplayName("业务方法")
+    class RichMethods {
 
         @Test
         @DisplayName("size 返回字符集长度")
@@ -126,51 +102,6 @@ class AlphabetTest {
         void should_throw_when_indexOutOfBounds() {
             assertThatThrownBy(() -> Alphabet.DIGITS.charAt(10))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致（裸字符串）")
-        void should_roundTrip() {
-            var original = new Alphabet("Abc123");
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Alphabet.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() {
-            var json = MAPPER.writeValueAsString(new Alphabet("Abc123"));
-            assertThat(json).isEqualTo("\"Abc123\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() {
-            assertThat(MAPPER.readValue("\"Abc123\"", Alphabet.class))
-                    .isEqualTo(new Alphabet("Abc123"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", Alphabet.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new Alphabet("abc")).hasToString("Alphabet[value=abc]");
         }
     }
 }

@@ -33,7 +33,7 @@ public final class VerificationConvertor {
     public static Verification toDomain(VerificationPO e) {
         return Verification.builder()
                 .id(new Uuid(e.getId()))
-                .source(VerificationSource.of(e.getScene(), e.getSubject()))
+                .source(new VerificationSource(e.getScene(), e.getSubject()))
                 .state(VerificationState.of(e.getState()))
                 .code(new VerificationCode(e.getCode(), e.getExpireAt()))
                 .recipient(VerificationRecipient.of(e.getChannel(), e.getTarget()))

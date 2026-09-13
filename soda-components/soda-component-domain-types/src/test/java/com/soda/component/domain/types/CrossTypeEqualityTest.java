@@ -54,6 +54,7 @@ class CrossTypeEqualityTest {
                 PositiveInt.of(3),
                 new RandomString("Abc123"),
                 new SmsContent("hello"),
+                SoftwareVersion.of("v1.2.3"),
                 new Uuid("550e8400-e29b-41d4-a716-446655440000"),
                 new UpdateMask(Set.of("nickname")),
                 ConcurrencyVersion.of(3),

@@ -1,18 +1,22 @@
 package com.soda.user.domain.types;
 
+import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SocialType 枚举")
-class SocialTypeTest {
+class SocialTypeTest extends EnumDomainPrimitiveContractTest<SocialType> {
+
+    @Override
+    protected EnumContract<SocialType> contract() {
+        return new EnumContract<>(SocialType.class, "\"INVALID\"");
+    }
 
     @Nested
     @DisplayName("查找")
@@ -20,28 +24,34 @@ class SocialTypeTest {
 
         @ParameterizedTest(name = "of({0}) → {0}")
         @CsvSource({"GE", "DT", "WENT", "WMP", "WOPN", "WMIN", "ALIP"})
-        @DisplayName("of(String) 查找正确")
-        void should_findByName(String name) {
+        @DisplayName("合法名逐一解析")
+        void should_lookup_when_validName(String name) {
             assertThat(SocialType.of(name)).isEqualTo(SocialType.valueOf(name));
         }
 
         @Test
-        @DisplayName("of(null) 抛出异常")
-        void should_throw_when_null() {
+        @DisplayName("null / 空 / 未知名拒绝")
+        void should_throw_when_invalidName() {
             assertThatThrownBy(() -> SocialType.of(null))
                     .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> SocialType.of(""))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> SocialType.of("X"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("常量集快照")
+        void should_exposeExactConstants() {
+            assertThat(SocialType.values()).containsExactly(
+                    SocialType.GE, SocialType.DT, SocialType.WENT, SocialType.WMP,
+                    SocialType.WOPN, SocialType.WMIN, SocialType.ALIP);
         }
     }
 
     @Nested
     @DisplayName("显示")
     class Display {
-
-        @Test
-        @DisplayName("枚举常量数量")
-        void should_haveCorrectCount() {
-            assertThat(SocialType.values()).hasSize(7);
-        }
 
         @ParameterizedTest(name = "{0} → desc={1}")
         @CsvSource(textBlock = """
@@ -53,36 +63,15 @@ class SocialTypeTest {
                     WMIN,  wechat-mini
                     ALIP,  alipay-mini
                 """)
-        @DisplayName("各枚举常量 desc() 正确")
-        void should_haveCorrectDesc(String name, String desc) {
+        @DisplayName("desc 逐常量")
+        void should_exposeDesc(String name, String desc) {
             assertThat(SocialType.valueOf(name).desc()).isEqualTo(desc);
         }
 
         @Test
-        @DisplayName("toString 返回枚举名")
-        void should_returnName() {
+        @DisplayName("toString 为 name()")
+        void should_haveNameToString() {
             assertThat(SocialType.GE).hasToString("GE");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @ParameterizedTest(name = "Jackson round-trip {0}")
-        @CsvSource({"GE", "DT", "WENT", "WMP", "WOPN", "WMIN", "ALIP"})
-        @DisplayName("Jackson round-trip")
-        void should_serializeDeserialize(String name) throws Exception {
-            var value = SocialType.valueOf(name);
-            assertThat(MAPPER.writeValueAsString(value)).isEqualTo("\"" + name + "\"");
-            assertThat(MAPPER.readValue("\"" + name + "\"", SocialType.class)).isEqualTo(value);
-        }
-
-        @Test
-        @DisplayName("非法枚举名称拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", SocialType.class))
-                    .isInstanceOf(JacksonException.class);
         }
     }
 }

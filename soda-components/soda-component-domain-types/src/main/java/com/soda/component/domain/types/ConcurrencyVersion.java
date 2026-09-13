@@ -23,15 +23,27 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode
 public final class ConcurrencyVersion implements IntLiteralType, Comparable<ConcurrencyVersion> {
 
+    private static final int CACHE_LOW = 0;
+
     private static final int CACHE_HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
 
-    private static final ArrayTypeCache<ConcurrencyVersion> CACHE =
-            new ArrayTypeCache<>(0, CACHE_HIGH, ConcurrencyVersion::new);
+    /**
+     * 定长实例缓存 — 数组 O(1) 索引，无 auto-boxing；越界值回落构造新实例。
+     */
+    private static final ConcurrencyVersion[] CACHE = createCache();
 
     /**
      * 初始版本号（0）。
      */
-    public static final ConcurrencyVersion INITIAL = CACHE.get(0);  // 0 始终在缓存范围
+    public static final ConcurrencyVersion INITIAL = CACHE[0];  // 0 始终在缓存范围
+
+    private static ConcurrencyVersion[] createCache() {
+        var cache = new ConcurrencyVersion[CACHE_HIGH - CACHE_LOW + 1];
+        for (var i = 0; i < cache.length; i++) {
+            cache[i] = new ConcurrencyVersion(CACHE_LOW + i);
+        }
+        return cache;
+    }
 
     private final int value;
 
@@ -44,10 +56,9 @@ public final class ConcurrencyVersion implements IntLiteralType, Comparable<Conc
      * 从可靠输入构造。缓存范围内的值返回缓存实例。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public static ConcurrencyVersion of(Integer value) {
-        ValidateUtils.notNull(value);
-        var cached = CACHE.get(value);
-        return cached != null ? cached : new ConcurrencyVersion(value);
+    public static ConcurrencyVersion of(int value) {
+        var idx = value - CACHE_LOW;
+        return 0 <= idx && idx < CACHE.length ? CACHE[idx] : new ConcurrencyVersion(value);
     }
 
     /**
@@ -55,6 +66,14 @@ public final class ConcurrencyVersion implements IntLiteralType, Comparable<Conc
      */
     public static ConcurrencyVersion parse(String s) {
         return of(ParseUtils.parseInt(s));
+    }
+
+    /**
+     * 包装 → 原语适配入口 —— {@code Integer} 静态类型（如可空的乐观锁版本列）守卫后委托 {@link #of(int)}。
+     */
+    public static ConcurrencyVersion from(Integer value) {
+        ValidateUtils.notNull(value);
+        return of(value);
     }
 
     /**

@@ -1,18 +1,23 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("随机字符串值对象")
-class RandomStringTest {
+class RandomStringTest extends DomainPrimitiveContractTest<RandomString> {
+
+    @Override
+    protected Contract<RandomString> contract() {
+        return new Contract<>(RandomString.class, () -> new RandomString("abc"), "\"abc\"",
+                "RandomString[value=abc]", "{}", () -> new RandomString("xyz"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -50,76 +55,6 @@ class RandomStringTest {
         void should_throw_when_valueIsBlank() {
             assertThatThrownBy(() -> new RandomString("   "))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new RandomString("abc")).isEqualTo(new RandomString("abc"));
-        }
-
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new RandomString("abc")).isNotEqualTo(new RandomString("xyz"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            var a = new RandomString("abc");
-            var b = new RandomString("abc");
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson 序列化反序列化一致")
-        void should_roundTrip() throws Exception {
-            var original = new RandomString("Abc123");
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, RandomString.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(new RandomString("Abc123"));
-            assertThat(json).isEqualTo("\"Abc123\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"Abc123\"", RandomString.class)).isEqualTo(new RandomString("Abc123"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", RandomString.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new RandomString("abc")).hasToString("RandomString[value=abc]");
         }
     }
 

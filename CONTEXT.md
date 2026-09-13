@@ -70,7 +70,7 @@ _Avoid_: 认证信息、登录方式、Account
 社交认证账户。纯标识映射，无密码验证。
 
 **AuthAccountId**:
-
+认证账户（AuthAccount 子实体）的唯一标识；随认证方式取不同形态，各认证账户标识互不相等。
 
 **AuthAccountType**:
 认证方式枚举。取值：`P`（Password）、`S`（Sms）、`E`（Email）、`O`（OAuth）。

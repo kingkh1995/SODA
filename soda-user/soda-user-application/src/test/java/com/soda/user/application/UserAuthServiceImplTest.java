@@ -79,7 +79,7 @@ import static org.mockito.Mockito.when;
 class UserAuthServiceImplTest {
 
     private static final UserId USER_ID = new UserId(1L);
-    private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
+    private static final VerificationSource UCC_SOURCE = new VerificationSource("UCC", "1");
     private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
     private static final Email NEW_EMAIL = Email.of("new@test.com");
     private static final String VALID_CODE = "123456";

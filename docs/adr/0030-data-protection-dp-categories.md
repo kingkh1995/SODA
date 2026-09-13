@@ -17,6 +17,7 @@ status: stable
 
 ## Consequences
 
-- DP 实现形态、工厂与校验规则单源于 [dp-conventions](../dp-conventions.md)（§1.3 脱敏存储值）；本 ADR 只定分类与基类边界，不重复正文
+- DP 实现形态、工厂与校验规则单源于 [dp-conventions §2.4 敏感数据族](../dp-conventions.md#24-敏感数据族)；本 ADR
+  只定分类与基类边界，不重复正文
 - 遮蔽义务判定（字面值是否为攻击素材）见 [ADR-0033](0033-crypto-hash-type-redesign.md) 解耦律：明文 PII 与 PHC 串继承
   `SensitiveValue`，密文/摘要/掩码产物无遮蔽义务

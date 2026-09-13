@@ -75,7 +75,7 @@ public record UpdateMask(Set<String> fields) implements Type {
         unknown.removeAll(allowedFields);
         if (!unknown.isEmpty()) {
             throw new IllegalArgumentException(
-                    "Unknown update_mask fields: " + unknown + "; allowed: " + allowedFields);
+                    "unknown update_mask fields: " + unknown + "; allowed: " + allowedFields);
         }
         return new UpdateMask(tokens);
     }

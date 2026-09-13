@@ -65,7 +65,7 @@ class VerificationCreatedEventHandlerTest {
     private static Verification initializedVerification(Mobile target) {
         return Verification.builder()
                 .id(Uuid.random())
-                .source(VerificationSource.of("UCC", "1"))
+                .source(new VerificationSource("UCC", "1"))
                 .state(VerificationState.I)
                 .recipient(new SmsRecipient(target))
                 .code(new VerificationCode(VALID_CODE, Instant.now().plus(Duration.ofMinutes(5))))
@@ -75,7 +75,7 @@ class VerificationCreatedEventHandlerTest {
     private static Verification initializedVerification(Email target) {
         return Verification.builder()
                 .id(Uuid.random())
-                .source(VerificationSource.of("UCC", "1"))
+                .source(new VerificationSource("UCC", "1"))
                 .state(VerificationState.I)
                 .recipient(new EmailRecipient(target))
                 .code(new VerificationCode(VALID_CODE, Instant.now().plus(Duration.ofMinutes(30))))

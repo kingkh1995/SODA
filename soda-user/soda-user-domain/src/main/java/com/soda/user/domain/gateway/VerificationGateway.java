@@ -46,7 +46,7 @@ public interface VerificationGateway extends EntityGateway<Verification, Uuid> {
      * 退化为取该行——契约仍显式表达，防未来多行场景退化。
      * <p>
      * 消费命令（changeMobile/changeEmail）不含 target——换绑的新联系方式隐含在验证记录中，
-     * 以 {@code VerificationSource.of(UCC, userId)} 加载即主体匹配（持码人即收码人）；
+     * 以 {@code new VerificationSource(UCC, userId)} 加载即主体匹配（持码人即收码人）；
      * 「按 source 加载」本身即守卫，source 匹配守卫在 {@code User.changeXxx} 保留为防御纵深。
      *
      * @param states 候选状态集合（消费流传 {@code {P}}——changeMobile 加载 PENDING）

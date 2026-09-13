@@ -1,18 +1,25 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("PasswordHash —— PHC 白名单与格式感知遮蔽")
-class PasswordHashTest {
+class PasswordHashTest extends DomainPrimitiveContractTest<PasswordHash> {
 
     private static final String BCRYPT = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+    private static final String ARGON2ID = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
+
+    @Override
+    protected Contract<PasswordHash> contract() {
+        return new Contract<>(PasswordHash.class, () -> PasswordHash.of(BCRYPT), "\"" + BCRYPT + "\"",
+                "PasswordHash[masked=$2a$10$***]", "\"$md5$abcdef\"",
+                () -> PasswordHash.of(ARGON2ID));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -26,15 +33,16 @@ class PasswordHashTest {
         @Test
         @DisplayName("接受 argon2id 格式")
         void should_create_when_argon2idFormat() {
-            var argon2id = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
-            assertThat(PasswordHash.of(argon2id).value()).isEqualTo(argon2id);
+            assertThat(PasswordHash.of(ARGON2ID).value()).isEqualTo(ARGON2ID);
         }
 
         @Test
         @DisplayName("接受 scrypt / pbkdf2 前缀")
         void should_create_when_scryptOrPbkdf2Prefix() {
-            assertThat(PasswordHash.of("$scrypt$n=16384,r=8,p=1$c2FsdA$aHash").value()).startsWith("$scrypt$");
-            assertThat(PasswordHash.of("$pbkdf2-sha256$c=10000$c2FsdA$aHash").value()).startsWith("$pbkdf2-");
+            var scrypt = "$scrypt$n=16384,r=8,p=1$c2FsdA$aHash";
+            var pbkdf2 = "$pbkdf2-sha256$c=10000$c2FsdA$aHash";
+            assertThat(PasswordHash.of(scrypt).value()).isEqualTo(scrypt);
+            assertThat(PasswordHash.of(pbkdf2).value()).isEqualTo(pbkdf2);
         }
     }
 
@@ -79,29 +87,6 @@ class PasswordHashTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(PasswordHash.of(BCRYPT)).isEqualTo(PasswordHash.of(BCRYPT));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(PasswordHash.of(BCRYPT))
-                    .isNotEqualTo(PasswordHash.of("$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(PasswordHash.of(BCRYPT)).hasSameHashCodeAs(PasswordHash.of(BCRYPT));
-        }
-    }
-
-    @Nested
     @DisplayName("脱敏")
     class Masking {
         @Test
@@ -113,8 +98,7 @@ class PasswordHashTest {
         @Test
         @DisplayName("argon2id 遮蔽保留完整成本参数、不含盐")
         void should_maskCostParamsWithoutSalt_when_argon2id() {
-            var argon2id = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
-            assertThat(PasswordHash.of(argon2id).maskedValue())
+            assertThat(PasswordHash.of(ARGON2ID).maskedValue())
                     .isEqualTo("$argon2id$v=19$m=65536,t=2,p=1$***")
                     .doesNotContain("c29tZXNhbHQ");
         }
@@ -133,35 +117,6 @@ class PasswordHashTest {
             assertThat(PasswordHash.of("$pbkdf2-sha256$c=10000$c2FsdA$aHash").maskedValue())
                     .isEqualTo("$pbkdf2-sha256$c=10000$***")
                     .doesNotContain("c2FsdA");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson round-trip 一致（@JsonValue 裸值 + @JsonCreator 工厂）")
-        void should_roundTrip() throws Exception {
-            var original = PasswordHash.of(BCRYPT);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, PasswordHash.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝（未知前缀经工厂校验失败）")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"$md5$abcdef\"", PasswordHash.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 经基类统一为遮蔽形态，不泄露校验和")
-        void should_haveMaskedToString() {
-            assertThat(PasswordHash.of(BCRYPT)).hasToString("PasswordHash[masked=$2a$10$***]");
         }
     }
 }

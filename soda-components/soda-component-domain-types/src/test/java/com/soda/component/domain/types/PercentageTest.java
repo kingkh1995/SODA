@@ -1,19 +1,24 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Percentage 值对象")
-class PercentageTest {
+class PercentageTest extends ComparableDomainPrimitiveContractTest<Percentage> {
+
+    @Override
+    protected Contract<Percentage> contract() {
+        return new Contract<>(Percentage.class, () -> Percentage.of("12.34"), "\"12.34\"",
+                "Percentage[value=12.34]", "{}", () -> Percentage.of("56.78"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -29,13 +34,6 @@ class PercentageTest {
         @DisplayName("from(BigDecimal) 创建实例")
         void should_create_when_validBigDecimal() {
             var pct = Percentage.from(new BigDecimal("12.34"));
-            assertThat(pct.value()).isEqualTo("12.34");
-        }
-
-        @Test
-        @DisplayName("parse 创建实例")
-        void should_create_when_parseValidString() {
-            var pct = Percentage.of("12.34");
             assertThat(pct.value()).isEqualTo("12.34");
         }
 
@@ -58,20 +56,6 @@ class PercentageTest {
     @DisplayName("校验与异常")
     class Validation {
         @Test
-        @DisplayName("边界值 0 合法")
-        void should_accept_when_valueIsZero() {
-            var pct = Percentage.of("0");
-            assertThat(pct.value()).isEqualTo("0.00");
-        }
-
-        @Test
-        @DisplayName("边界值 100 合法")
-        void should_accept_when_valueIs100() {
-            var pct = Percentage.of("100");
-            assertThat(pct.value()).isEqualTo("100.00");
-        }
-
-        @Test
         @DisplayName("null 拒绝")
         void should_throw_when_valueIsNull() {
             assertThatThrownBy(() -> Percentage.of((String) null))
@@ -88,13 +72,6 @@ class PercentageTest {
         @Test
         @DisplayName("非法字符串拒绝")
         void should_throw_when_valueIsNotNumeric() {
-            assertThatThrownBy(() -> Percentage.of("abc"))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
-        @DisplayName("parse 非法字符串拒绝")
-        void should_throw_when_parseInvalidString() {
             assertThatThrownBy(() -> Percentage.of("abc"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
@@ -122,29 +99,7 @@ class PercentageTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(Percentage.of("12.34")).isEqualTo(Percentage.of("12.34"));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(Percentage.of("12.34")).isNotEqualTo(Percentage.of("56.78"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(Percentage.of("12.34")).hasSameHashCodeAs(Percentage.of("12.34"));
-        }
-    }
-
-    @Nested
-    @DisplayName("归一化幂等")
+    @DisplayName("归一化")
     class Normalization {
         @Test
         @DisplayName("等值归一化")
@@ -157,11 +112,7 @@ class PercentageTest {
         void should_beNormalized_when_differentPrecision() {
             assertThat(Percentage.of("12.10")).isEqualTo(Percentage.of("12.1"));
         }
-    }
 
-    @Nested
-    @DisplayName("边界归一化")
-    class BoundaryNormalization {
         @Test
         @DisplayName("下界 0 归一化为 \"0.00\"")
         void should_normalizeZero_when_lowerBound() {
@@ -176,8 +127,8 @@ class PercentageTest {
     }
 
     @Nested
-    @DisplayName("换算与展示")
-    class RichMethods {
+    @DisplayName("转换")
+    class Conversion {
         @Test
         @DisplayName("toFraction 正确转换")
         void should_convertToFraction_when_validValue() {
@@ -207,68 +158,6 @@ class PercentageTest {
         @DisplayName("toDisplayString 100%")
         void should_toDisplayString_when_max() {
             assertThat(Percentage.of("100").toDisplayString()).isEqualTo("100.00%");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = Percentage.of("12.34");
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Percentage.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(Percentage.of("12.34"));
-            assertThat(json).isEqualTo("\"12.34\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"12.34\"", Percentage.class))
-                    .isEqualTo(Percentage.of("12.34"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", Percentage.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("自然顺序正确")
-        void should_orderNaturally_when_valuesDiffer() {
-            var low = Percentage.of("12.34");
-            var high = Percentage.of("56.78");
-            assertThat(low).isLessThan(high);
-            assertThat(high).isGreaterThan(low);
-        }
-
-        @Test
-        @DisplayName("相等值排序一致")
-        void should_compareEqual_when_sameValue() {
-            assertThat(Percentage.of("50")).isEqualByComparingTo(Percentage.of("50"));
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(Percentage.of("12.34")).hasToString("Percentage[value=12.34]");
         }
     }
 }

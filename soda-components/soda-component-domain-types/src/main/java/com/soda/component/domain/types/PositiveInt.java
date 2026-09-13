@@ -3,34 +3,26 @@ package com.soda.component.domain.types;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.IntLiteralType;
 import com.soda.component.domain.util.ParseUtils;
-import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
 import lombok.EqualsAndHashCode;
 
 
 /**
- * 正整数 DP — 不可变、自校验、可比较、带缓存。
+ * 正整数 DP — 不可变、自校验、可比较。
  * <p>
  * 校验规则：值 >= 1。通用类型，可用于长度、数量、序号等场景。
- * 缓存范围至少为 {@code [1, 100]}（参考 {@link Integer} 缓存和 {@link ArrayTypeCache} 设计），
- * 可通过 SPI 接口 {@link com.soda.component.domain.util.TypeConfigProvider}
- * 的 {@code positiveIntCacheHigh()} 自定义上限。
- * 超出缓存范围的值创建新实例，不受缓存影响。
+ * <p>
+ * 无实例缓存：生产调用点为策略常量级（每次构造一个实例），缓存不产生可测收益（见 dp-conventions §7）。
  *
  * @see IntLiteralType
- * @see ArrayTypeCache
  */
 @EqualsAndHashCode
 public final class PositiveInt implements IntLiteralType, Comparable<PositiveInt> {
 
-    private static final int CACHE_HIGH = Math.max(100, TypeConfig.PROVIDER.positiveIntCacheHigh());
-    private static final ArrayTypeCache<PositiveInt> CACHE =
-            new ArrayTypeCache<>(1, CACHE_HIGH, PositiveInt::new);
-
     /**
      * 单位值常量（1）。
      */
-    public static final PositiveInt ONE = CACHE.get(1);  // 1 始终在缓存范围
+    public static final PositiveInt ONE = new PositiveInt(1);
 
     private final int value;
 
@@ -40,12 +32,11 @@ public final class PositiveInt implements IntLiteralType, Comparable<PositiveInt
     }
 
     /**
-     * 从可靠输入构造。缓存范围内的值返回缓存实例。
+     * 从可靠输入构造。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static PositiveInt of(int value) {
-        var cached = CACHE.get(value);
-        return cached != null ? cached : new PositiveInt(value);
+        return new PositiveInt(value);
     }
 
     /**

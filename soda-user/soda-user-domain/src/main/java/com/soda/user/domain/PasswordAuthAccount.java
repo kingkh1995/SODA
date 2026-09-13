@@ -74,11 +74,11 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     // ─── accessors ───
 
     /**
-     * 认证类型 — 常量来源为 {@link PasswordAuthAccountId#ACCOUNT_TYPE}（与 ID 解耦，无 ID 亦可派发）。
+     * 认证类型 — 与 ID 解耦（创建瞬态无 ID 亦可派发），类型信息即本类自身。
      */
     @Override
     public AuthAccountType getAccountType() {
-        return PasswordAuthAccountId.ACCOUNT_TYPE;
+        return AuthAccountType.P;
     }
 
     // ─── queries ───

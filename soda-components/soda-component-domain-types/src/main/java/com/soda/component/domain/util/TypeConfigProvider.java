@@ -50,11 +50,4 @@ public interface TypeConfigProvider {
     default int percentageScale() {
         return 2;
     }
-
-    /**
-     * 正整数缓存上限（含）。默认 100，至少 100。
-     */
-    default int positiveIntCacheHigh() {
-        return 100;
-    }
 }

@@ -16,7 +16,7 @@ import com.soda.component.domain.util.ValidateUtils;
  * {@link #compositeKey()} = {@code "scene:subject"} — {@code active_key} 单一事实源
  * （复合键推导是 DP 合法职责——非序列化：串从不解析回 DP，是单向派生的槽位唯一键，
  * 见 ADR-0025）。
- * 不可变、自校验、可比较。
+ * 不可变、自校验。
  *
  * @see Type
  */
@@ -25,10 +25,6 @@ public record VerificationSource(String scene, String subject) implements Type {
     public VerificationSource {
         ValidateUtils.hasText(scene);
         ValidateUtils.hasText(subject);
-    }
-
-    public static VerificationSource of(String scene, String subject) {
-        return new VerificationSource(scene, subject);
     }
 
     /**

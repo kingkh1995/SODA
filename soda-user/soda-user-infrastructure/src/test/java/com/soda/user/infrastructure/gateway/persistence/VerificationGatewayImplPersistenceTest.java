@@ -39,8 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("VerificationGatewayImpl 真库行为")
 class VerificationGatewayImplPersistenceTest {
 
-    private static final VerificationSource SOURCE = VerificationSource.of("UCC", "42");
-    private static final VerificationSource OTHER_SOURCE = VerificationSource.of("UCC", "43");
+    private static final VerificationSource SOURCE = new VerificationSource("UCC", "42");
+    private static final VerificationSource OTHER_SOURCE = new VerificationSource("UCC", "43");
     private static final String MOBILE = "13800138000";
     private static final Instant FUTURE = Instant.now().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
     private static final Instant PAST = Instant.now().minusSeconds(600).truncatedTo(ChronoUnit.SECONDS);

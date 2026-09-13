@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 加密族/哈希族网关端口契约测试（ADR-0033）——断言两轴：
- * 方法面宽度（四端口最小面）与入参签名纪律（禁止 String/基本类型，必须为 DP 或类型令牌）。
+ * 方法面宽度（四端口最小面）与入参签名纪律（禁止 String 与基本类型）。
  */
 @DisplayName("加密与哈希网关端口契约")
 class GatewayPortsContractTest {

@@ -1,7 +1,7 @@
 package com.soda.user.domain;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.types.Mobile;
-import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
 import org.junit.jupiter.api.DisplayName;
@@ -9,16 +9,22 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SmsAuthAccountId 值对象")
-class SmsAuthAccountIdTest {
+class SmsAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SmsAuthAccountId> {
 
     private static final Mobile VALID_MOBILE = Mobile.of("13800138000");
+
+    @Override
+    protected Contract<SmsAuthAccountId> contract() {
+        return new Contract<>(SmsAuthAccountId.class, () -> SmsAuthAccountId.of("S:13800138000"),
+                "\"S:13800138000\"", "SmsAuthAccountId[value=S:13800138000]", "\"invalid\"",
+                () -> SmsAuthAccountId.of("S:13900139000"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -47,7 +53,7 @@ class SmsAuthAccountIdTest {
         @Test
         @DisplayName("authAccountType 返回 S")
         void should_returnS_when_authAccountType() {
-            assertThat(SmsAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.S);
+            assertThat(SmsAuthAccountId.of("S:13800138000").accountType()).isEqualTo(AuthAccountType.S);
         }
     }
 
@@ -55,11 +61,10 @@ class SmsAuthAccountIdTest {
     @DisplayName("路由")
     class Routing {
         @Test
-        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
-        void should_routeToSmsSubtype_when_baseFactoryOrJson() throws Exception {
-            assertThat(AuthAccountId.of("S:13800138000")).isInstanceOf(SmsAuthAccountId.class);
-            assertThat(MAPPER.readValue("\"S:13800138000\"", AuthAccountId.class))
-                    .isInstanceOf(SmsAuthAccountId.class);
+        @DisplayName("JSON 反序列化以本子类为声明类型")
+        void should_routeToSmsSubtype_when_json() throws Exception {
+            assertThat(MAPPER.readValue("\"S:13800138000\"", SmsAuthAccountId.class))
+                    .isEqualTo(SmsAuthAccountId.of("S:13800138000"));
         }
     }
 
@@ -90,97 +95,12 @@ class SmsAuthAccountIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(SmsAuthAccountId.from(Mobile.of("13800138000")))
-                    .isEqualTo(SmsAuthAccountId.from(Mobile.of("13800138000")));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(SmsAuthAccountId.from(Mobile.of("13800138000")))
-                    .isNotEqualTo(SmsAuthAccountId.from(Mobile.of("13900139000")));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode_when_equal() {
-            var a = SmsAuthAccountId.of("S:13800138000");
-            var b = SmsAuthAccountId.of("S:13800138000");
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 包含 value")
-        void should_containValue_when_toString() {
-            assertThat(SmsAuthAccountId.of("S:13800138000"))
-                    .hasToString("SmsAuthAccountId[value=S:13800138000]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson 序列化反序列化")
-        void should_roundTrip_when_validJson() throws Exception {
-            var original = SmsAuthAccountId.from(VALID_MOBILE);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(json).isEqualTo("\"S:13800138000\"");
-            var restored = MAPPER.readValue(json, SmsAuthAccountId.class);
-            assertThat(restored).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 抛出异常")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", SmsAuthAccountId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var id = SmsAuthAccountId.of("S:13800138000");
-            var json = MAPPER.writeValueAsString(id);
-            assertThat(json).isEqualTo("\"S:13800138000\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"S:13800138000\"", SmsAuthAccountId.class))
-                    .isEqualTo(SmsAuthAccountId.of("S:13800138000"));
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 委托给字符串比较")
-        void should_delegateToStringCompare_when_compareTo() {
-            var a = SmsAuthAccountId.from(Mobile.of("13800138000"));
-            var b = SmsAuthAccountId.from(Mobile.of("13900139000"));
-            assertThat(a.compareTo(b) < 0).isTrue();
-            assertThat(b.compareTo(a) > 0).isTrue();
-            assertThat(a.compareTo(a) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals_when_compareTo() {
-            var a = SmsAuthAccountId.of("S:13800138000");
-            var b = SmsAuthAccountId.of("S:13800138000");
-            assertThat(a.compareTo(b) == 0).isTrue();
+        @DisplayName("identifier 返回规范化编码值")
+        void should_returnCanonicalValue_when_identifier() {
+            assertThat(SmsAuthAccountId.of("S:13800138000").identifier()).isEqualTo("S:13800138000");
         }
     }
 }

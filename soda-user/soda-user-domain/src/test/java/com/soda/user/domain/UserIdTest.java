@@ -1,21 +1,25 @@
 package com.soda.user.domain;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+import com.soda.component.domain.types.LongId;
 import com.soda.user.domain.types.UserId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UserId 值对象")
-class UserIdTest {
+class UserIdTest extends ComparableDomainPrimitiveContractTest<UserId> {
 
     private static final long VALID_ID = 1L;
+
+    @Override
+    protected Contract<UserId> contract() {
+        return new Contract<>(UserId.class, () -> new UserId(42L), "42",
+                "UserId[value=42]", "\"not-a-number\"", () -> new UserId(43L));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -25,6 +29,12 @@ class UserIdTest {
         void should_create_when_validValue() {
             var id = new UserId(VALID_ID);
             assertThat(id.value()).isEqualTo(VALID_ID);
+        }
+
+        @Test
+        @DisplayName("有效字符串 parse")
+        void should_parse_when_validString() {
+            assertThat(UserId.parse("1")).isEqualTo(new UserId(VALID_ID));
         }
     }
 
@@ -38,33 +48,24 @@ class UserIdTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
-        @ParameterizedTest
-        @ValueSource(longs = {-1, -100})
+        @Test
         @DisplayName("负值拒绝")
-        void should_throw_when_negative(long invalid) {
-            assertThatThrownBy(() -> new UserId(invalid))
+        void should_throw_when_negative() {
+            assertThatThrownBy(() -> new UserId(-1L))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new UserId(-100L))
                     .isInstanceOf(IllegalArgumentException.class);
         }
-    }
-
-    @Nested
-    @DisplayName("解析")
-    class Parse {
-        @Test
-        @DisplayName("有效字符串解析")
-        void should_parse_when_validString() {
-            assertThat(UserId.parse("1")).isEqualTo(new UserId(VALID_ID));
-        }
 
         @Test
-        @DisplayName("null 字符串拒绝")
+        @DisplayName("parse null 字符串拒绝")
         void should_throw_when_nullString() {
             assertThatThrownBy(() -> UserId.parse(null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
-        @DisplayName("非数字字符串拒绝")
+        @DisplayName("parse 非数字字符串拒绝")
         void should_throw_when_notANumber() {
             assertThatThrownBy(() -> UserId.parse("not-a-number"))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -72,81 +73,29 @@ class UserIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new UserId(VALID_ID)).isEqualTo(new UserId(VALID_ID));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new UserId(1L)).isNotEqualTo(new UserId(2L));
-        }
-
-        @Test
-        @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new UserId(42L)).hasSameHashCodeAs(new UserId(42L));
+        @DisplayName("identifier 返回类型化规范值")
+        void should_returnTypedValue_when_identifier() {
+            assertThat(new UserId(42L).identifier()).isEqualTo(42L);
         }
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("转换")
+    class Conversion {
         @Test
-        @DisplayName("toString 格式正确")
-        void should_formatToString() {
-            assertThat(new UserId(42L)).hasToString("UserId[value=42]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson 序列化与反序列化")
-        void should_roundTrip() throws Exception {
-            var original = new UserId(42L);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, UserId.class);
-            assertThat(restored).isEqualTo(original);
+        @DisplayName("toLongId 产出规范 LongId")
+        void should_produceCanonicalLongId_when_toLongId() {
+            assertThat(new UserId(42L).toLongId()).isEqualTo(new LongId(42L));
         }
 
         @Test
-        @DisplayName("序列化为数字")
-        void should_serializeAsNumber() throws Exception {
-            assertThat(MAPPER.writeValueAsString(new UserId(42L))).isEqualTo("42");
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", UserId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 按 Long 顺序比较")
-        void should_compareByLongOrder() {
-            assertThat(new UserId(1L).compareTo(new UserId(2L)) < 0).isTrue();
-            assertThat(new UserId(2L).compareTo(new UserId(1L)) > 0).isTrue();
-            assertThat(new UserId(1L).compareTo(new UserId(1L)) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = new UserId(42L);
-            var b = new UserId(42L);
-            assertThat(a.compareTo(b) == 0).isTrue();
-            assertThat(a).isEqualTo(b);
+        @DisplayName("toLongId 往返互逆")
+        void should_beInverse_when_toLongId() {
+            var id = new UserId(42L);
+            assertThat(new UserId(id.toLongId().value())).isEqualTo(id);
         }
     }
 }

@@ -49,7 +49,7 @@ public class UserVerificationFactory {
      * 与构造方法共用的唯一映射点。
      */
     public VerificationSource newCredentialChangeSource(UserId userId) {
-        return VerificationSource.of(UserVerificationScene.UCC.name(), Long.toString(userId.value()));
+        return new VerificationSource(UserVerificationScene.UCC.name(), Long.toString(userId.value()));
     }
 
     /**

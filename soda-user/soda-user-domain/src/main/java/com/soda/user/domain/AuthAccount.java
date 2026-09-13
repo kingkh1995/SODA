@@ -48,7 +48,7 @@ public abstract sealed class AuthAccount<ID extends AuthAccountId> extends Entit
     // ─── factories ───
 
     /**
-     * 返回该账户的认证类型 — 常量来源为各 ID 子类的 {@code ACCOUNT_TYPE}，与 ID 解耦（无 ID 亦可派发）。
+     * 返回该账户的认证类型 — 与 ID 解耦（创建瞬态无 ID 亦可派发），类型信息即本类自身。
      */
     public abstract AuthAccountType getAccountType();
 

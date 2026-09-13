@@ -54,7 +54,7 @@ public class UserGatewayImpl implements UserGateway {
             var saved = userRepository.saveAndFlush(UserConvertor.toPersistence(user));
             var generatedId = new UserId(saved.getId());
             user.assignId(generatedId);
-            user.assignVersion(ConcurrencyVersion.of(saved.getVersion()));
+            user.assignVersion(ConcurrencyVersion.from(saved.getVersion()));
             return generatedId;
         }
         // 更新路径：findById 仅为终态守卫读取持久化态（merge 不需要既有行基线——
@@ -79,14 +79,14 @@ public class UserGatewayImpl implements UserGateway {
             entity.setMobile(null);
             entity.setEmail(null);
             var merged = userRepository.saveAndFlush(entity);
-            user.assignVersion(ConcurrencyVersion.of(merged.getVersion()));
+            user.assignVersion(ConcurrencyVersion.from(merged.getVersion()));
             return user.getId();
         }
         // 常规 update：id 有值 → merge（@Version 校验自动）；flush 后把落库的真实版本回填聚合。
         // 回填而非自增：是否发 UPDATE（从而递增）由持久化层按脏字段 / 审计列决定，聚合自增会与行版本漂移
         // （响应 ETag 随之陈旧或超前，客户端回带 If-Match 必失配）。
         var merged = userRepository.saveAndFlush(UserConvertor.toPersistence(user));
-        user.assignVersion(ConcurrencyVersion.of(merged.getVersion()));
+        user.assignVersion(ConcurrencyVersion.from(merged.getVersion()));
         return user.getId();
     }
 

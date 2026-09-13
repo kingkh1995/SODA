@@ -63,6 +63,25 @@ class SmsAuthAccountTest {
     }
 
     @Nested
+    @DisplayName("校验")
+    class Validation {
+
+        @Test
+        @DisplayName("createBuilder 缺 mobile 拒绝")
+        void should_throw_when_mobileIsNull() {
+            assertThatThrownBy(() -> SmsAuthAccount.createBuilder().mobile(null).build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("恢复路径 active 为 null 拒绝")
+        void should_throw_when_activeIsNull() {
+            assertThatThrownBy(() -> SmsAuthAccount.builder().id(ID).active(null).build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("工厂方法")
     class Factories {
 

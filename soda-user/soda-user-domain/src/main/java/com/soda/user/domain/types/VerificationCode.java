@@ -11,7 +11,7 @@ import java.time.Instant;
  * <p>
  * 封装验证码的匹配与过期判断；验证码生命周期（待验证/已验证/已使用）
  * 由聚合状态表达，不在 DP 内重复记录使用状态（单一事实源，见 ADR-0011）。
- * 不可变、自校验、可序列化、可比较。
+ * 不可变、自校验、可序列化。
  * <p>
  * {@code code} 为普通字符串：码形（非空非空白）在此自校验，随机性与字符集由生成侧
  * （{@link RandomString} + {@code RandomStringGenerator}，见 ADR-0018）保证，

@@ -1,19 +1,26 @@
 package com.soda.user.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import com.soda.component.domain.types.Mobile;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SmsRecipient 短信投递端点")
-class SmsRecipientTest {
+class SmsRecipientTest extends DomainPrimitiveContractTest<VerificationRecipient> {
 
     private static final Mobile MOBILE = Mobile.of("13800138000");
+
+    @Override
+    protected Contract<VerificationRecipient> contract() {
+        return new Contract<>(VerificationRecipient.class, () -> new SmsRecipient(MOBILE),
+                "{\"target\":\"13800138000\",\"channel\":\"S\"}", "SmsRecipient[target=" + MOBILE + "]",
+                "{}", () -> new SmsRecipient(Mobile.of("13900139000")));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -25,6 +32,11 @@ class SmsRecipientTest {
             var recipient = new SmsRecipient(MOBILE);
             assertThat(recipient.target()).isEqualTo(MOBILE);
         }
+    }
+
+    @Nested
+    @DisplayName("校验")
+    class Validation {
 
         @Test
         @DisplayName("null Mobile 拒绝")
@@ -35,57 +47,18 @@ class SmsRecipientTest {
     }
 
     @Nested
-    @DisplayName("通道")
-    class Channel {
+    @DisplayName("路由")
+    class Routing {
 
         @Test
-        @DisplayName("channel 恒为 S")
-        void should_returnS_when_channel() {
-            assertThat(new SmsRecipient(MOBILE).channel()).isEqualTo(VerificationChannel.S);
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
-    class Equality {
-
-        @Test
-        @DisplayName("相同 Mobile 相等")
-        void should_beEqual_when_sameMobile() {
-            assertThat(new SmsRecipient(MOBILE)).isEqualTo(new SmsRecipient(MOBILE));
+        @DisplayName("端点工厂按 channel=S 路由到 SmsRecipient")
+        void should_routeToSmsRecipient_when_channelS() {
+            assertThat(VerificationRecipient.of("S", MOBILE.value())).isEqualTo(new SmsRecipient(MOBILE));
         }
 
         @Test
-        @DisplayName("不同 Mobile 不等")
-        void should_notBeEqual_when_differentMobile() {
-            assertThat(new SmsRecipient(MOBILE))
-                    .isNotEqualTo(new SmsRecipient(Mobile.of("13900139000")));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            var a = new SmsRecipient(MOBILE);
-            var b = new SmsRecipient(MOBILE);
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = new SmsRecipient(MOBILE);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, VerificationRecipient.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("反序列化按 channel 路由到 SmsRecipient")
-        void should_routeToSmsRecipient_when_channelS() throws Exception {
+        @DisplayName("JSON 以渠道分派路由到 SmsRecipient")
+        void should_routeToSmsRecipient_when_channelJson() throws Exception {
             var json = "{\"channel\":\"S\",\"target\":\"" + MOBILE.value() + "\"}";
             var recipient = MAPPER.readValue(json, VerificationRecipient.class);
             assertThat(recipient).isInstanceOf(SmsRecipient.class);
@@ -93,21 +66,21 @@ class SmsRecipientTest {
         }
 
         @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", VerificationRecipient.class))
-                    .isInstanceOf(JacksonException.class);
+        @DisplayName("未知 channel 拒绝")
+        void should_throw_when_channelUnknown() {
+            assertThatThrownBy(() -> VerificationRecipient.of("X", MOBILE.value()))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     @Nested
-    @DisplayName("调试")
-    class Debug {
+    @DisplayName("业务方法")
+    class RichMethods {
 
         @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new SmsRecipient(MOBILE)).hasToString("SmsRecipient[target=" + MOBILE + "]");
+        @DisplayName("channel() 判别为 S")
+        void should_returnChannelS_when_smsRecipient() {
+            assertThat(new SmsRecipient(MOBILE).channel()).isEqualTo(VerificationChannel.S);
         }
     }
 }

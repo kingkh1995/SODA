@@ -18,6 +18,10 @@ API——生产走场景端口 `Encryptor`/`Decryptor`（ISP 分离读写侧）�
 
 ## Consequences
 
+- `Ciphertext` / `Digest` 与端口 `Encryptor` / `Decryptor` / `Digester` 当前零生产消费方（规范样例；契约就位）——零预建准入条件
+  （类型与端口成对 / 判据入 ADR / 落点具名 / component-types 规范样例）见
+  [dp-conventions §2.4 敏感数据族](../dp-conventions.md#24-敏感数据族)；落点见
+  [conventions/framework-type-contracts.md](../conventions/framework-type-contracts.md)「Gateway 契约一览 · 盲索引模式」
 - bcrypt 72 字节输入守卫只拦 `hash` 不拦 `verify`——存量截断哈希靠截断对称性照常匹配，verify
   侧拒绝只会锁门而无安全增益；上限属算法实现细节，不入端口契约
 - 格式契约与端口方法表见 [conventions/framework-type-contracts.md](../conventions/framework-type-contracts.md)

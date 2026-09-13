@@ -40,8 +40,8 @@ class DecimalLiteralTypeTest {
     }
 
     @Nested
-    @DisplayName("缓存不变量")
-    class CacheInvariant {
+    @DisplayName("派生字段与原始值一致")
+    class DerivedFields {
 
         @Test
         @DisplayName("value()（@JsonValue）与 decimalValue() 同源于规范化 BigDecimal")

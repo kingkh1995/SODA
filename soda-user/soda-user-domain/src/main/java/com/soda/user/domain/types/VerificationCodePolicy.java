@@ -21,7 +21,7 @@ import java.time.Duration;
  * {@code codeAlphabet} 为 {@link Alphabet}——字符集不变量由 {@link Alphabet} 构造器校验
  * （单一校验源），create 时零转换直传生成器。
  * <p>
- * 不可变、自校验、可序列化、可比较。
+ * 不可变、自校验、可序列化。
  *
  * @see Type
  */

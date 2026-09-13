@@ -51,9 +51,9 @@ class UserVerificationFactoryTest {
     @DisplayName("credentialChangeSource：scene=UCC 写死 + userId 裸键串（槽位占用者）")
     void should_constructSource() {
         assertThat(factory().newCredentialChangeSource(USER_ID))
-                .isEqualTo(VerificationSource.of("UCC", "1"));
+                .isEqualTo(new VerificationSource("UCC", "1"));
         assertThat(factory().newCredentialChangeSource(new UserId(42L)))
-                .isEqualTo(VerificationSource.of("UCC", "42"));
+                .isEqualTo(new VerificationSource("UCC", "42"));
     }
 
     @Test
@@ -66,7 +66,7 @@ class UserVerificationFactoryTest {
 
         verify(randomStringGenerator).generate(eq(PositiveInt.of(6)), eq(Alphabet.DIGITS));
         assertThat(verification.getState()).isEqualTo(VerificationState.I);
-        assertThat(verification.getSource()).isEqualTo(VerificationSource.of("UCC", "1"));
+        assertThat(verification.getSource()).isEqualTo(new VerificationSource("UCC", "1"));
         assertThat(verification.getRecipient()).isEqualTo(new SmsRecipient(MOBILE));
         assertThat(verification.getCode().code()).isEqualTo(VALID_CODE);
         assertThat(verification.getCode().expireAt()).isAfter(java.time.Instant.now());
@@ -82,7 +82,7 @@ class UserVerificationFactoryTest {
 
         verify(randomStringGenerator).generate(eq(PositiveInt.of(6)), eq(Alphabet.DIGITS));
         assertThat(verification.getState()).isEqualTo(VerificationState.I);
-        assertThat(verification.getSource()).isEqualTo(VerificationSource.of("UCC", "1"));
+        assertThat(verification.getSource()).isEqualTo(new VerificationSource("UCC", "1"));
         assertThat(verification.getRecipient()).isEqualTo(new EmailRecipient(EMAIL));
     }
 }

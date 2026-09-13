@@ -1,16 +1,21 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("LongId 值对象")
-class LongIdTest {
+class LongIdTest extends ComparableDomainPrimitiveContractTest<LongId> {
+
+    @Override
+    protected Contract<LongId> contract() {
+        return new Contract<>(LongId.class, () -> new LongId(42), "42",
+                "LongId[value=42]", "\"not-a-number\"", () -> new LongId(43));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -64,91 +69,13 @@ class LongIdTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
 
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new LongId(42)).isEqualTo(new LongId(42));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new LongId(1)).isNotEqualTo(new LongId(2));
-        }
-
-        @Test
-        @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new LongId(42)).hasSameHashCodeAs(new LongId(42));
+        @DisplayName("identifier() 返回类型化底层值")
+        void should_returnTypedValue_when_identifier() {
+            assertThat(new LongId(42).identifier()).isEqualTo(42L);
         }
     }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = new LongId(42);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, LongId.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("从裸数字反序列化")
-        void should_deserializeFromBareNumber() throws Exception {
-            assertThat(MAPPER.readValue("42", LongId.class)).isEqualTo(new LongId(42));
-        }
-
-        @Test
-        @DisplayName("序列化为裸数字")
-        void should_serializeAsNumber() throws Exception {
-            assertThat(MAPPER.writeValueAsString(new LongId(42))).isEqualTo("42");
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", LongId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-
-        @Test
-        @DisplayName("compareTo 按数值比较")
-        void should_compareByNumericValue() {
-            assertThat(new LongId(1).compareTo(new LongId(2)) < 0).isTrue();
-            assertThat(new LongId(2).compareTo(new LongId(2)) == 0).isTrue();
-            assertThat(new LongId(3).compareTo(new LongId(2)) > 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = new LongId(42);
-            var same = new LongId(42);
-            assertThat(a.compareTo(same) == 0).isTrue();
-            assertThat(a).isEqualTo(same);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new LongId(42)).hasToString("LongId[value=42]");
-        }
-    }
-
 }

@@ -49,8 +49,8 @@ class SecretValueTest {
     }
 
     @Nested
-    @DisplayName("身份")
-    class Identity {
+    @DisplayName("相等性")
+    class Equality {
         @Test
         @DisplayName("不同实例不等（identity-based）")
         void should_notBeEqual_when_differentInstance() {

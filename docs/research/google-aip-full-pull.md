@@ -1,7 +1,7 @@
 ---
 type: Research
 title: Google AIP 全谱拉取（66 个主文档按 7 类分组 + 子目录清单）
-description: 锚点：为 ticket 04-08 逐类 grilling 提供 AIP 全谱输入——按 google.aip.dev/general 7 类分组,每条 MUST/MUST NOT/SHOULD/SHOULD NOT/MAY 规则逐行收录,标注 SODA 现有 Research doc 已涵盖项。仅记录,不评价、不修复。
+description: 锚点：为 AIP 逐类对齐（API 规范整改）提供全谱输入——按 google.aip.dev/general 7 类分组,每条 MUST/MUST NOT/SHOULD/SHOULD NOT/MAY 规则逐行收录,标注 SODA 现有 Research doc 已涵盖项。仅记录,不评价、不修复。
 tags: [ aip, google, api-design, inventory ]
 status: stable
 sources:
@@ -24,7 +24,7 @@ generated:
 >
 > 索引来源：https://google.aip.dev/general（共 7 大类 + Meta/Process/Protocol Buffers 杂项,合计 66 个主文档）。
 >
-> 本调研为 wayfinder ticket 04-08 逐类 grilling 探讨的输入源；不评价、不修复,仅清单。
+> 本调研为 AIP 逐类规范对齐的输入源；不评价、不修复,仅清单。
 >
 > **本次会话覆盖**：§1.3 Resource Design（9 AIP）、§1.5 Fields（13 AIP）、§1.6 Operations（12 AIP）、§1.7 Design Patterns（17 AIP）共
 > **51 个 AIP 的规则逐行收录**。§1.1 Meta、§1.2 Process、§1.4 API Concepts、§1.8 Compatibility and Versioning、§1.9

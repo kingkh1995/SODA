@@ -1,25 +1,30 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("PositiveInt 值对象")
-class PositiveIntTest {
+class PositiveIntTest extends ComparableDomainPrimitiveContractTest<PositiveInt> {
+
+    @Override
+    protected Contract<PositiveInt> contract() {
+        return new Contract<>(PositiveInt.class, () -> PositiveInt.of(6), "6",
+                "PositiveInt[value=6]", "\"not-a-number\"", () -> PositiveInt.of(7));
+    }
 
     @Nested
     @DisplayName("构造")
     class Constructor {
 
         @Test
-        @DisplayName("of(1) 创建 ONE")
+        @DisplayName("of(1) 创建单位值（值等价于 ONE）")
         void should_create_when_one() {
-            assertThat(PositiveInt.of(1)).isSameAs(PositiveInt.ONE);
+            assertThat(PositiveInt.of(1)).isEqualTo(PositiveInt.ONE);
         }
 
         @Test
@@ -65,118 +70,6 @@ class PositiveIntTest {
         void should_throw_when_parseInvalidString() {
             assertThatThrownBy(() -> PositiveInt.parse("not-a-number"))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(PositiveInt.of(6)).isEqualTo(PositiveInt.of(6));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(PositiveInt.of(6)).isNotEqualTo(PositiveInt.of(7));
-        }
-
-        @Test
-        @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(PositiveInt.of(6)).hasSameHashCodeAs(PositiveInt.of(6));
-        }
-    }
-
-    @Nested
-    @DisplayName("缓存")
-    class Cache {
-
-        @Test
-        @DisplayName("缓存范围内相同实例")
-        void should_beSameInstance_when_withinRange() {
-            assertThat(PositiveInt.of(5)).isSameAs(PositiveInt.of(5));
-        }
-
-        @Test
-        @DisplayName("缓存上限相同实例")
-        void should_beSameInstance_when_atUpperBound() {
-            assertThat(PositiveInt.of(100)).isSameAs(PositiveInt.of(100));
-        }
-
-        @Test
-        @DisplayName("缓存范围外不同实例")
-        void should_beDifferentInstance_when_beyondRange() {
-            assertThat(PositiveInt.of(1000)).isNotSameAs(PositiveInt.of(1000));
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = PositiveInt.of(6);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, PositiveInt.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸数字")
-        void should_serializeToBareNumber() throws Exception {
-            var json = MAPPER.writeValueAsString(PositiveInt.of(42));
-            assertThat(json).isEqualTo("42");
-        }
-
-        @Test
-        @DisplayName("从裸数字反序列化")
-        void should_deserializeFromBareNumber() throws Exception {
-            assertThat(MAPPER.readValue("42", PositiveInt.class)).isEqualTo(PositiveInt.of(42));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", PositiveInt.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-
-        @Test
-        @DisplayName("compareTo 按数值比较")
-        void should_compareByNumericValue() {
-            assertThat(PositiveInt.of(4).compareTo(PositiveInt.of(6)) < 0).isTrue();
-            assertThat(PositiveInt.of(6).compareTo(PositiveInt.of(6)) == 0).isTrue();
-            assertThat(PositiveInt.of(8).compareTo(PositiveInt.of(6)) > 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = PositiveInt.of(42);
-            var same = PositiveInt.of(42);
-            assertThat(a.compareTo(same) == 0).isTrue();
-            assertThat(a).isEqualTo(same);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(PositiveInt.of(42)).hasToString("PositiveInt[value=42]");
         }
     }
 }

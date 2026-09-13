@@ -61,7 +61,7 @@ RFC 2119 级别覆盖率（scout 测）：16-70%，不均衡——`dp-validation
 ❌/✅ 覆盖率：0-33%——`dp-conventions.md` 仅 9%（§2.4 形态对照 + §4 测试分组），其他多文档零覆盖。
 
 表格列样式：22 张表格，三套列不统一。dp-conventions §1.1 用「实现形态/策略/说明」3 列；§1.2 用「实现形态/规则/示例」3 列；§2.4.3
-用「维度/class 形态/record 形态」3 列。dp-validation §4.2 用「校验场景/正确做法/禁止替代」3 列。
+用「维度/class 形态/record 形态」3 列。dp-validation §2 用「场景/唯一入口/禁止替代」3 列。
 
 **已优于 P3C 表层处**（不必改造）：
 
@@ -69,7 +69,7 @@ RFC 2119 级别覆盖率（scout 测）：16-70%，不均衡——`dp-validation
 2. Locked 标记（如 `dp-conventions.md` L36、L90）——关键约束的版本锁，优于 P3C 文字描述。
 3. 测试分组注册表（`dp-test-conventions.md §1.6`）——`CrossTypeEqualityTest` + `SensitiveValueContractTest` 自动覆盖新增
    DP，P3C 无此机制。
-4. 校验单一权威镜像表（`dp-validation-conventions.md §4.2`）——DP 构造器/PassUtils/ValidateUtils 职责分层 + 工具 API 镜像。
+4. 校验单一权威镜像表（`dp-validation-conventions.md §2`）——DP 构造器/ParseUtils/ValidateUtils 职责分层 + 工具 API 镜像。
 5. 完整代码模板 + 设计理由表（`dp-conventions.md §2.4.3`）——形态差异矩阵附理由。
 
 ### 2.2 Entity / Aggregate 设计规范
@@ -178,7 +178,7 @@ RFC 2119 显式级别标定：§4 **0%**（scout 测：实际用「必写/禁止
 | AIP Research doc 规则表           | 已 100% 优于 P3C（三列固定 + RFC 2119 + SODA 适配差异段 + 兼容性对照表 + 自动化检查清单） |
 | DP §1.2 toString 规范 Locked 标记 | 锁死式约束，胜于 P3C 描述                                                                 |
 | DP 测试分组注册表                 | 跨类不等式 + 敏感值契约测试兜底，自动覆盖新增 DP                                          |
-| DP 校验单一权威镜像表             | PassUtils/ValidateUtils/DP 构造器职责分层 + API 镜像                                      |
+| DP 校验单一权威镜像表             | ParseUtils/ValidateUtils/DP 构造器职责分层 + API 镜像                                     |
 | 跨切面"典型反例"模式              | 具名反例强于 P3C 抽象                                                                     |
 | ADR 单源引用链                    | 每条规则可溯源至 ADR 编号                                                                 |
 | 密封继承 equals/hashCode 矩阵     | 子类漏标风险显式化                                                                        |

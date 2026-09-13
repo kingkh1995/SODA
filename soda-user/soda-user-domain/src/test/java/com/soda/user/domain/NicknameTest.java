@@ -1,22 +1,26 @@
 package com.soda.user.domain;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.Nickname;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Nickname 值对象")
-class NicknameTest {
+class NicknameTest extends ComparableDomainPrimitiveContractTest<Nickname> {
 
     private static final String VALID_NICKNAME = "张三";
+
+    @Override
+    protected Contract<Nickname> contract() {
+        return new Contract<>(Nickname.class, () -> new Nickname("nick"), "\"nick\"",
+                "Nickname[value=nick]", "{}", () -> new Nickname("zack"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -46,12 +50,14 @@ class NicknameTest {
     @Nested
     @DisplayName("校验与异常")
     class Validation {
-        @ParameterizedTest
-        @NullAndEmptySource
-        @ValueSource(strings = {"  "})
-        @DisplayName("null/空拒绝")
-        void should_throw_when_nullOrEmpty(String invalid) {
-            assertThatThrownBy(() -> new Nickname(invalid))
+        @Test
+        @DisplayName("null / 空 / 空白拒绝")
+        void should_throw_when_nullOrEmpty() {
+            assertThatThrownBy(() -> new Nickname(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Nickname(""))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Nickname("  "))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -68,93 +74,6 @@ class NicknameTest {
         void should_throw_when_tooLong() {
             assertThatThrownBy(() -> new Nickname("a".repeat(31)))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性")
-    class Equality {
-        @Test
-        @DisplayName("相同昵称相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new Nickname(VALID_NICKNAME)).isEqualTo(new Nickname(VALID_NICKNAME));
-        }
-
-        @Test
-        @DisplayName("不同昵称不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new Nickname("A")).isNotEqualTo(new Nickname("B"));
-        }
-
-        @Test
-        @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new Nickname("nick")).hasSameHashCodeAs(new Nickname("nick"));
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_formatToString() {
-            assertThat(new Nickname("nick"))
-                    .hasToString("Nickname[value=nick]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson 序列化与反序列化")
-        void should_roundTrip() throws Exception {
-            var original = new Nickname(VALID_NICKNAME);
-            var json = MAPPER.writeValueAsString(original);
-            var restored = MAPPER.readValue(json, Nickname.class);
-            assertThat(restored).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", Nickname.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(new Nickname("Alice"));
-            assertThat(json).isEqualTo("\"Alice\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"Alice\"", Nickname.class)).isEqualTo(new Nickname("Alice"));
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 委托字符串比较")
-        void should_compareByStringOrder() {
-            assertThat(new Nickname("aaaa").compareTo(new Nickname("bbbb")) < 0).isTrue();
-            assertThat(new Nickname("bbbb").compareTo(new Nickname("aaaa")) > 0).isTrue();
-            assertThat(new Nickname("aaaa").compareTo(new Nickname("aaaa")) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = new Nickname("nick");
-            var b = new Nickname("nick");
-            assertThat(a.compareTo(b) == 0).isTrue();
-            assertThat(a).isEqualTo(b);
         }
     }
 }

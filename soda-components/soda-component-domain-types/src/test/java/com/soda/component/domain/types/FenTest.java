@@ -1,34 +1,36 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Fen 值对象")
-class FenTest {
+class FenTest extends ComparableDomainPrimitiveContractTest<Fen> {
+
+    @Override
+    protected Contract<Fen> contract() {
+        return new Contract<>(Fen.class, () -> new Fen(1500), "1500",
+                "Fen[value=1500]", "\"not-a-number\"", () -> new Fen(1501));
+    }
 
     @Nested
     @DisplayName("构造")
     class Constructor {
 
-        @Test
-        @DisplayName("合法值创建实例")
-        void should_create_when_validValue() {
-            assertThat(new Fen(1500).value()).isEqualTo(1500);
-        }
-
-        @Test
-        @DisplayName("负值创建实例（退款）")
-        void should_create_when_negative() {
-            assertThat(new Fen(-100).value()).isEqualTo(-100);
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(ints = {1500, -100, Integer.MAX_VALUE, Integer.MIN_VALUE})
+        @DisplayName("int 值创建实例（正 / 负 / int 边界）")
+        void should_create_when_intValue(int value) {
+            assertThat(new Fen(value).value()).isEqualTo(value);
         }
 
         @Test
@@ -57,13 +59,6 @@ class FenTest {
                     .isEqualTo(new Fen(101));
             assertThat(Fen.fromYuan(new BigDecimal("1.004"), RoundingMode.HALF_UP))
                     .isEqualTo(new Fen(100));
-        }
-
-        @Test
-        @DisplayName("int 边界值创建实例")
-        void should_create_when_intBoundaries() {
-            assertThat(new Fen(Integer.MAX_VALUE).value()).isEqualTo(Integer.MAX_VALUE);
-            assertThat(new Fen(Integer.MIN_VALUE).value()).isEqualTo(Integer.MIN_VALUE);
         }
     }
 
@@ -109,29 +104,6 @@ class FenTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new Fen(1500)).isEqualTo(new Fen(1500));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new Fen(1500)).isNotEqualTo(new Fen(1501));
-        }
-
-        @Test
-        @DisplayName("hashCode 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new Fen(1500)).hasSameHashCodeAs(new Fen(1500));
-        }
-    }
-
-    @Nested
     @DisplayName("转换")
     class Conversion {
 
@@ -146,77 +118,6 @@ class FenTest {
         @DisplayName("toDisplayString 格式正确")
         void should_haveCorrectDisplayString() {
             assertThat(new Fen(1500).toDisplayString()).isEqualTo("15.00元");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var positive = new Fen(1500);
-            var json = MAPPER.writeValueAsString(positive);
-            assertThat(MAPPER.readValue(json, Fen.class)).isEqualTo(positive);
-
-            var negative = new Fen(-100);
-            var negativeJson = MAPPER.writeValueAsString(negative);
-            assertThat(MAPPER.readValue(negativeJson, Fen.class)).isEqualTo(negative);
-        }
-
-        @Test
-        @DisplayName("序列化为裸数字")
-        void should_serializeToBareNumber() throws Exception {
-            var json = MAPPER.writeValueAsString(new Fen(42));
-            assertThat(json).isEqualTo("42");
-        }
-
-        @Test
-        @DisplayName("从裸数字反序列化")
-        void should_deserializeFromBareNumber() throws Exception {
-            assertThat(MAPPER.readValue("42", Fen.class)).isEqualTo(new Fen(42));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-number\"", Fen.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-
-        @Test
-        @DisplayName("compareTo 按数值比较")
-        void should_compareByNumericValue() {
-            assertThat(new Fen(4).compareTo(new Fen(6)) < 0).isTrue();
-            assertThat(new Fen(6).compareTo(new Fen(6)) == 0).isTrue();
-            assertThat(new Fen(8).compareTo(new Fen(6)) > 0).isTrue();
-            assertThat(new Fen(-5).compareTo(new Fen(4)) < 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = new Fen(42);
-            var same = new Fen(42);
-            assertThat(a.compareTo(same) == 0).isTrue();
-            assertThat(a).isEqualTo(same);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new Fen(42)).hasToString("Fen[value=42]");
         }
     }
 }

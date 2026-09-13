@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 小数字面量基类（见 ADR-0031 及其修订注记）—
+ * 小数字面量基类（见 ADR-0031）—
  * 「wire≠semantic」类型：规范值为 {@link String}（{@code value}，{@code @JsonValue}
  * 继承自家族契约 {@link StringLiteralType}，防 JSON 数字精度丢失），派生 {@link BigDecimal}
  * 缓存（{@code decimalValue}），不参与序列化/{@code equals}/{@code hashCode}。

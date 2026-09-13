@@ -32,16 +32,16 @@ OKF = 目录化的 markdown 文件（YAML frontmatter + 结构化 body），`typ
 
 OKF 键族（SPEC §4.1、§5）：基础（`type` 必填 / `title` / `description` / `resource` / `tags`）；provenance（`sources[].resource/id/title/author/usage_count/last_modified` + `usage_window`）；trust（`generated.{by,at}` / `verified[].{by,at}`）；lifecycle（`status`: draft|stable|deprecated / `stale_after`）。扩展键任意允许（§4.1 Extensions），消费者不得拒绝未知键（§11）。
 
-| 文档类 | type 建议 | 基础键 | trust/lifecycle 建议 | 说明 |
-|---|---|---|---|---|
-| README.md | `Repo Overview` | title/description/tags | status: stable | 人类入口（见 §三）；modern-web-guidance 先例：与 agent 文档分置 |
-| AGENTS.md | `Agent Guide` | description/tags | status | **每会话自动加载**——frontmatter 不省钱，但喂搜索/索引；描述即 context pointer |
-| CONTEXT.md | `Glossary` | description/tags | status | 词汇表；必须保持 domain-modeling 可读（# Language + 术语 + _Avoid_，见 03 研究） |
-| STYLEGUIDE.md | `Convention` | description/tags | status: stable + verified(可选) | code-review 以它为"仓库编码标准" |
-| 约定文档（docs/framework-*） | `Convention` | description/tags | status | 同上族 |
-| ADR（docs/adr/000N-*.md） | `Decision Record` | description/tags | **status: draft\|stable\|deprecated\|superseded** | 与 ADR-FORMAT 既有 Status 概念天然同构；superseded 用链接表达（ADR-0021 已实践"Superseded by"修订注记） |
-| research 笔记（docs/research/*） | `Research` / `Reference` | description/tags/resource | **sources（核心适用区）+ generated + verified** | 研究文档天然带引用；agent 生成的研究由 `generated.by` 记录、人类 `verified` 提升信任层级 |
-| doc-conventions（未来） | `Convention` | description/tags | status: stable | 标准落盘处 |
+| 文档类                           | type 建议                | 基础键                    | trust/lifecycle 建议                              | 说明                                                                                     |
+|----------------------------------|--------------------------|---------------------------|---------------------------------------------------|------------------------------------------------------------------------------------------|
+| README.md                        | `Repo Overview`          | title/description/tags    | status: stable                                    | 人类入口（见 §三）；modern-web-guidance 先例：与 agent 文档分置                          |
+| AGENTS.md                        | `Agent Guide`            | description/tags          | status                                            | **每会话自动加载**——frontmatter 不省钱，但喂搜索/索引；描述即 context pointer            |
+| CONTEXT.md                       | `Glossary`               | description/tags          | status                                            | 词汇表；必须保持 domain-modeling 可读（# Language + 术语 + _Avoid_，见 03 研究）         |
+| STYLEGUIDE.md                    | `Convention`             | description/tags          | status: stable + verified(可选)                   | code-review 以它为"仓库编码标准"                                                         |
+| 约定文档（docs/framework-*）     | `Convention`             | description/tags          | status                                            | 同上族                                                                                   |
+| ADR（docs/adr/000N-*.md）        | `Decision Record`        | description/tags          | **status: draft\|stable\|deprecated\|superseded** | 与 ADR-FORMAT 既有 Status 概念天然同构；superseded 用链接表达                            |
+| research 笔记（docs/research/*） | `Research` / `Reference` | description/tags/resource | **sources（核心适用区）+ generated + verified**   | 研究文档天然带引用；agent 生成的研究由 `generated.by` 记录、人类 `verified` 提升信任层级 |
+| doc-conventions（未来）          | `Convention`             | description/tags          | status: stable                                    | 标准落盘处                                                                               |
 
 **type 词表**：OKF 明确 type 不集中注册（§4.1），取值自解释即可。上表 8 个值够用；未知 type 消费者须宽容（§11）。
 

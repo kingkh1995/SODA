@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
  * （如 {@code "v2.1.3"}）。前导 0 归一化：{@code v2.001.003} 与 {@code v2.1.3} 等价。
  * base-1000 打包 int：{@code v2.1.3} ↔ {@code 2001003}，打包序与版本序单调一致。
  * 非 SemVer：无 pre-release / build 元数据后缀（见 ADR-0020）。
+ * <p>
+ * 两条入口形态各自直达唯一构造器：数值形态（{@link #from} / {@link #fromPackedInt}）零转换；
+ * 线形态（{@link #of}）先守 {@link #FORMAT} 格式契约再拆段——无字符串回炉。
  *
  * @see StringLiteralType
  */
@@ -61,45 +64,55 @@ public final class SoftwareVersion implements StringLiteralType, Comparable<Soft
     @Getter
     private final int patch;
 
-    private SoftwareVersion(String value, int major, int minor, int patch) {
+    /**
+     * 唯一构造器 = 唯一校验点 —— 段范围校验 ＋ 规范串渲染；非法输入不可表示。
+     * <p>
+     * 规范串由三段渲染而来（前导 0 归一化即渲染），故 {@link #value} 与三段不可能失配；
+     * 线形态的格式守在其转换入口（见 {@link #of}）。
+     */
+    private SoftwareVersion(int major, int minor, int patch) {
         ValidateUtils.range(major, 0, MAX_SEGMENT);
         ValidateUtils.range(minor, 0, MAX_SEGMENT);
         ValidateUtils.range(patch, 0, MAX_SEGMENT);
-        this.value = value;
         this.major = major;
         this.minor = minor;
         this.patch = patch;
+        this.value = "v" + major + "." + minor + "." + patch;
     }
 
     /**
      * 从字符串解析。格式 {@code "v2.1.3"}（前缀 v 大小写不敏感），每段 {@code [0, 999]}，
      * 前导 0 自动归一化。非法格式或越界时抛 IAE。
+     * <p>
+     * {@link #FORMAT} 是线形态的输入契约：三段各 1-3 位数字 → 值天然 ≤ 999，故此处只守格式，
+     * 转换后直达唯一构造器。
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SoftwareVersion of(String value) {
         ValidateUtils.matches(value, FORMAT);
         var parts = value.substring(1).split("\\.");
-        var m = ParseUtils.parseInt(parts[0]);
-        var n = ParseUtils.parseInt(parts[1]);
-        var p = ParseUtils.parseInt(parts[2]);
-        return new SoftwareVersion("v" + m + "." + n + "." + p, m, n, p);
+        return new SoftwareVersion(
+                ParseUtils.parseInt(parts[0]),
+                ParseUtils.parseInt(parts[1]),
+                ParseUtils.parseInt(parts[2]));
     }
 
     /**
      * 从三段数值转换构造，每段 {@code [0, 999]}，越界抛 IAE。
      */
     public static SoftwareVersion from(int major, int minor, int patch) {
-        return new SoftwareVersion(
-                "v" + major + "." + minor + "." + patch,
-                major, minor, patch);
+        return new SoftwareVersion(major, minor, patch);
     }
 
     /**
      * 从 base-1000 打包 int 还原。{@code v2.1.3} ↔ {@code 2001003}，越界或负数抛 IAE。
+     * <p>
+     * 入参域的 {@code range} 是转换前置守卫：打包值域与段值域互为双射，此处的守卫指名输入域
+     * （负数或超过 {@link #MAX_PACKED}），拆位后仍由构造器承担段范围校验。
      */
     public static SoftwareVersion fromPackedInt(int packed) {
         ValidateUtils.range(packed, 0, MAX_PACKED);
-        return from(packed / (BASE * BASE), packed / BASE % BASE, packed % BASE);
+        return new SoftwareVersion(packed / (BASE * BASE), packed / BASE % BASE, packed % BASE);
     }
 
     /**
@@ -120,21 +133,21 @@ public final class SoftwareVersion implements StringLiteralType, Comparable<Soft
      * 递增 patch 段（其余不变），返回新实例。patch 已到 999 时抛 IAE，不进位。
      */
     public SoftwareVersion nextPatch() {
-        return from(major, minor, patch + 1);
+        return new SoftwareVersion(major, minor, patch + 1);
     }
 
     /**
      * 递增 minor 段并清零 patch，返回新实例。minor 已到 999 时抛 IAE，不进位。
      */
     public SoftwareVersion nextMinor() {
-        return from(major, minor + 1, 0);
+        return new SoftwareVersion(major, minor + 1, 0);
     }
 
     /**
      * 递增 major 段并清零 minor/patch，返回新实例。major 已到 999 时抛 IAE，不进位。
      */
     public SoftwareVersion nextMajor() {
-        return from(major + 1, 0, 0);
+        return new SoftwareVersion(major + 1, 0, 0);
     }
 
     @Override

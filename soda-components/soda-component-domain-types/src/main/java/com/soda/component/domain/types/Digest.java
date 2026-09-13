@@ -4,6 +4,7 @@ import com.soda.component.domain.StringLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
+import java.util.Base64;
 import java.util.HexFormat;
 import java.util.regex.Pattern;
 
@@ -29,24 +30,22 @@ public record Digest(String value) implements StringLiteralType {
      */
     private static final Pattern HEX_64 = Pattern.compile("^[0-9a-f]{64}$");
 
-    /**
-     * 标准 base64（RFC 4648 §4，含 padding）编码的 32 字节摘要：44 字符、末尾恰一个 '='。
-     */
-    private static final Pattern BASE64_STD_32B = Pattern.compile("^[A-Za-z0-9+/]{43}=$");
-
     public Digest {
         ValidateUtils.matches(value, HEX_64);
     }
 
     /**
      * 显式转换工厂 —— 从标准 base64 编码的 32 字节摘要构建，归一化为规范小写 hex。
-     * base64url 不接受（ADR-0033 修订注记 2）。
+     * <p>
+     * 线形态守在其转换入口：只接受<b>规范形态</b>——解码后回编码须与输入全等（含 padding），
+     * 故 base64url 与省略 padding 的变体一律拒绝；非 32 字节由构造器 {@link #HEX_64} 拒绝。
      */
     public static Digest fromBase64(String digest) {
         ValidateUtils.hasText(digest);
-        ValidateUtils.matches(digest, BASE64_STD_32B);
         var bytes = ParseUtils.parseBase64(digest);
-        ValidateUtils.equals(bytes.length, 32);
+        if (!Base64.getEncoder().encodeToString(bytes).equals(digest)) {
+            throw new IllegalArgumentException("invalid format: '" + digest + "'");
+        }
         return new Digest(HexFormat.of().formatHex(bytes));
     }
 }

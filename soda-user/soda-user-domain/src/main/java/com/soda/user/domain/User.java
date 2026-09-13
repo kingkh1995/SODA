@@ -19,10 +19,8 @@ import com.soda.user.domain.event.UserDeregisteredEvent;
 import com.soda.user.domain.event.UserStateChangedEvent;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Avatar;
-import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.Nickname;
-import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
@@ -286,7 +284,7 @@ public class User extends Aggregate<UserId> implements Versioned {
                 "Cannot change to the same mobile: " + newMobile.value());
         this.mobile = newMobile;
         // 替换 SmsAuthAccount：移除旧账户，添加新账户
-        removeAccount(SmsAuthAccountId.ACCOUNT_TYPE);
+        removeAccount(AuthAccountType.S);
         addAccount(SmsAuthAccount.createBuilder().mobile(newMobile).build());
     }
 
@@ -323,7 +321,7 @@ public class User extends Aggregate<UserId> implements Versioned {
                 "Cannot change to the same email: " + newEmail.value());
         this.email = newEmail;
         // 替换 EmailAuthAccount：移除旧账户，添加新账户
-        removeAccount(EmailAuthAccountId.ACCOUNT_TYPE);
+        removeAccount(AuthAccountType.E);
         addAccount(EmailAuthAccount.createBuilder().email(newEmail).build());
     }
 

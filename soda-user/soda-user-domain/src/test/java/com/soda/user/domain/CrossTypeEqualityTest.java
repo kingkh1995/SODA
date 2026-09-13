@@ -8,6 +8,7 @@ import com.soda.component.domain.types.PositiveInt;
 import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.EmailRecipient;
+import com.soda.user.domain.types.Nickname;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.SmsRecipient;
@@ -54,9 +55,10 @@ class CrossTypeEqualityTest {
                 SocialAuthAccountId.of("O:GE:12345"),
                 new UserId(42),
                 new Username("alice"),
+                new Nickname("nick"),
                 new VerificationCode("123456", Instant.parse("2026-08-15T12:00:00Z")),
                 new VerificationCodePolicy(PositiveInt.of(6), Duration.ofMinutes(5), Alphabet.DIGITS),
-                VerificationSource.of("UCC", "42"),
+                new VerificationSource("UCC", "42"),
                 new SmsRecipient(Mobile.of("13800138000")),
                 new EmailRecipient(Email.of("test@example.com")));
     }

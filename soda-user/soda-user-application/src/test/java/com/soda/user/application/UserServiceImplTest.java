@@ -343,7 +343,7 @@ class UserServiceImplTest {
 
             assertThatThrownBy(() -> service.updateUser(command))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Unknown update_mask fields");
+                    .hasMessageContaining("unknown update_mask fields");
         }
 
         @Test

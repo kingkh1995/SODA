@@ -52,7 +52,7 @@ public final class SocialAuthAccount extends AuthAccount<SocialAuthAccountId> {
 
     @Override
     public AuthAccountType getAccountType() {
-        return SocialAuthAccountId.ACCOUNT_TYPE;
+        return AuthAccountType.O;
     }
 
     public SocialType getSocialType() {

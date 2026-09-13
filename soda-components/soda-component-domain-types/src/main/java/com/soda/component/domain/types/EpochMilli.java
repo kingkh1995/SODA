@@ -11,7 +11,7 @@ import java.time.Instant;
  * 绝对时间点 DP（见 ADR-0031）— UTC 绝对时间点，{@code long} 毫秒存储。
  * <p>
  * 「wire≠semantic」类型：线上标量为 {@code long}（epoch 毫秒，{@link com.fasterxml.jackson.annotation.JsonValue}
- * 继承自 {@link LongLiteralType}），语义值为 {@link Instant}（{@link #instant()} 派生，
+ * 继承自 {@link LongLiteralType}），语义值为 {@link Instant}（{@link #toInstant()} 派生，
  * {@link Instant#ofEpochMilli(long)} 毫秒精度互逆——亚毫秒截断，毫秒单位契约）。单位毫秒——主流
  * （{@code System.currentTimeMillis}/JS {@code Date.now}/Go {@code UnixMilli}）、保亚秒精度；
  * 覆盖 Jackson 3 裸 {@code Instant} 的 ISO-8601 字符串默认（{@code WRITE_DATES_AS_TIMESTAMPS} 默认 false）。
@@ -57,7 +57,7 @@ public record EpochMilli(long value) implements LongLiteralType, Comparable<Epoc
     /**
      * 语义值（派生 {@link Instant}，{@code ofEpochMilli} 毫秒精度互逆——亚毫秒截断）。
      */
-    public Instant instant() {
+    public Instant toInstant() {
         return Instant.ofEpochMilli(value);
     }
 
@@ -65,14 +65,14 @@ public record EpochMilli(long value) implements LongLiteralType, Comparable<Epoc
      * 时间偏移（加）。例如 {@code EpochMilli.now().plus(Duration.ofMinutes(5))}。
      */
     public EpochMilli plus(Duration duration) {
-        return from(instant().plus(duration));
+        return from(toInstant().plus(duration));
     }
 
     /**
      * 时间偏移（减）。
      */
     public EpochMilli minus(Duration duration) {
-        return from(instant().minus(duration));
+        return from(toInstant().minus(duration));
     }
 
     /**

@@ -1,20 +1,26 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import tools.jackson.core.JacksonException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("WanYuan 值对象")
-class WanYuanTest {
+class WanYuanTest extends ComparableDomainPrimitiveContractTest<WanYuan> {
+
+    @Override
+    protected Contract<WanYuan> contract() {
+        return new Contract<>(WanYuan.class, () -> WanYuan.of("1.5"), "\"1.50\"",
+                "WanYuan[value=1.50]", "{}", () -> WanYuan.of("9.99"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -27,10 +33,10 @@ class WanYuanTest {
         }
 
         @Test
-        @DisplayName("fromYuan 创建归一化实例")
-        void should_create_when_fromYuan() {
-            var amount = WanYuan.fromYuan(new BigDecimal("15000"));
-            assertThat(amount.value()).isEqualTo("1.50");
+        @DisplayName("from(BigDecimal) 创建实例")
+        void should_create_when_validBigDecimal() {
+            var amount = WanYuan.from(new BigDecimal("15000"));
+            assertThat(amount.value()).isEqualTo("15000.00");
         }
     }
 
@@ -99,88 +105,40 @@ class WanYuanTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
+    @DisplayName("转换")
+    class Conversion {
         @Test
-        @DisplayName("相同归一化值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(WanYuan.of("1")).isEqualTo(WanYuan.of("1"));
+        @DisplayName("fromYuan 元转万元创建归一化实例")
+        void should_createNormalized_when_fromYuan() {
+            var amount = WanYuan.fromYuan(new BigDecimal("15000"));
+            assertThat(amount.value()).isEqualTo("1.50");
         }
 
         @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(WanYuan.of("1")).isNotEqualTo(WanYuan.of("2"));
+        @DisplayName("fromYuan 显式 HALF_UP 舍入")
+        void should_roundHalfUp_when_fromYuanWithRoundingMode() {
+            assertThat(WanYuan.fromYuan(new BigDecimal("12350"), RoundingMode.HALF_UP).value())
+                    .isEqualTo("1.24");
         }
 
         @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(WanYuan.of("1")).hasSameHashCodeAs(WanYuan.of("1"));
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = WanYuan.of("1.5");
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, WanYuan.class)).isEqualTo(original);
+        @DisplayName("fromYuan 显式 DOWN 舍入")
+        void should_roundDown_when_fromYuanWithRoundingMode() {
+            assertThat(WanYuan.fromYuan(new BigDecimal("12350"), RoundingMode.DOWN).value())
+                    .isEqualTo("1.23");
         }
 
         @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(WanYuan.of("1.5"));
-            assertThat(json).isEqualTo("\"1.50\"");
+        @DisplayName("toYuan 万元转元")
+        void should_convertToYuan_when_validValue() {
+            assertThat(WanYuan.of("1.50").toYuan()).isEqualByComparingTo("15000");
+            assertThat(WanYuan.of("-1.50").toYuan()).isEqualByComparingTo("-15000");
         }
 
         @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"1.50\"", WanYuan.class)).isEqualTo(WanYuan.of("1.5"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("{}", WanYuan.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("数值序自然排序")
-        void should_orderNaturally_when_valuesDiffer() {
-            var low = WanYuan.of("1.50");
-            var high = WanYuan.of("9.99");
-            assertThat(low.compareTo(high)).isNegative();
-            assertThat(high.compareTo(low)).isPositive();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var amount = WanYuan.of("1.50");
-            var same = WanYuan.of("1.50");
-            assertThat(amount.compareTo(same)).isZero();
-            assertThat(amount).isEqualTo(same);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(WanYuan.of("1.5")).hasToString("WanYuan[value=1.50]");
+        @DisplayName("toDisplayString 展示文本")
+        void should_haveCorrectDisplayString_when_validValue() {
+            assertThat(WanYuan.of("1.5").toDisplayString()).isEqualTo("1.50万元");
         }
     }
 }

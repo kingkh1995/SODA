@@ -1,4 +1,12 @@
+plugins {
+    id 'java-test-fixtures'
+}
+
 dependencies {
     api project(':soda-components:soda-component-domain-starter')
     testImplementation project(':soda-supports:soda-support-modulith')
+
+    // DP 契约套件（testFixtures）编译期依赖；经 testFixturesApi 传递给下游模块测试。
+    testFixturesApi 'org.junit.jupiter:junit-jupiter-api'
+    testFixturesApi 'org.assertj:assertj-core'
 }

@@ -61,7 +61,7 @@ public final class SmsAuthAccount extends AuthAccount<SmsAuthAccountId> {
 
     @Override
     public AuthAccountType getAccountType() {
-        return SmsAuthAccountId.ACCOUNT_TYPE;
+        return AuthAccountType.S;
     }
 
     public Mobile getMobile() {

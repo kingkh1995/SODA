@@ -1,18 +1,24 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UUID 标识符值对象")
-class UuidTest {
+class UuidTest extends ComparableDomainPrimitiveContractTest<Uuid> {
 
     private static final String VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
+
+    @Override
+    protected Contract<Uuid> contract() {
+        return new Contract<>(Uuid.class, () -> new Uuid(VALID_UUID), "\"" + VALID_UUID + "\"",
+                "Uuid[value=" + VALID_UUID + "]", "12345",
+                () -> new Uuid("650e8400-e29b-41d4-a716-446655440000"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -24,6 +30,25 @@ class UuidTest {
             var id = new Uuid(VALID_UUID);
             assertThat(id.value()).isEqualTo(VALID_UUID);
         }
+
+        @Test
+        @DisplayName("Java UUID 格式创建实例")
+        void should_create_when_javaUtilUuid() {
+            var juid = java.util.UUID.randomUUID();
+            assertThat(new Uuid(juid.toString()).value()).isEqualTo(juid.toString());
+        }
+
+        @Test
+        @DisplayName("random() 生成规范小写 UUID")
+        void should_generateCanonicalInstance_when_random() {
+            assertThat(Uuid.random().value())
+                    .matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+        }
+    }
+
+    @Nested
+    @DisplayName("归一化")
+    class Normalization {
 
         @Test
         @DisplayName("大写归一化为小写")
@@ -40,38 +65,10 @@ class UuidTest {
         }
 
         @Test
-        @DisplayName("Java UUID 格式创建实例")
-        void should_create_when_javaUtilUuid() {
-            var juid = java.util.UUID.randomUUID();
-            assertThat(new Uuid(juid.toString()).value()).isEqualTo(juid.toString());
-        }
-
-        @Test
-        @DisplayName("random() 生成合法实例")
-        void should_generateValidInstance_when_random() {
-            var id = Uuid.random();
-            assertThat(id).isNotNull();
-        }
-
-        @Test
-        @DisplayName("固定不同值不等")
-        void should_notBeEqual_when_distinctFixedValues() {
-            assertThat(new Uuid(VALID_UUID))
-                    .isNotEqualTo(new Uuid("00000000-0000-0000-0000-000000000001"));
-        }
-
-        @Test
-        @DisplayName("固定同值相等")
-        void should_beEqual_when_sameFixedValue() {
-            var fixed = "11111111-2222-3333-4444-555555555555";
-            assertThat(new Uuid(fixed)).isEqualTo(new Uuid(fixed));
-        }
-
-        @Test
-        @DisplayName("identifier() 返回字符串值")
-        void should_returnString_when_identifier() {
-            var id = new Uuid(VALID_UUID);
-            assertThat(id.identifier()).isEqualTo(VALID_UUID);
+        @DisplayName("不同大小写形式归一化后等值")
+        void should_beEqual_when_caseDiffers() {
+            assertThat(new Uuid("550E8400-E29B-41D4-A716-446655440000"))
+                    .isEqualTo(new Uuid(VALID_UUID));
         }
     }
 
@@ -123,89 +120,14 @@ class UuidTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
 
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new Uuid(VALID_UUID)).isEqualTo(new Uuid(VALID_UUID));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new Uuid(VALID_UUID)).isNotEqualTo(Uuid.random());
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            var a = new Uuid(VALID_UUID);
-            var b = new Uuid(VALID_UUID);
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson 序列化反序列化一致")
-        void should_roundTrip() throws Exception {
-            var original = new Uuid(VALID_UUID);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Uuid.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeAsBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(new Uuid(VALID_UUID));
-            assertThat(json).isEqualTo("\"" + VALID_UUID + "\"");
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("12345", Uuid.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-
-        @Test
-        @DisplayName("compareTo 委托给字符串比较")
-        void should_orderByStringCompare() {
-            var a = new Uuid("00000000-0000-0000-0000-000000000001");
-            var b = new Uuid("00000000-0000-0000-0000-000000000002");
-            assertThat(a.compareTo(b) < 0).isTrue();
-            assertThat(b.compareTo(a) > 0).isTrue();
-            assertThat(a.compareTo(a) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals() {
-            var a = new Uuid("a3bb4e8c-8f3c-4e73-8e80-5b4de7f25fc8");
-            var b = new Uuid("a3bb4e8c-8f3c-4e73-8e80-5b4de7f25fc8");
-            assertThat(a.compareTo(b) == 0).isTrue();
-            assertThat(a).isEqualTo(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new Uuid(VALID_UUID)).hasToString("Uuid[value=550e8400-e29b-41d4-a716-446655440000]");
+        @DisplayName("identifier() 返回规范字符串值")
+        void should_returnCanonicalString_when_identifier() {
+            var id = new Uuid(VALID_UUID);
+            assertThat(id.identifier()).isEqualTo(VALID_UUID);
         }
     }
 }

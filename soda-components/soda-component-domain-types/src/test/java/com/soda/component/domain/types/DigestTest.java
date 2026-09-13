@@ -1,22 +1,27 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Locale;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Digest —— 32 字节等值摘要自验证")
-class DigestTest {
+class DigestTest extends DomainPrimitiveContractTest<Digest> {
 
     private static final String HEX_64 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+    @Override
+    protected Contract<Digest> contract() {
+        return new Contract<>(Digest.class, () -> new Digest(HEX_64), "\"" + HEX_64 + "\"",
+                "Digest[value=" + HEX_64 + "]", "\"not-a-digest\"", () -> new Digest("0".repeat(64)));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -68,28 +73,6 @@ class DigestTest {
     }
 
     @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-        @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(new Digest(HEX_64)).isEqualTo(new Digest(HEX_64));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(new Digest(HEX_64)).isNotEqualTo(new Digest("0".repeat(64)));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            assertThat(new Digest(HEX_64)).hasSameHashCodeAs(new Digest(HEX_64));
-        }
-    }
-
-    @Nested
     @DisplayName("跨类型转换")
     class Conversion {
         @Test
@@ -114,7 +97,15 @@ class DigestTest {
         }
 
         @Test
-        @DisplayName("of 与 fromBase64 均拒绝 url-safe base64（仅接受标准字母表，ADR-0033 注记 2）")
+        @DisplayName("fromBase64 拒绝省略 padding 的非规范输入（43 字符无 '='）")
+        void should_throw_when_unpadded() {
+            var unpadded = Base64.getEncoder().encodeToString(new byte[32]).substring(0, 43);
+            assertThat(unpadded).hasSize(43);   // 规范形态为 44 字符、末尾恰一个 '='
+            assertThatThrownBy(() -> Digest.fromBase64(unpadded)).isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("of 与 fromBase64 均拒绝 url-safe base64（仅接受标准字母表）")
         void should_throw_when_base64Url() {
             var bytes = new byte[32];
             Arrays.fill(bytes, (byte) 0xfb);
@@ -122,35 +113,6 @@ class DigestTest {
             assertThat(urlSafe).contains("-").contains("_");
             assertThatThrownBy(() -> new Digest(urlSafe)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> Digest.fromBase64(urlSafe)).isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson round-trip 一致")
-        void should_roundTrip() throws Exception {
-            var original = new Digest(HEX_64);
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Digest.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"not-a-digest\"", Digest.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 格式正确")
-        void should_haveCorrectToString() {
-            assertThat(new Digest(HEX_64)).hasToString("Digest[value=" + HEX_64 + "]");
         }
     }
 }

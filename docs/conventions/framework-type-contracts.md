@@ -14,7 +14,8 @@ status: stable
 ### Domain Primitive（领域原语）
 
 不可变的值对象，承载领域含义，通过类型系统表达业务约束。所有 DP 必须：不可变、自校验（构造时验证）、value-based
-相等、非空；序列化与可比较按需（完整契约见 dp-conventions §1）。参见 `Type` 接口。
+相等、非空；序列化与可比较按需（完整契约见 [dp-conventions §2.1 DP 不变式](../dp-conventions.md#21-dp-不变式)）。参见 `Type`
+接口。
 
 **字面值语义**：DP 的内部字段以基本数据类型为主（`String`、`BigDecimal`、`Date/LocalDate/LocalDateTime`、`int`、`long`、
 `boolean` 等可直接对应数据库列类型的值）， **允许嵌套持有其他 DP 作为字段**（值对象组合——Evans 蓝皮书/Vernon IDDD 主流模式，如
@@ -71,15 +72,17 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 
 ### Type
 
-所有领域原语的根标记接口， **不继承 `Serializable`**（JDK 序列化按需显式实现）；可比较性由子类在有自然顺序时实现
-`Comparable<Self>`（契约见 dp-conventions §1）。
+所有领域原语的根标记接口， **不继承 `Serializable`**（DP 禁止实现 `java.io.Serializable`，单源口径见
+[dp-json-conventions §5 JDK 序列化](dp-json-conventions.md#5-jdk-序列化)）；可比较性由子类在有自然顺序时实现
+`Comparable<Self>`（完整契约见
+[dp-conventions §2.1 DP 不变式](../dp-conventions.md#21-dp-不变式)）。
 
 ### 字面量家族（StringLiteralType / LongLiteralType / IntLiteralType / BooleanLiteralType / DoubleLiteralType）
 
 单属性字面量 DP 契约（`com.soda.component.domain.*LiteralType`，见 ADR-0028 字面量类型家族）——包装一个不可变基本类型字面量（String/原语），暴露
 `value()` 裸值（原语，免装箱/拆箱）。五家族互不关联（IntSupplier 式，无共享根），各 `extends Type`；`EnumType`
-与五家族平行（枚举是封闭常量集，常量自身即值，不包装字面量——ADR-0028 字面量类型家族）。JSON 序列化机制单源见 dp-conventions
-§5（模式总表）。
+与五家族平行（枚举是封闭常量集，常量自身即值，不包装字面量——ADR-0028 字面量类型家族）。JSON 序列化机制单源见
+[dp-json-conventions §1 模式总表](dp-json-conventions.md#1-模式总表)。
 
 ### EnumType
 
@@ -103,36 +106,65 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 
 ### DP 类型清单表
 
-每行：类型 + 一句话契约。完整定义在代码 javadoc，决策理由在 ADR 描述（按主题索引见 `docs/adr/_index.md`）。
+**模块定位**：`soda-component-domain-types` 公共 DP ＝ **规范样例库 + 共享类型**；样例 DP 允许零生产消费方，本表为唯一覆盖清单。
 
-| 类型                                                                                             | 一句话契约                                                                                          |
-|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `StringLiteralType` 等五字面量家族                                                               | 单属性字面量 DP 契约：包装不可变基本类型，`value()` 裸值＋标量 JSON 双向                            |
-| `DecimalLiteralType`                                                                             | 小数字面量基类（规范值 String、BigDecimal 为派生缓存）                                              |
-| `LongId` / `Uuid`                                                                                | 长整型 / UUID 标识符 DP（Uuid 归一化小写、客户端生成）                                              |
-| `ConcurrencyVersion`                                                                             | 乐观锁版本号 DP（int、缓存 [0,99]、`next()` 步进）                                                  |
-| `PositiveInt`                                                                                    | 正整数 DP（≥ 1）                                                                                    |
-| `RandomString` / `Alphabet`                                                                      | 随机字符串 / 字符集 DP；字符池常量收拢于 Alphabet，随机源归生成器                                   |
-| `SensitiveValue`（位于 `domain.types` 子包）                                                     | 敏感数据 DP 基类：toString 恒脱敏（Mobile/Email 等继承）；位于 types 模块、与具体 DP 同包           |
-| `SecretValue`                                                                                    | 瞬态凭证载体：永不序列化、引用级相等、toString 全遮蔽                                               |
-| `PasswordHash`                                                                                   | PHC 口令哈希（哈希族唯一 SensitiveValue 特例，遮蔽至盐段前）                                        |
-| `Ciphertext`                                                                                     | JWE 可逆加密信封（alg=dir＋A256GCM＋kid 自验证、类型擦除解密）                                      |
-| `Digest`                                                                                         | 32 字节等值摘要：敏感原值的单向替代品（hex／标准 base64）                                           |
-| `Active`                                                                                         | boolean 值封装（TRUE/FALSE 单例、`negate()`）                                                       |
-| `Email`                                                                                          | 邮箱地址 DP（格式校验＋小写归一化）                                                                 |
-| `Percentage` / `Fen` / `WanYuan`                                                                 | 百分比 / 分（负值合法退款冲正）/ 万元金额 DP（DecimalLiteralType 系，超 Fen 值域用 WanYuan）        |
-| `EpochMilli`                                                                                     | epoch 毫秒绝对时间点 DP（毫秒精度互逆 `instant()`；契约就位、暂无生产消费方）                       |
-| `SoftwareVersion`                                                                                | 三段式版本号 DP（小写 v 前缀、逐段比较与步进、999 封顶不进位）                                      |
-| `UpdateMask`                                                                                     | update_mask 归一化 DP（字段名集合；省略 / 字段集 / `*` 三语态，`covers` 单一判定入口，见 ADR-0038） |
-| `SmsContent` / `EmailContent`                                                                    | 短信内容（≤70 字符）/ 邮件内容（subject ≤255＋body）                                                |
-| `Masked*` 五族（MaskedMobile / MaskedBankCard / MaskedIdCard / MaskedChineseName / MaskedEmail） | 敏感值的展示伴生 DP：PATTERN 星号掩码输出（星号段有上界）、原值不可逆推                             |
-| `Mobile` / `BankCard` / `IdCard` / `ChineseName`                                                 | 敏感字面量具体族：格式校验＋归一化＋toString 脱敏（SensitiveValue 系）；等值查询走盲索引            |
-| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson `name()` 短名）                                          |
+每行：类型 + 一句话契约。完整定义在代码 javadoc，决策理由在 ADR 描述（按主题索引见 `docs/adr/_index.md`）；零消费样例注记统一为
+「规范样例；无生产消费方」。
+
+**样例覆盖矩阵**（场景 → 样例 DP；新增场景而无样例 ＝ 覆盖缺口，如实登记）：
+
+| 场景                                             | 样例 DP                                                                                                                                                    |
+|--------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| record 单字段                                    | `Uuid`、`SmsContent`、`UpdateMask`                                                                                                                         |
+| record 多字段                                    | `EmailContent`、`VerificationSource`                                                                                                                       |
+| class 无缓存                                     | `SoftwareVersion`、`Percentage`、`WanYuan`、`PasswordHash`                                                                                                 |
+| class 有缓存                                     | `ConcurrencyVersion`（唯一带缓存的 DP；`PositiveInt` 无缓存，与「缓存的收益须可解释」判据一致）                                                            |
+| class 含派生字段                                 | `Percentage`、`WanYuan`、`SoftwareVersion`                                                                                                                 |
+| 密封基类 + 子类                                  | `AuthAccountId` 族、`VerificationRecipient`                                                                                                                |
+| 敏感基类                                         | `SensitiveValue` + `Mobile` / `Email` / `IdCard` / `BankCard` / `ChineseName`                                                                              |
+| 掩码族                                           | `Masked*` 五族                                                                                                                                             |
+| 瞬态凭证                                         | `SecretValue`                                                                                                                                              |
+| 哈希加密族                                       | `PasswordHash`、`Ciphertext`、`Digest`                                                                                                                     |
+| Decimal 系                                       | `DecimalLiteralType` + `Percentage` / `WanYuan`                                                                                                            |
+| 分值金额                                         | `Fen`（record + `IntLiteralType`）                                                                                                                         |
+| 时间点                                           | `EpochMilli`                                                                                                                                               |
+| 版本号                                           | `SoftwareVersion`                                                                                                                                          |
+| 枚举                                             | `EnumType` 5 个 + `StateEnumType` 2 个                                                                                                                     |
+| 标识符 `Identifier<T>`                           | `UserId`、`LongId`、`Uuid`、`AuthAccountId`                                                                                                                |
+| 字面量家族                                       | `StringLiteralType` 18 实现（component-types 14 / user-domain 4）、`LongLiteralType` 3、`IntLiteralType` 3（含 `Fen`）、`BooleanLiteralType` 1（`Active`） |
+| 零调用富血面                                     | `EpochMilli`                                                                                                                                               |
+| `DoubleLiteralType`（double 字面量）             | **缺口**——全仓仅接口声明，待补样例                                                                                                                         |
+| Class + 多字段（`PROPERTIES` + `@JsonProperty`） | **缺口**——零存量样例，待首个样例验证                                                                                                                       |
+
+| 类型                                                                                             | 一句话契约                                                                                                   |
+|--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `StringLiteralType` 等五字面量家族                                                               | 单属性字面量 DP 契约：包装不可变基本类型，`value()` 裸值＋标量 JSON 双向                                     |
+| `DecimalLiteralType`                                                                             | 小数字面量基类（规范值 String、BigDecimal 为派生缓存）                                                       |
+| `LongId` / `Uuid`                                                                                | 长整型 / UUID 标识符 DP（`LongId` 规范样例；无生产消费方；Uuid 归一化小写、客户端生成）                      |
+| `ConcurrencyVersion`                                                                             | 乐观锁版本号 DP（int、缓存 [0,99]、`next()` 步进）                                                           |
+| `PositiveInt`                                                                                    | 正整数 DP（≥ 1）                                                                                             |
+| `RandomString` / `Alphabet`                                                                      | 随机字符串 / 字符集 DP；字符池常量收拢于 Alphabet，随机源归生成器                                            |
+| `SensitiveValue`（位于 `domain.types` 子包）                                                     | 敏感数据 DP 基类：toString 恒脱敏（Mobile/Email 等继承）；位于 types 模块、与具体 DP 同包                    |
+| `SecretValue`                                                                                    | 瞬态凭证载体：永不序列化、引用级相等、toString 全遮蔽                                                        |
+| `PasswordHash`                                                                                   | PHC 口令哈希（哈希族唯一 SensitiveValue 特例，遮蔽至盐段前）                                                 |
+| `Ciphertext`                                                                                     | JWE 可逆加密信封（alg=dir＋A256GCM＋kid 自验证、类型擦除解密；规范样例；无生产消费方）                       |
+| `Digest`                                                                                         | 32 字节等值摘要：敏感原值的单向替代品（hex／标准 base64；规范样例；无生产消费方）                            |
+| `Active`                                                                                         | boolean 值封装（TRUE/FALSE 单例、`negate()`）                                                                |
+| `Email`                                                                                          | 邮箱地址 DP（格式校验＋小写归一化）                                                                          |
+| `Percentage` / `WanYuan`                                                                         | 百分比 / 万元金额 DP（`DecimalLiteralType` 系：规范值 String + BigDecimal 派生；规范样例；无生产消费方）     |
+| `Fen`                                                                                            | 分 DP（`record` + `IntLiteralType`，以分记 int；负值合法退款冲正，超值域用 WanYuan；规范样例；无生产消费方） |
+| `EpochMilli`                                                                                     | epoch 毫秒绝对时间点 DP（毫秒精度互逆 `toInstant()`；规范样例；无生产消费方）                                |
+| `SoftwareVersion`                                                                                | 三段式版本号 DP（小写 v 前缀、逐段比较与步进、999 封顶不进位；规范样例；无生产消费方）                       |
+| `UpdateMask`                                                                                     | update_mask 归一化 DP（字段名集合；省略 / 字段集 / `*` 三语态，`covers` 单一判定入口，见 ADR-0038）          |
+| `SmsContent` / `EmailContent`                                                                    | 短信内容（≤70 字符）/ 邮件内容（subject ≤255＋body）                                                         |
+| `Masked*` 五族（MaskedMobile / MaskedBankCard / MaskedIdCard / MaskedChineseName / MaskedEmail） | 敏感值的展示伴生 DP：PATTERN 星号掩码输出（星号段有上界）、原值不可逆推                                      |
+| `Mobile` / `BankCard` / `IdCard` / `ChineseName`                                                 | 敏感字面量具体族：格式校验＋归一化＋toString 脱敏（SensitiveValue 系）；等值查询走盲索引                     |
+| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson `name()` 短名）                                                   |
 
 **命名/使用约定**：不把 `Alphabet` 称 Policy（与验证码策略词冲突）或 charset（与 `java.nio.charset.Charset` 混淆）；`Fen`/
 `WanYuan` 单位明示、不裸称「元」；不把 `EpochMilli` 叫 Timestamp（JDBC 类型歧义），领域时间字段不用裸 `Instant`（线上格式不受 DP
 边界保护）；`SoftwareVersion` 不是 `ConcurrencyVersion`（乐观锁计数器）也不是 SemVer（无 pre-release/build）；审计列属基础设施、保持裸
-`Instant`。`ArrayTypeCache` / `MapTypeCache` 是类型缓存设施、非 Domain Primitive，不入本表。
+`Instant`。
 
 ### Cacheable
 

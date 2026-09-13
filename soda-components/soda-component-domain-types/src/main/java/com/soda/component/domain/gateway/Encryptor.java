@@ -21,7 +21,7 @@ public interface Encryptor extends Gateway {
 
     /**
      * 加密敏感值 DP（Mobile/Email/IdCard/BankCard/ChineseName 等）。
-     * 入参收窄至 SensitiveValue——密文/摘要/掩码的再加密属无意义调用（ADR-0033 修订注记 4）。
+     * 入参收窄至 SensitiveValue——密文/摘要/掩码的再加密属无意义调用。
      */
     Ciphertext encrypt(SensitiveValue pii);
 }

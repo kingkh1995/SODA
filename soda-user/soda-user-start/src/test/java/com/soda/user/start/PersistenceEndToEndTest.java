@@ -15,6 +15,7 @@ import com.soda.user.domain.SmsAuthAccount;
 import com.soda.user.domain.User;
 import com.soda.user.domain.gateway.UserGateway;
 import com.soda.user.domain.gateway.VerificationGateway;
+import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.Nickname;
 import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
@@ -131,7 +132,7 @@ class PersistenceEndToEndTest {
             // 第一步：发码 → 提交后 AFTER_COMMIT 监听器投递（log 桩）→ P 落库
             userAuthService.requestChangeMobile(new RequestChangeMobileCommand(userId, "13900139111"));
             var pending = verificationGateway.findLatestBySourceAndStateIn(
-                            VerificationSource.of("UCC", Long.toString(userId)),
+                            new VerificationSource("UCC", Long.toString(userId)),
                             List.of(VerificationState.P))
                     .orElseThrow();
             assertThat(pending.getRecipient()).isEqualTo(new SmsRecipient(Mobile.of("13900139111")));
@@ -146,7 +147,7 @@ class PersistenceEndToEndTest {
             assertThat(smsAccount.getMobile()).isEqualTo(Mobile.of("13900139111"));
 
             var used = verificationGateway.findLatestBySourceAndStateIn(
-                            VerificationSource.of("UCC", Long.toString(userId)),
+                            new VerificationSource("UCC", Long.toString(userId)),
                             List.of(VerificationState.U))
                     .orElseThrow();
             assertThat(used.getState()).isEqualTo(VerificationState.U);
@@ -197,7 +198,7 @@ class PersistenceEndToEndTest {
             // 旧码失效、新码生效——领域级观察：消费反查只见重发后的新 P 行
             // （腾槽机制钉死归 repository 切片 LazyEvict 组；javadoc「非领域契约」，ADR-0026）
             var reloaded = verificationGateway.findLatestBySourceAndStateIn(
-                    VerificationSource.of("UCC", Long.toString(userId)), List.of(VerificationState.P));
+                    new VerificationSource("UCC", Long.toString(userId)), List.of(VerificationState.P));
             assertThat(reloaded).hasValueSatisfying(v ->
                     assertThat(v.getRecipient()).isEqualTo(new SmsRecipient(Mobile.of("13900139115"))));
         }
@@ -209,7 +210,7 @@ class PersistenceEndToEndTest {
                     "ivan", "Passw0rd!", "Ivan", null, null, null, null));
 
             var result = verificationGateway.findLatestBySourceAndStateIn(
-                    VerificationSource.of("UCC", Long.toString(created.id())),
+                    new VerificationSource("UCC", Long.toString(created.id())),
                     List.of(VerificationState.P));
             assertThat(result).isEmpty();
         }
@@ -390,7 +391,7 @@ class PersistenceEndToEndTest {
             // 停用手机号登录（支付宝/阿里云模式：mobile 仍是账号标识，仅登录方式关闭）
             var user = userGateway.findById(userId).orElseThrow();
             var smsAccount = (SmsAuthAccount) user.getAccounts().stream()
-                    .filter(a -> a.getAccountType().equals(com.soda.user.domain.types.SmsAuthAccountId.ACCOUNT_TYPE))
+                    .filter(a -> a.getAccountType().equals(AuthAccountType.S))
                     .findFirst().orElseThrow();
             smsAccount.deactivate();
             userGateway.save(user);
@@ -398,7 +399,7 @@ class PersistenceEndToEndTest {
             var reloaded = userGateway.findById(userId).orElseThrow();
             assertThat(reloaded.getMobile()).contains(Mobile.of("13900139006")); // 标识仍在
             var reloadedSms = (SmsAuthAccount) reloaded.getAccounts().stream()
-                    .filter(a -> a.getAccountType().equals(com.soda.user.domain.types.SmsAuthAccountId.ACCOUNT_TYPE))
+                    .filter(a -> a.getAccountType().equals(AuthAccountType.S))
                     .findFirst().orElseThrow();
             assertThat(reloadedSms.isActive()).isFalse(); // 登录方式已关闭
 
@@ -408,7 +409,7 @@ class PersistenceEndToEndTest {
 
             var restored = userGateway.findById(userId).orElseThrow();
             var restoredSms = (SmsAuthAccount) restored.getAccounts().stream()
-                    .filter(a -> a.getAccountType().equals(com.soda.user.domain.types.SmsAuthAccountId.ACCOUNT_TYPE))
+                    .filter(a -> a.getAccountType().equals(AuthAccountType.S))
                     .findFirst().orElseThrow();
             assertThat(restoredSms.isActive()).isTrue();
         }

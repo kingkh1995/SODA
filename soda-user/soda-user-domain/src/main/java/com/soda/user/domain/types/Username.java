@@ -15,8 +15,8 @@ import java.util.regex.Pattern;
  */
 public record Username(String value) implements StringLiteralType, Comparable<Username> {
 
-    // 静态初始化按文本顺序执行：USERNAME_PATTERN 必须先于 REMOVED 初始化——REMOVED 构造
-    // （new Username(...)）在校验中引用该 Pattern，倒序触发 ExceptionInInitializerError
+    // 静态初始化按文本顺序执行（STYLEGUIDE §2.7）：USERNAME_PATTERN 必须先于 REMOVED 初始化——
+    // REMOVED 构造（new Username(...)）在校验中引用该 Pattern，倒序触发 ExceptionInInitializerError
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9]{4,30}$");
 
     /**

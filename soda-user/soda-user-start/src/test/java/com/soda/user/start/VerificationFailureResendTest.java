@@ -71,7 +71,7 @@ class VerificationFailureResendTest {
         var created = userService.createUser(new CreateUserCommand(
                 "judy", "Passw0rd!", "Judy", "13900139004", null, null, null));
         var userId = created.id();
-        var source = VerificationSource.of("UCC", Long.toString(userId));
+        var source = new VerificationSource("UCC", Long.toString(userId));
 
         // 第一次发码：send 抛异常（投递契约违反）→ Spring 7 afterCompletion 吞异常（记录 ERROR 日志）、
         // 记录保持 I（send 失败未 markSent，PENDING 蕴含已送达不变量不破坏）

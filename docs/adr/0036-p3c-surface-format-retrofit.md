@@ -19,13 +19,10 @@ status: stable
 
 ## Consequences
 
-- 改造动四处文档共 ~21.5h（DP 22 表级别列 + 60 对 ❌/✅ ~15h；Entity/Aggregate 表化 + ❌/✅ ~6h；adapter.md 级别列 + ❌/✅ ~
-  2h；STYLEGUIDE §4 三级标定 ~1h），按 §四序号 1-6 + 8 落地（调研报告 §四）。AIP Research doc 不动、ADR 不动、根目录
-  STYLEGUIDE/CONTEXT/AGENTS/README 不动
 - 改造 **不引入** checkstyle/Sonar/ArchUnit——STYLEGUIDE §4 明确「机械格式可加
   checkstyle，漂移真实出现时再评估启用」（现行无需）；doc-conventions §7 合规基准明确「机械项脚本检查不做，由 agent 审计按基准逐项承载」
-- 条形化后 agent / code-review 按 `规则 | 级别 | 来源` 三列稳定检索，与 writing-for-agents 原则一致（description
-  决定何时触达、正文结构稳定便于解析）；不破坏 OKF 单源原则（不引入第二份规范文档）
+- 条形化后 agent / code-review 按带级别列的标准规则表稳定检索（`规则 | 级别 | 说明` 等），与 writing-for-agents
+  原则一致（description 决定何时触达、正文结构稳定便于解析）；不破坏 OKF 单源原则（不引入第二份规范文档）
 - 不替代现有 ADR 极简三句格式（doc-conventions §4）——本 ADR 自身即是极简三句（背景 + 决策 + 为什么）；不替代 doc-conventions
   §9 V1 阶段「决策变更就地更新」原则
 - 不改 docs/research/google-aip-api-design-spec.md 状态（仍为 Research，§3 type 词表）——research 文档的 provenance

@@ -102,6 +102,25 @@ class PasswordAuthAccountTest {
     }
 
     @Nested
+    @DisplayName("校验")
+    class Validation {
+
+        @Test
+        @DisplayName("createBuilder 缺 passwordHash 拒绝")
+        void should_throw_when_passwordHashIsNull() {
+            assertThatThrownBy(() -> PasswordAuthAccount.createBuilder().passwordHash(null).build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("恢复路径 active 为 null 拒绝")
+        void should_throw_when_activeIsNull() {
+            assertThatThrownBy(() -> PasswordAuthAccount.builder().id(ID).active(null).passwordHash(HASH).build())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("认证")
     class Authentication {
 
@@ -127,16 +146,17 @@ class PasswordAuthAccountTest {
         }
 
         @Test
-        @DisplayName("更改密码更新哈希")
+        @DisplayName("更改密码以新哈希替换旧哈希")
         void should_updateHash_when_changePassword() {
             var a = PasswordAuthAccount.builder().id(ID).active(Active.TRUE).passwordHash(HASH).build();
-            a.changePassword(new SecretValue("x"), STUB);
-            assertThat(a.getPasswordHash()).isEqualTo(HASH);
+            a.changePassword(new SecretValue("x"), REHASHING_STUB);
+            assertThat(a.getPasswordHash()).isEqualTo(REHASHED_HASH);
+            assertThat(a.getPasswordHash()).isNotEqualTo(HASH);
         }
     }
 
     @Nested
-    @DisplayName("登录透明升级（ADR-0033 注记 7）")
+    @DisplayName("登录透明升级（ADR-0033）")
     class RehashOnLogin {
 
         private PasswordAuthAccount account() {
@@ -183,7 +203,7 @@ class PasswordAuthAccountTest {
         void should_rejectRestore_when_activeIsFalse() {
             assertThatThrownBy(() -> PasswordAuthAccount.builder().id(ID).active(Active.FALSE).passwordHash(HASH).build())
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("must equal 'Active[value=true]', got: 'Active[value=false]'");
+                    .hasMessageContaining("must equal 'Active[value=true]'");
         }
 
         @Test

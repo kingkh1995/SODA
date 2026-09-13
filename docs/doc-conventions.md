@@ -27,24 +27,27 @@ SODA 文档体系标准（OKF v0.2 适配 × Google 注释规范 × agent 写作
 
 docs/ 树本身是事实源（filesystem 即真相，块内文件清单将漂移）；下表只标 **语义归属**：
 
-| 路径                                      | 语义归属                                                                                            |
-|-------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `index.md`                                | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                     |
-| `adr/`                                    | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计） |
-| `research/`                               | 研究笔记（引用外部材料）                                                                            |
-| `agents/`                                 | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                |
-| `framework-conventions.md`                | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                   |
-| `test-conventions.md`                     | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                          |
-| `dp-conventions.md`                       | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                     |
-| `conventions/`                            | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                         |
-| `conventions/framework-type-contracts.md` | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                    |
-| `conventions/framework-crosscutting.md`   | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                |
-| `conventions/dp-json-conventions.md`      | DP 序列化契约族（字面量 / record / SensitiveValue / 自描述 ID）                                     |
-| `doc-conventions.md`                      | 本文件                                                                                              |
+| 路径                                       | 语义归属                                                                                            |
+|--------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `index.md`                                 | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                     |
+| `adr/`                                     | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计） |
+| `research/`                                | 研究笔记（引用外部材料）                                                                            |
+| `agents/`                                  | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                |
+| `framework-conventions.md`                 | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                   |
+| `test-conventions.md`                      | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                          |
+| `dp-conventions.md`                        | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                     |
+| `conventions/`                             | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                         |
+| `conventions/framework-type-contracts.md`  | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                    |
+| `conventions/framework-crosscutting.md`    | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                |
+| `conventions/dp-json-conventions.md`       | DP 序列化契约族（模式总表 / 类型映射 / BigDecimal DP 模式 / 禁止 Serializable）                     |
+| `conventions/dp-validation-conventions.md` | DP 校验与归一化（三入口职责 / 校验收敛 / 编排 / 归一化细则）                                        |
+| `conventions/dp-test-conventions.md`       | DP 必测分组与 @Nested 分组矩阵                                                                      |
+| `conventions/aip-api-conventions.md`       | HTTP API 设计规范（资源 / 方法 / 字段 / 分页 / 错误处理）                                           |
+| `doc-conventions.md`                       | 本文件                                                                                              |
 
 `docs/index.md` 只列一级条目（目录 + 一句话定位，不承载正文——OKF §8）；conventions/ 族在 index 的 conventions/
 条目下列举（adapter / dp-test-conventions / framework-type-contracts / framework-crosscutting /
-dp-validation-conventions），详细契约经 framework-type-contracts.md 类型清单表触达。
+dp-validation-conventions / dp-json-conventions / aip-api-conventions），详细契约经 framework-type-contracts.md 类型清单表触达。
 
 **不引入 `log.md`**（OKF §9 为 MAY，非合规必需）：变更史由 git log/blame 承载；V1 零残留条款（§9）禁止历史回溯内容入库——log 条目本身即历史回溯。
 
@@ -67,12 +70,13 @@ dp-validation-conventions），详细契约经 framework-type-contracts.md 类�
 
 跨知识层互链规则：
 
-| 方向 | 规则 |
-|---|---|
-| 代码 → 文档 | javadoc 文字锚点「见 ADR-0021」——非 markdown 链接，grep 可达 |
-| ADR → 代码 | prose 符号名（如 `VerificationService`），不写文件路径 / 链接——代码是事实源，路径易腐 |
-| CONTEXT ↔ 其他 | 互不挂链接——纯词汇表（matt CONTEXT-FORMAT 硬契约），术语靠词表寻址，grep 即达 |
-| 文档 ↔ 文档 | markdown 相对路径（根文档 ↔ docs/、docs/ 内部同一规则；AGENTS.md 指针同此） |
+| 方向            | 规则                                                                                                         |
+|-----------------|--------------------------------------------------------------------------------------------------------------|
+| 代码 → 文档     | javadoc 文字锚点「见 ADR-0021」——非 markdown 链接，grep 可达                                                 |
+| ADR → 代码      | prose 符号名（如 `VerificationService`），不写文件路径 / 链接——代码是事实源，路径易腐                        |
+| CONTEXT ↔ 其他  | 互不挂链接——纯词汇表（matt CONTEXT-FORMAT 硬契约），术语靠词表寻址，grep 即达                                |
+| 文档 ↔ 文档     | markdown 相对路径（根文档 ↔ docs/、docs/ 内部同一规则；AGENTS.md 指针同此）                                  |
+| 任意 → 需求票据 | **禁止**——不引用 `.scratch/` 票据（编号 / 路径）；票据闭环即归档删除，锚定只走 ADR / 约定文档 / 源码 javadoc |
 
 **根文档**（README / AGENTS / CONTEXT / STYLEGUIDE）在 bundle 外：加 frontmatter 是推荐扩展（喂搜索/索引），不加不违规。
 
@@ -195,14 +199,15 @@ docs/ 内每个非保留名 .md（docs/agents/ 除外——setup 产物，见 §
 - [ ] Research：`sources` 非空
 - [ ] 分层合规：CONTEXT.md 只含业务词汇（无实现细节）；ADR 无代码片段
 - [ ] 链接与锚点：markdown 链接全相对路径（从所在文件出发，§2.5）、无根相对 `/…`、目标可达；「见 ADR-NNNN」prose 锚点须对应 adr/
-  现存文件且语义一致；本判据适用 **全仓**（根四文档＋代码注释），编号空洞合法——V1
+  现存文件且语义一致； **不引用需求票据**（§2.5）；本判据适用 **全仓**（根四文档＋代码注释），编号空洞合法——V1
   过时即删，引用不得悬空
 - [ ] 不破坏技能契约：CONTEXT.md 含 `## Language`；ADR 位置/编号不变；docs/agents/ 三件套存在
 - [ ] 类型覆盖：framework-type-contracts.md 清单表覆盖 types 包全部 DP（表即 DP 覆盖清单，逐行核对）；基类/标记接口由
   conventions/framework-type-contracts.md
   小节承载，人工审计核存在性；已有专项规范的在行内锚点可达（conventions/ 族、dp-conventions）
 - [ ] 渲染完整性：代码围栏逐对闭合（围栏行数偶数、无孤立开口）；无编辑残迹（行首 `*NN:` 前缀、代码块内孤立 `…`
-  行）；关键模板区（dp-conventions §2/§3 模板、conventions/ 完整示例）抽查渲染
+  行）；代码行无硬换行截断（样例续行不得被空行劈开——续行特征如行尾 `.` / `(` / `,` / `->`、孤立 `new` / `case` 行）；
+  关键模板区（dp-conventions §1.4/§9 模板、conventions/ 完整示例）抽查渲染
 
 检查方式：
 

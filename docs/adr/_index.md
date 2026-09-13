@@ -30,7 +30,7 @@ status: stable
 
 - **[0004](0004-account-polymorphism-and-persistence.md)** — AuthAccount 多态与单表持久化
 - **[0006](0006-sealed-authaccount-hierarchy.md)** — AuthAccount sealed 层级
-- **[0007](0007-authaccountid-centralized-jsoncreator.md)** — AuthAccountId 前缀编码与集中反序列化
+- **[0007](0007-authaccountid-prefix-encoding.md)** — AuthAccountId 前缀编码
 - **[0010](0010-user-intention-revealing-methods.md)** — User 意图揭示方法（changeXxx / disable / enable）
 - **[0027](0027-password-change-old-credential-guard.md)** — 自助改密原密码守卫
 

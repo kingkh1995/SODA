@@ -5,12 +5,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.URI;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -54,12 +53,12 @@ class ParseUtilsTest {
             assertThat(ParseUtils.parseInt("  456  ")).isEqualTo(456);
         }
 
-        @ParameterizedTest
-        @NullSource
-        @ValueSource(strings = {"abc"})
+        @Test
         @DisplayName("null / 非法格式拒绝")
-        void should_throw_when_invalid(String value) {
-            assertThatThrownBy(() -> ParseUtils.parseInt(value))
+        void should_throw_when_invalid() {
+            assertThatThrownBy(() -> ParseUtils.parseInt(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> ParseUtils.parseInt("abc"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -111,12 +110,12 @@ class ParseUtilsTest {
             assertThat(ParseUtils.parseLong("  789  ")).isEqualTo(789L);
         }
 
-        @ParameterizedTest
-        @NullSource
-        @ValueSource(strings = {"xyz"})
+        @Test
         @DisplayName("null / 非法格式拒绝")
-        void should_throw_when_invalid(String value) {
-            assertThatThrownBy(() -> ParseUtils.parseLong(value))
+        void should_throw_when_invalid() {
+            assertThatThrownBy(() -> ParseUtils.parseLong(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> ParseUtils.parseLong("xyz"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -135,13 +134,15 @@ class ParseUtilsTest {
         @Test
         @DisplayName("http URL 通过")
         void should_accept_when_httpUrl() {
-            ParseUtils.parseUri("http://example.com");
+            assertThatCode(() -> ParseUtils.parseUri("http://example.com"))
+                    .doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("带路径与查询参数的 https URL 通过")
         void should_accept_when_httpsUrlWithQuery() {
-            ParseUtils.parseUri("https://example.com/path?q=1");
+            assertThatCode(() -> ParseUtils.parseUri("https://example.com/path?q=1"))
+                    .doesNotThrowAnyException();
         }
 
         @Test
@@ -169,12 +170,12 @@ class ParseUtilsTest {
             assertThat(ParseUtils.parseEnum(Thread.State.class, "RUNNABLE")).isEqualTo(Thread.State.RUNNABLE);
         }
 
-        @ParameterizedTest
-        @NullSource
-        @ValueSource(strings = {"NO_SUCH_STATE"})
+        @Test
         @DisplayName("null / 未知枚举名拒绝")
-        void should_throw_when_unknownName(String value) {
-            assertThatThrownBy(() -> ParseUtils.parseEnum(Thread.State.class, value))
+        void should_throw_when_unknownName() {
+            assertThatThrownBy(() -> ParseUtils.parseEnum(Thread.State.class, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> ParseUtils.parseEnum(Thread.State.class, "NO_SUCH_STATE"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }

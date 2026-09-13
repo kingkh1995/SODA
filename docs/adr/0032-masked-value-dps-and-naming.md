@@ -13,7 +13,7 @@ status: stable
 ，record 即满足简单 DP 形态；读回以格式正则校验承重（落库值不可篡改/非法）。三层词汇定界：`SecretValue`（瞬态凭证，永不展示）/
 `SensitiveValue`（长期 PII，脱敏后展示）/`Masked*`（已脱敏落库形态）；每个 `MaskedXxx` 必须有成对原始值 DP（不接受孤儿掩码类），
 `SensitiveValue` 基类收敛为单抽象方法 `maskedValue()`
-。派生通道、掩码算法同址等机制约定见 [dp-conventions](../dp-conventions.md)。
+。派生通道、掩码算法同址等机制约定见 [dp-conventions §2.4 敏感数据族](../dp-conventions.md#24-敏感数据族)。
 
 ## Consequences
 

@@ -1,7 +1,7 @@
 package com.soda.user.domain;
 
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.types.Email;
-import com.soda.user.domain.types.AuthAccountId;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import org.junit.jupiter.api.DisplayName;
@@ -9,14 +9,20 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("EmailAuthAccountId 值对象")
-class EmailAuthAccountIdTest {
+class EmailAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<EmailAuthAccountId> {
+
+    @Override
+    protected Contract<EmailAuthAccountId> contract() {
+        return new Contract<>(EmailAuthAccountId.class, () -> EmailAuthAccountId.of("E:user@test.com"),
+                "\"E:user@test.com\"", "EmailAuthAccountId[value=E:user@test.com]", "\"invalid\"",
+                () -> EmailAuthAccountId.of("E:zser@test.com"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -47,7 +53,7 @@ class EmailAuthAccountIdTest {
         @Test
         @DisplayName("authAccountType 返回 E")
         void should_returnE_when_authAccountType() {
-            assertThat(EmailAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.E);
+            assertThat(EmailAuthAccountId.of("E:a@b.com").accountType()).isEqualTo(AuthAccountType.E);
         }
     }
 
@@ -55,11 +61,10 @@ class EmailAuthAccountIdTest {
     @DisplayName("路由")
     class Routing {
         @Test
-        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
-        void should_routeToEmailSubtype_when_baseFactoryOrJson() throws Exception {
-            assertThat(AuthAccountId.of("E:a@b.com")).isInstanceOf(EmailAuthAccountId.class);
-            assertThat(MAPPER.readValue("\"E:a@b.com\"", AuthAccountId.class))
-                    .isInstanceOf(EmailAuthAccountId.class);
+        @DisplayName("JSON 反序列化以本子类为声明类型")
+        void should_routeToEmailSubtype_when_json() throws Exception {
+            assertThat(MAPPER.readValue("\"E:a@b.com\"", EmailAuthAccountId.class))
+                    .isEqualTo(EmailAuthAccountId.of("E:a@b.com"));
         }
     }
 
@@ -90,97 +95,12 @@ class EmailAuthAccountIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(EmailAuthAccountId.of("E:a@b.com"))
-                    .isEqualTo(EmailAuthAccountId.of("E:a@b.com"));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(EmailAuthAccountId.of("E:a@b.com"))
-                    .isNotEqualTo(EmailAuthAccountId.of("E:c@d.com"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode_when_equal() {
-            var a = EmailAuthAccountId.of("E:user@test.com");
-            var b = EmailAuthAccountId.of("E:user@test.com");
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 包含 value")
-        void should_containValue_when_toString() {
-            assertThat(EmailAuthAccountId.of("E:user@test.com"))
-                    .hasToString("EmailAuthAccountId[value=E:user@test.com]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson 序列化反序列化")
-        void should_roundTrip_when_validJson() throws Exception {
-            var original = EmailAuthAccountId.from(Email.of("test@example.com"));
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(json).isEqualTo("\"E:test@example.com\"");
-            var restored = MAPPER.readValue(json, EmailAuthAccountId.class);
-            assertThat(restored).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 抛出异常")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", EmailAuthAccountId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var id = EmailAuthAccountId.of("E:user@example.com");
-            var json = MAPPER.writeValueAsString(id);
-            assertThat(json).isEqualTo("\"E:user@example.com\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"E:user@example.com\"", EmailAuthAccountId.class))
-                    .isEqualTo(EmailAuthAccountId.of("E:user@example.com"));
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 委托给字符串比较")
-        void should_delegateToStringCompare_when_compareTo() {
-            var a = EmailAuthAccountId.of("E:a@b.com");
-            var b = EmailAuthAccountId.of("E:c@d.com");
-            assertThat(a.compareTo(b) < 0).isTrue();
-            assertThat(b.compareTo(a) > 0).isTrue();
-            assertThat(a.compareTo(a) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals_when_compareTo() {
-            var a = EmailAuthAccountId.of("E:user@test.com");
-            var b = EmailAuthAccountId.of("E:user@test.com");
-            assertThat(a.compareTo(b) == 0).isTrue();
+        @DisplayName("identifier 返回规范化编码值")
+        void should_returnCanonicalValue_when_identifier() {
+            assertThat(EmailAuthAccountId.of("E:user@test.com").identifier()).isEqualTo("E:user@test.com");
         }
     }
 }

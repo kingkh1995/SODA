@@ -11,6 +11,8 @@ import lombok.experimental.Accessors;
  * 密码认证账户标识符 DP — 派生自 {@link UserId}。
  * <p>
  * 值 = {@code "P:{userId}"}（如 {@code "P:42"}），统一 {@link AuthAccountId} 格式。
+ * <p>
+ * payload 即 {@link UserId} 本身，故 {@code of(String)} 与 {@code from(UserId)} 是同一派生，各自直达私有构造器。
  *
  * @see AuthAccountId
  */
@@ -19,13 +21,10 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 public final class PasswordAuthAccountId extends AuthAccountId implements Comparable<PasswordAuthAccountId> {
 
-    public static final AuthAccountType ACCOUNT_TYPE = AuthAccountType.P;
-    private static final String PREFIX = ACCOUNT_TYPE.name() + AuthAccountId.DELIMITER;
-
     private final UserId userId;
 
-    private PasswordAuthAccountId(String value, UserId userId) {
-        super(value);
+    private PasswordAuthAccountId(UserId userId) {
+        super(String.valueOf(userId.value()));
         this.userId = userId;
     }
 
@@ -34,13 +33,21 @@ public final class PasswordAuthAccountId extends AuthAccountId implements Compar
      */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static PasswordAuthAccountId of(String value) {
-        var suffix = ParseUtils.cutPrefix(value, PREFIX);
-        return new PasswordAuthAccountId(value, new UserId(ParseUtils.parseLong(suffix)));
+        var suffix = ParseUtils.cutPrefix(value, prefix(AuthAccountType.P));
+        return new PasswordAuthAccountId(new UserId(ParseUtils.parseLong(suffix)));
     }
 
+    /**
+     * 从 {@link UserId} 构造。
+     */
     public static PasswordAuthAccountId from(UserId userId) {
         ValidateUtils.notNull(userId);
-        return new PasswordAuthAccountId(PREFIX + userId.value(), userId);
+        return new PasswordAuthAccountId(userId);
+    }
+
+    @Override
+    public AuthAccountType accountType() {
+        return AuthAccountType.P;
     }
 
     @Override

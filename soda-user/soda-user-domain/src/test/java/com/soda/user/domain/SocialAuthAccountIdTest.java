@@ -1,6 +1,6 @@
 package com.soda.user.domain;
 
-import com.soda.user.domain.types.AuthAccountId;
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
@@ -9,14 +9,20 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SocialAuthAccountId 值对象")
-class SocialAuthAccountIdTest {
+class SocialAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SocialAuthAccountId> {
+
+    @Override
+    protected Contract<SocialAuthAccountId> contract() {
+        return new Contract<>(SocialAuthAccountId.class, () -> SocialAuthAccountId.of("O:GE:12345"),
+                "\"O:GE:12345\"", "SocialAuthAccountId[value=O:GE:12345]", "\"invalid\"",
+                () -> SocialAuthAccountId.of("O:GE:12346"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -49,7 +55,7 @@ class SocialAuthAccountIdTest {
         @Test
         @DisplayName("authAccountType 返回 O")
         void should_returnO_when_authAccountType() {
-            assertThat(SocialAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.O);
+            assertThat(SocialAuthAccountId.of("O:GE:1").accountType()).isEqualTo(AuthAccountType.O);
         }
 
         @Test
@@ -67,11 +73,10 @@ class SocialAuthAccountIdTest {
     @DisplayName("路由")
     class Routing {
         @Test
-        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
-        void should_routeToSocialSubtype_when_baseFactoryOrJson() throws Exception {
-            assertThat(AuthAccountId.of("O:GE:1")).isInstanceOf(SocialAuthAccountId.class);
-            assertThat(MAPPER.readValue("\"O:GE:1\"", AuthAccountId.class))
-                    .isInstanceOf(SocialAuthAccountId.class);
+        @DisplayName("JSON 反序列化以本子类为声明类型")
+        void should_routeToSocialSubtype_when_json() throws Exception {
+            assertThat(MAPPER.readValue("\"O:GE:1\"", SocialAuthAccountId.class))
+                    .isEqualTo(SocialAuthAccountId.of("O:GE:1"));
         }
     }
 
@@ -95,94 +100,12 @@ class SocialAuthAccountIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(SocialAuthAccountId.from(SocialType.GE, "1"))
-                    .isEqualTo(SocialAuthAccountId.from(SocialType.GE, "1"));
-        }
-
-        @Test
-        @DisplayName("不同社交类型不等")
-        void should_notBeEqual_when_differentSocialType() {
-            assertThat(SocialAuthAccountId.from(SocialType.GE, "1"))
-                    .isNotEqualTo(SocialAuthAccountId.from(SocialType.DT, "1"));
-        }
-
-        @Test
-        @DisplayName("不同 openId 不等")
-        void should_notBeEqual_when_differentOpenId() {
-            assertThat(SocialAuthAccountId.from(SocialType.GE, "1"))
-                    .isNotEqualTo(SocialAuthAccountId.from(SocialType.GE, "2"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode_when_equal() {
-            var a = SocialAuthAccountId.of("O:GE:12345");
-            var b = SocialAuthAccountId.of("O:GE:12345");
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 包含 value")
-        void should_containValue_when_toString() {
-            assertThat(SocialAuthAccountId.of("O:GE:12345"))
-                    .hasToString("SocialAuthAccountId[value=O:GE:12345]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var id = SocialAuthAccountId.of("O:GE:open123");
-            var json = MAPPER.writeValueAsString(id);
-            assertThat(json).isEqualTo("\"O:GE:open123\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"O:GE:open123\"", SocialAuthAccountId.class))
-                    .isEqualTo(SocialAuthAccountId.of("O:GE:open123"));
-        }
-
-        @Test
-        @DisplayName("非法 JSON 抛出异常")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", SocialAuthAccountId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 委托给字符串比较")
-        void should_delegateToStringCompare_when_compareTo() {
-            var a = SocialAuthAccountId.from(SocialType.GE, "1");
-            var b = SocialAuthAccountId.from(SocialType.GE, "2");
-            assertThat(a.compareTo(b) < 0).isTrue();
-            assertThat(b.compareTo(a) > 0).isTrue();
-            assertThat(a.compareTo(a) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals_when_compareTo() {
-            var a = SocialAuthAccountId.of("O:GE:12345");
-            var b = SocialAuthAccountId.of("O:GE:12345");
-            assertThat(a.compareTo(b) == 0).isTrue();
+        @DisplayName("identifier 返回规范化编码值")
+        void should_returnCanonicalValue_when_identifier() {
+            assertThat(SocialAuthAccountId.of("O:GE:12345").identifier()).isEqualTo("O:GE:12345");
         }
     }
 }

@@ -12,7 +12,7 @@ status: stable
 DP 归其线上类型所在家族——`value()` 返回线上类型（承载继承的 `@JsonValue`），语义值作第二访问器 + 派生字段，不参与序列化/
 `equals`/`hashCode`。落两个形态：小数 `DecimalLiteralType` 抽象基类（直接实现 `StringLiteralType`，集中「规范值 String + 派生
 `decimalValue()`」缓存不变量与 `validate` 钩子，`WanYuan`/`Percentage` 继承）；绝对时间点 `EpochMilli`（record 直挂
-`LongLiteralType`：`long` 毫秒规范值 + 派生 `instant()`，毫秒精度互逆、亚毫秒截断；单实现者不建时间子契约）；两者不共享基类——唯一共性「两访问器」太薄。
+`LongLiteralType`：`long` 毫秒规范值 + 派生 `toInstant()`，毫秒精度互逆、亚毫秒截断；单实现者不建时间子契约）；两者不共享基类——唯一共性「两访问器」太薄。
 `EpochMilli` 的 `@JsonValue long` 覆盖 Jackson 3 裸 `Instant` 的 ISO-8601 字符串默认且不受全局 feature 影响。
 
 ## Consequences

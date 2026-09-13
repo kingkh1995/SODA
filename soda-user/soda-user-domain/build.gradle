@@ -3,4 +3,6 @@ dependencies {
     api project(':soda-components:soda-component-domain-starter')
     // 共享领域类型（Sex、Mobile、UUID 等）
     api project(':soda-components:soda-component-domain-types')
+    // 组件模块 DP 契约套件（testFixtures）：DP 测试基类 + 共享 Mapper
+    testImplementation(testFixtures(project(':soda-components:soda-component-domain-types')))
 }

@@ -36,6 +36,7 @@ class SensitiveValueContractTest {
     void should_equalWithinType_byCanonicalValue() {
         var left = IdCard.of("110101199001011234");
         var right = IdCard.of("110101199001011234");
+        assertThat(left).isEqualTo(right);
         assertThat(left.hashCode()).isEqualTo(right.hashCode());
     }
 

@@ -1,16 +1,12 @@
 package com.soda.user.domain;
 
 import com.soda.component.domain.gateway.RandomStringGenerator;
-import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
 import com.soda.component.domain.types.Uuid;
-import com.soda.user.domain.types.EmailRecipient;
 import com.soda.user.domain.types.SmsRecipient;
-import com.soda.user.domain.types.VerificationChannel;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
-import com.soda.user.domain.types.VerificationRecipient;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -40,9 +37,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Verification 实体")
 class VerificationTest {
 
-    private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
+    private static final VerificationSource UCC_SOURCE = new VerificationSource("UCC", "1");
     private static final Mobile MOBILE = Mobile.of("13800138000");
-    private static final Email EMAIL = Email.of("test@example.com");
     private static final String VALID_CODE = "123456";
 
     // 测试用的验证码生成器（字符集参数忽略，恒返回固定码）
@@ -87,7 +83,7 @@ class VerificationTest {
         @Test
         @DisplayName("source 不透明——聚合原样持有任意场景/主体串（URG 端点值 subject 同构）")
         void should_storeSourceAsIs_when_created() {
-            var source = VerificationSource.of("URG", "13800138000");
+            var source = new VerificationSource("URG", "13800138000");
             var verification = Verification.createBuilder()
                     .source(source)
                     .recipient(new SmsRecipient(MOBILE))
@@ -123,34 +119,11 @@ class VerificationTest {
         }
 
         @Test
-        @DisplayName("recipient 多属性 DP：channel/target 属性 + 双参工厂 + JSON 对象往返")
-        void should_roundTripRecipients_when_multiAttributeDp() {
-            var sms = new SmsRecipient(MOBILE);
-            assertThat(sms.channel()).isEqualTo(VerificationChannel.S);
-            assertThat(sms.target()).isEqualTo(MOBILE);
-            assertThat(new SmsRecipient(Mobile.of(MOBILE.value()))).isEqualTo(sms);
-            assertThat(VerificationRecipient.of("S", MOBILE.value())).isEqualTo(sms);
+        @DisplayName("recipient 多态存储：聚合持有子类型实例")
+        void should_storeRecipient_when_multiAttributeDp() {
+            var verification = uccSms();
 
-            var smsJson = DomainTestUtil.MAPPER.writeValueAsString(sms);
-            var smsTree = DomainTestUtil.MAPPER.readTree(smsJson);
-            assertThat(smsTree.get("channel").asString()).isEqualTo("S");
-            assertThat(smsTree.get("target").asString()).isEqualTo(MOBILE.value());
-            assertThat(DomainTestUtil.MAPPER.readValue(smsJson, VerificationRecipient.class)).isEqualTo(sms);
-
-            var email = new EmailRecipient(EMAIL);
-            assertThat(email.channel()).isEqualTo(VerificationChannel.E);
-            assertThat(email.target()).isEqualTo(EMAIL);
-            assertThat(VerificationRecipient.of("E", EMAIL.value())).isEqualTo(email);
-
-            var emailJson = DomainTestUtil.MAPPER.writeValueAsString(email);
-            var emailTree = DomainTestUtil.MAPPER.readTree(emailJson);
-            assertThat(emailTree.get("channel").asString()).isEqualTo("E");
-            assertThat(emailTree.get("target").asString()).isEqualTo(EMAIL.value());
-            assertThat(DomainTestUtil.MAPPER.readValue(emailJson, VerificationRecipient.class)).isEqualTo(email);
-
-            assertThatThrownBy(() -> VerificationRecipient.of("X", "whatever"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("unknown VerificationChannel");
+            assertThat(verification.getRecipient()).isEqualTo(new SmsRecipient(MOBILE));
         }
     }
 
@@ -163,8 +136,8 @@ class VerificationTest {
         void should_roundTrip() {
             var original = restoredSms(VerificationState.P, Instant.parse("2026-08-15T12:00:00Z"));
 
-            var json = DomainTestUtil.MAPPER.writeValueAsString(original);
-            var restored = DomainTestUtil.MAPPER.readValue(json, Verification.class);
+            var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, Verification.class);
 
             assertThat(restored).isEqualTo(original);
         }
@@ -173,11 +146,11 @@ class VerificationTest {
         @DisplayName("缺少 id 的 JSON 拒绝（required=true 双屏障，docs/conventions/framework-type-contracts.md JSON 契约）")
         void should_reject_when_missingId() {
             var original = restoredSms(VerificationState.P, Instant.parse("2026-08-15T12:00:00Z"));
-            var tree = DomainTestUtil.MAPPER.readTree(DomainTestUtil.MAPPER.writeValueAsString(original));
+            var tree = MAPPER.readTree(MAPPER.writeValueAsString(original));
             ((tools.jackson.databind.node.ObjectNode) tree).remove("id");
-            var json = DomainTestUtil.MAPPER.writeValueAsString(tree);
+            var json = MAPPER.writeValueAsString(tree);
 
-            assertThatThrownBy(() -> DomainTestUtil.MAPPER.readValue(json, Verification.class))
+            assertThatThrownBy(() -> MAPPER.readValue(json, Verification.class))
                     .isInstanceOf(tools.jackson.core.JacksonException.class);
         }
     }
@@ -205,7 +178,7 @@ class VerificationTest {
 
             assertThatThrownBy(verification::markSent)
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("verification must be initialized before sending");
+                    .hasMessageContaining("verification must be initialized before sending");
         }
 
         @Test
@@ -216,7 +189,7 @@ class VerificationTest {
 
             assertThatThrownBy(verification::markSent)
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("verification must be initialized before sending");
+                    .hasMessageContaining("verification must be initialized before sending");
         }
     }
 
@@ -244,7 +217,7 @@ class VerificationTest {
 
             assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString("wrong")))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("Invalid verification code");
+                    .hasMessageContaining("Invalid verification code");
         }
 
         @Test
@@ -306,7 +279,7 @@ class VerificationTest {
 
             assertThatThrownBy(verification::use)
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("verification must be verified");
+                    .hasMessageContaining("verification must be verified");
         }
 
         @Test

@@ -69,7 +69,7 @@ class VerificationCreatedEventHandlerWiringTest {
     private static Verification initializedSmsVerification() {
         return Verification.builder()
                 .id(Uuid.random())
-                .source(VerificationSource.of("UCC", "1"))
+                .source(new VerificationSource("UCC", "1"))
                 .state(VerificationState.I)
                 .recipient(new SmsRecipient(NEW_MOBILE))
                 .code(new VerificationCode(VALID_CODE, Instant.now().plus(Duration.ofMinutes(5))))

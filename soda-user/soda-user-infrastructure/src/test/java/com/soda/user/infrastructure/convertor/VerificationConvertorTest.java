@@ -21,13 +21,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@link VerificationConvertor} 转换单测（source/recipient 双概念，见 ADR-0026）。
  * <p>
  * {@code toPersistence} 全量构造（创建路径 INSERT 的数据来源，ADR-0024）——重点验证：
- * subject 裸键、channel/target 双列（见 ADR-0026 注记）、active_key 恒设
+ * subject 裸键、channel/target 双列（见 ADR-0026）、active_key 恒设
  * source.compositeKey()（终态清 NULL 收敛进 gateway.save）、restore 双参工厂。
  */
 @DisplayName("VerificationConvertor 转换")
 class VerificationConvertorTest {
 
-    private static final VerificationSource UCC_SOURCE = VerificationSource.of("UCC", "1");
+    private static final VerificationSource UCC_SOURCE = new VerificationSource("UCC", "1");
     private static final Mobile MOBILE = Mobile.of("13800138000");
     private static final Email EMAIL = Email.of("user@test.com");
     private static final Instant EXPIRE_AT = Instant.parse("2026-08-15T12:00:00Z");
@@ -46,12 +46,12 @@ class VerificationConvertorTest {
     @DisplayName("VerificationSource.compositeKey：scene + subject 裸键（active_key 单一事实源）")
     void should_composeKey() {
         assertThat(UCC_SOURCE.compositeKey()).isEqualTo("UCC:1");
-        assertThat(VerificationSource.of("URG", MOBILE.value()).compositeKey())
+        assertThat(new VerificationSource("URG", MOBILE.value()).compositeKey())
                 .isEqualTo("URG:" + MOBILE.value());
     }
 
     @Test
-    @DisplayName("toPersistence：active_key 恒设 source.compositeKey()（终态清 NULL 收敛进 gateway.save，见 ADR-0026 注记）")
+    @DisplayName("toPersistence：active_key 恒设 source.compositeKey()（终态清 NULL 收敛进 gateway.save，见 ADR-0025）")
     void should_alwaysSetActiveKey() {
         var initialized = uccVerification(VerificationState.I, EXPIRE_AT);
         var pending = uccVerification(VerificationState.P, EXPIRE_AT);

@@ -75,7 +75,7 @@ public final class UserConvertor {
         }
         return User.builder()
                 .id(userId)
-                .version(ConcurrencyVersion.of(e.getVersion()))
+                .version(ConcurrencyVersion.from(e.getVersion()))
                 .username(e.getUsername() == null ? Username.REMOVED : new Username(e.getUsername()))
                 .nickname(new Nickname(e.getNickname()))
                 .state(UserState.of(e.getState()))
@@ -117,8 +117,8 @@ public final class UserConvertor {
         entity.setEmail(user.getEmail().map(Email::value).orElse(null));
         entity.setSex(user.getSex().map(Sex::name).orElse(null));
         entity.setAvatar(user.getAvatar().map(Avatar::value).orElse(null));
-        entity.setSmsLoginEnabled(activeOf(user, SmsAuthAccountId.ACCOUNT_TYPE));
-        entity.setEmailLoginEnabled(activeOf(user, EmailAuthAccountId.ACCOUNT_TYPE));
+        entity.setSmsLoginEnabled(activeOf(user, AuthAccountType.S));
+        entity.setEmailLoginEnabled(activeOf(user, AuthAccountType.E));
         return entity;
     }
 

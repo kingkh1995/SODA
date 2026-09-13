@@ -1,6 +1,6 @@
 package com.soda.user.domain;
 
-import com.soda.user.domain.types.AuthAccountId;
+import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.UserId;
@@ -9,14 +9,20 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
 
 import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("PasswordAuthAccountId 值对象")
-class PasswordAuthAccountIdTest {
+class PasswordAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<PasswordAuthAccountId> {
+
+    @Override
+    protected Contract<PasswordAuthAccountId> contract() {
+        return new Contract<>(PasswordAuthAccountId.class, () -> PasswordAuthAccountId.of("P:42"),
+                "\"P:42\"", "PasswordAuthAccountId[value=P:42]", "\"invalid\"",
+                () -> PasswordAuthAccountId.of("P:43"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -45,7 +51,7 @@ class PasswordAuthAccountIdTest {
         @Test
         @DisplayName("authAccountType 返回 P")
         void should_returnP_when_authAccountType() {
-            assertThat(PasswordAuthAccountId.ACCOUNT_TYPE).isEqualTo(AuthAccountType.P);
+            assertThat(PasswordAuthAccountId.from(new UserId(42L)).accountType()).isEqualTo(AuthAccountType.P);
         }
     }
 
@@ -53,11 +59,10 @@ class PasswordAuthAccountIdTest {
     @DisplayName("路由")
     class Routing {
         @Test
-        @DisplayName("基类 of 与 JSON 反序列化均路由到本子类")
-        void should_routeToPasswordSubtype_when_baseFactoryOrJson() throws Exception {
-            assertThat(AuthAccountId.of("P:42")).isInstanceOf(PasswordAuthAccountId.class);
-            assertThat(MAPPER.readValue("\"P:42\"", AuthAccountId.class))
-                    .isInstanceOf(PasswordAuthAccountId.class);
+        @DisplayName("JSON 反序列化以本子类为声明类型")
+        void should_routeToPasswordSubtype_when_json() throws Exception {
+            assertThat(MAPPER.readValue("\"P:42\"", PasswordAuthAccountId.class))
+                    .isEqualTo(PasswordAuthAccountId.of("P:42"));
         }
     }
 
@@ -88,97 +93,12 @@ class PasswordAuthAccountIdTest {
     }
 
     @Nested
-    @DisplayName("相等性")
-    class Equality {
+    @DisplayName("标识符")
+    class Identity {
         @Test
-        @DisplayName("相同值相等")
-        void should_beEqual_when_sameValue() {
-            assertThat(PasswordAuthAccountId.from(new UserId(1L)))
-                    .isEqualTo(PasswordAuthAccountId.from(new UserId(1L)));
-        }
-
-        @Test
-        @DisplayName("不同值不等")
-        void should_notBeEqual_when_differentValue() {
-            assertThat(PasswordAuthAccountId.from(new UserId(1L)))
-                    .isNotEqualTo(PasswordAuthAccountId.from(new UserId(2L)));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode_when_equal() {
-            var a = PasswordAuthAccountId.of("P:42");
-            var b = PasswordAuthAccountId.of("P:42");
-            assertThat(a).hasSameHashCodeAs(b);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-        @Test
-        @DisplayName("toString 包含 value")
-        void should_containValue_when_toString() {
-            assertThat(PasswordAuthAccountId.of("P:42"))
-                    .hasToString("PasswordAuthAccountId[value=P:42]");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-        @Test
-        @DisplayName("Jackson 序列化反序列化")
-        void should_roundTrip_when_validJson() throws Exception {
-            var original = PasswordAuthAccountId.from(new UserId(42L));
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(json).isEqualTo("\"P:42\"");
-            var restored = MAPPER.readValue(json, PasswordAuthAccountId.class);
-            assertThat(restored).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("非法 JSON 抛出异常")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"invalid\"", PasswordAuthAccountId.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeToBareString() throws Exception {
-            var id = PasswordAuthAccountId.of("P:42");
-            var json = MAPPER.writeValueAsString(id);
-            assertThat(json).isEqualTo("\"P:42\"");
-        }
-
-        @Test
-        @DisplayName("从裸字符串反序列化")
-        void should_deserializeFromBareString() throws Exception {
-            assertThat(MAPPER.readValue("\"P:42\"", PasswordAuthAccountId.class))
-                    .isEqualTo(PasswordAuthAccountId.of("P:42"));
-        }
-    }
-
-    @Nested
-    @DisplayName("比较")
-    class ComparableTest {
-        @Test
-        @DisplayName("compareTo 委托给字符串比较")
-        void should_delegateToStringCompare_when_compareTo() {
-            var a = PasswordAuthAccountId.from(new UserId(1L));
-            var b = PasswordAuthAccountId.from(new UserId(2L));
-            assertThat(a.compareTo(b) < 0).isTrue();
-            assertThat(b.compareTo(a) > 0).isTrue();
-            assertThat(a.compareTo(a) == 0).isTrue();
-        }
-
-        @Test
-        @DisplayName("compareTo 与 equals 一致")
-        void should_beConsistentWithEquals_when_compareTo() {
-            var a = PasswordAuthAccountId.of("P:42");
-            var b = PasswordAuthAccountId.of("P:42");
-            assertThat(a.compareTo(b) == 0).isTrue();
+        @DisplayName("identifier 返回规范化编码值")
+        void should_returnCanonicalValue_when_identifier() {
+            assertThat(PasswordAuthAccountId.of("P:42").identifier()).isEqualTo("P:42");
         }
     }
 }

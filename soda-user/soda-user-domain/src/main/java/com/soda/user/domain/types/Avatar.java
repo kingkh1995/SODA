@@ -6,7 +6,7 @@ import com.soda.component.domain.util.ValidateUtils;
 
 
 /**
- * 头像 URL DP — URI 格式校验，不可变、自校验、可比较。
+ * 头像 URL DP — URI 格式校验，不可变、自校验。
  *
  * @see StringLiteralType
  */

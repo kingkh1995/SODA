@@ -61,7 +61,7 @@ public final class EmailAuthAccount extends AuthAccount<EmailAuthAccountId> {
 
     @Override
     public AuthAccountType getAccountType() {
-        return EmailAuthAccountId.ACCOUNT_TYPE;
+        return AuthAccountType.E;
     }
 
     public Email getEmail() {

@@ -1,35 +1,48 @@
 package com.soda.user.domain.types;
 
+import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UserState 枚举")
-class UserStateTest {
+class UserStateTest extends EnumDomainPrimitiveContractTest<UserState> {
+
+    @Override
+    protected EnumContract<UserState> contract() {
+        return new EnumContract<>(UserState.class, "\"INVALID\"");
+    }
 
     @Nested
     @DisplayName("查找")
     class Lookup {
 
-        @ParameterizedTest(name = "of({0}) → {0}")
-        @CsvSource({"E", "D", "R"})
-        @DisplayName("of(String) 查找正确")
-        void should_findByName(String name) {
-            assertThat(UserState.of(name)).isEqualTo(UserState.valueOf(name));
+        @Test
+        @DisplayName("合法名逐一解析")
+        void should_lookup_when_validName() {
+            assertThat(UserState.of("E")).isEqualTo(UserState.E);
+            assertThat(UserState.of("D")).isEqualTo(UserState.D);
+            assertThat(UserState.of("R")).isEqualTo(UserState.R);
         }
 
         @Test
-        @DisplayName("of(null) 抛出异常")
-        void should_throw_when_null() {
+        @DisplayName("null / 空 / 未知名拒绝")
+        void should_throw_when_invalidName() {
             assertThatThrownBy(() -> UserState.of(null))
                     .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> UserState.of(""))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> UserState.of("X"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("常量集快照")
+        void should_exposeExactConstants() {
+            assertThat(UserState.values()).containsExactly(UserState.E, UserState.D, UserState.R);
         }
     }
 
@@ -38,56 +51,30 @@ class UserStateTest {
     class Display {
 
         @Test
-        @DisplayName("枚举常量数量")
-        void should_haveCorrectCount() {
-            assertThat(UserState.values()).hasSize(3);
-        }
-
-        @ParameterizedTest(name = "{0} → desc={1}")
-        @CsvSource(textBlock = """
-                    E,     enabled
-                    D,     disabled
-                    R,     deregistered
-                """)
-        @DisplayName("各枚举常量 desc() 正确")
-        void should_haveCorrectDesc(String name, String desc) {
-            assertThat(UserState.valueOf(name).desc()).isEqualTo(desc);
-        }
-
-        @ParameterizedTest(name = "{0}.terminal() = {1}")
-        @CsvSource(textBlock = """
-                    E,     false
-                    D,     false
-                    R,     true
-                """)
-        @DisplayName("terminal() 终态判定（StateEnumType 契约，ADR-0023）")
-        void should_terminal(String name, boolean terminal) {
-            assertThat(UserState.valueOf(name).terminal()).isEqualTo(terminal);
+        @DisplayName("desc 逐常量")
+        void should_exposeDesc() {
+            assertThat(UserState.E.desc()).isEqualTo("enabled");
+            assertThat(UserState.D.desc()).isEqualTo("disabled");
+            assertThat(UserState.R.desc()).isEqualTo("deregistered");
         }
 
         @Test
-        @DisplayName("toString 返回枚举名")
-        void should_returnName() {
+        @DisplayName("toString 为 name()")
+        void should_haveNameToString() {
             assertThat(UserState.E).hasToString("E");
         }
     }
 
     @Nested
-    @DisplayName("序列化")
-    class Serialization {
+    @DisplayName("业务方法")
+    class RichMethods {
 
         @Test
-        @DisplayName("Jackson round-trip")
-        void should_serializeDeserialize() throws Exception {
-            assertThat(MAPPER.writeValueAsString(UserState.E)).isEqualTo("\"E\"");
-            assertThat(MAPPER.readValue("\"E\"", UserState.class)).isEqualTo(UserState.E);
-        }
-
-        @Test
-        @DisplayName("非法枚举名称拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"INVALID\"", UserState.class))
-                    .isInstanceOf(JacksonException.class);
+        @DisplayName("terminal() 终态判定（StateEnumType 契约，ADR-0023）")
+        void should_exposeTerminal() {
+            assertThat(UserState.E.terminal()).isFalse();
+            assertThat(UserState.D.terminal()).isFalse();
+            assertThat(UserState.R.terminal()).isTrue();
         }
     }
 }

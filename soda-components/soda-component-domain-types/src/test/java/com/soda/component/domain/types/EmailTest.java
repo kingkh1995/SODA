@@ -1,16 +1,23 @@
 package com.soda.component.domain.types;
 
+import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("邮箱值对象")
-class EmailTest {
+class EmailTest extends DomainPrimitiveContractTest<Email> {
+
+    @Override
+    protected Contract<Email> contract() {
+        return new Contract<>(Email.class, () -> Email.of("t@t.com"), "\"t@t.com\"",
+                "Email[masked=t***@t.com]", "\"invalid-email\"", () -> Email.of("u@t.com"));
+    }
 
     @Nested
     @DisplayName("构造")
@@ -49,64 +56,12 @@ class EmailTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
-        @Test
-        @DisplayName("空白字符串拒绝")
-        void should_throw_when_valueIsBlank() {
-            assertThatThrownBy(() -> Email.of("  "))
+        @ParameterizedTest(name = "[{index}] \"{0}\"")
+        @ValueSource(strings = {"  ", "  user@example.com  ", "userexample.com", "user@", "user@example"})
+        @DisplayName("非法格式邮箱拒绝（空白 / 无 @ / 无域名 / 无顶级域名）")
+        void should_throw_when_invalidFormat(String value) {
+            assertThatThrownBy(() -> Email.of(value))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
-        @DisplayName("首尾空白拒绝")
-        void should_throw_when_whitespaceAround() {
-            assertThatThrownBy(() -> Email.of("  user@example.com  "))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
-        @DisplayName("缺少 @ 符号拒绝")
-        void should_throw_when_noAtSymbol() {
-            assertThatThrownBy(() -> Email.of("userexample.com"))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
-        @DisplayName("缺少域名拒绝")
-        void should_throw_when_noDomain() {
-            assertThatThrownBy(() -> Email.of("user@"))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
-        @DisplayName("缺少顶级域名拒绝")
-        void should_throw_when_noTld() {
-            assertThatThrownBy(() -> Email.of("user@example"))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("相等性与 hashCode")
-    class Equality {
-
-        @Test
-        @DisplayName("相同地址相等（忽略大小写）")
-        void should_beEqual_when_sameAddress() {
-            assertThat(Email.of("a@b.com")).isEqualTo(Email.of("A@B.com"));
-        }
-
-        @Test
-        @DisplayName("不同地址不等")
-        void should_notBeEqual_when_differentAddress() {
-            assertThat(Email.of("a@b.com")).isNotEqualTo(Email.of("a@c.com"));
-        }
-
-        @Test
-        @DisplayName("hashCode 与 equals 一致")
-        void should_haveConsistentHashCode() {
-            var a = Email.of("a@b.com");
-            var b = Email.of("a@b.com");
-            assertThat(a).hasSameHashCodeAs(b);
         }
     }
 
@@ -140,44 +95,6 @@ class EmailTest {
         void should_returnDomain_when_subdomain() {
             var email = Email.of("alice@mail.example.co.uk");
             assertThat(email.domain()).isEqualTo("mail.example.co.uk");
-        }
-    }
-
-    @Nested
-    @DisplayName("序列化")
-    class Serialization {
-
-        @Test
-        @DisplayName("Jackson 序列化反序列化一致")
-        void should_roundTrip() throws Exception {
-            var original = Email.of("jackson@test.org");
-            var json = MAPPER.writeValueAsString(original);
-            assertThat(MAPPER.readValue(json, Email.class)).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("序列化为裸字符串")
-        void should_serializeAsBareString() throws Exception {
-            var json = MAPPER.writeValueAsString(Email.of("bare@test.com"));
-            assertThat(json).isEqualTo("\"bare@test.com\"");
-        }
-
-        @Test
-        @DisplayName("非法 JSON 拒绝")
-        void should_throw_when_invalidJson() {
-            assertThatThrownBy(() -> MAPPER.readValue("\"invalid-email\"", Email.class))
-                    .isInstanceOf(JacksonException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("调试")
-    class Debug {
-
-        @Test
-        @DisplayName("toString 格式正确（脱敏）")
-        void should_haveCorrectToString() {
-            assertThat(Email.of("t@t.com")).hasToString("Email[masked=t***@t.com]");
         }
     }
 }

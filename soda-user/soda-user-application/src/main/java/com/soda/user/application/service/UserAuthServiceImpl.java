@@ -42,7 +42,7 @@ import java.util.List;
  * save → 发布 {@code VerificationCreatedEvent}（物理发送由投递侧监听器在事务提交后执行，见 ADR-0011）。
  * <p>
  * 消费（verify → change → use）委托 {@link CredentialChangeDomainService}，按 <b>source 键控</b>
- * 反查（{@code VerificationSource.of(UCC, userId)}——命令不含 target，换绑的新联系方式隐含在
+ * 反查（{@code new VerificationSource(UCC, userId)}——命令不含 target，换绑的新联系方式隐含在
  * 验证记录中，「按 source 加载」即主体匹配守卫；source 匹配守卫在 {@code User.changeMobile/changeEmail}
  * 内保留为防御纵深，见 ADR-0026）。
  */

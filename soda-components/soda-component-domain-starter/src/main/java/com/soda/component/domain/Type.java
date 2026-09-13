@@ -11,7 +11,7 @@ package com.soda.component.domain;
  *   <li><b>value-based identity</b> — {@link Object#equals(Object)}/{@link Object#hashCode()} 基于规范值字段</li>
  * </ul>
  * <p>
- * DP 不默认实现 {@link java.io.Serializable}。需要 JDK 序列化的 DP 显式实现。
+ * DP 禁止实现 {@link java.io.Serializable}——JSON 是 DP 的唯一线上契约（见 dp-json-conventions §5）。
  * 是否实现 {@link Comparable} 按业务语义决定（只在有自然顺序时实现）。
  * <p>
  * 参考 kk-ddd 的 {@code Type} 接口设计。
