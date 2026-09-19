@@ -1,14 +1,16 @@
 package com.soda.user.domain.types;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import com.soda.component.domain.types.Mobile;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SmsRecipient 短信投递端点")
 class SmsRecipientTest extends DomainPrimitiveContractTest<VerificationRecipient> {
@@ -17,9 +19,13 @@ class SmsRecipientTest extends DomainPrimitiveContractTest<VerificationRecipient
 
     @Override
     protected Contract<VerificationRecipient> contract() {
-        return new Contract<>(VerificationRecipient.class, () -> new SmsRecipient(MOBILE),
-                "{\"target\":\"13800138000\",\"channel\":\"S\"}", "SmsRecipient[target=" + MOBILE + "]",
-                "{}", () -> new SmsRecipient(Mobile.of("13900139000")));
+        return new Contract<>(
+                VerificationRecipient.class,
+                () -> new SmsRecipient(MOBILE),
+                "{\"target\":\"13800138000\",\"channel\":\"S\"}",
+                "SmsRecipient[target=" + MOBILE + "]",
+                "{}",
+                () -> new SmsRecipient(Mobile.of("13900139000")));
     }
 
     @Nested
@@ -53,7 +59,8 @@ class SmsRecipientTest extends DomainPrimitiveContractTest<VerificationRecipient
         @Test
         @DisplayName("端点工厂按 channel=S 路由到 SmsRecipient")
         void should_routeToSmsRecipient_when_channelS() {
-            assertThat(VerificationRecipient.of("S", MOBILE.value())).isEqualTo(new SmsRecipient(MOBILE));
+            assertThat(VerificationRecipient.of("S", MOBILE.value()))
+                    .isEqualTo(new SmsRecipient(MOBILE));
         }
 
         @Test

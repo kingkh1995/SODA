@@ -50,9 +50,9 @@ user 后 verification）。
 **AppService 只做编排**：加载主体聚合 → 执行用例流程 → 持久化（save）。多聚合交互（同时更改多个聚合）的流程逻辑封装进
 `XxxDomainService`；单聚合创建流程（构造 + 发送副作用）可在 AppService 内展开，不在本层展开跨聚合编排。
 
-**可空性处理（Optional 优先）**：规则单一权威见 [STYLEGUIDE §3.2](../../STYLEGUIDE.md#32-jspecify-空性标注)
+**可空性处理（Optional 优先）**：规则单一权威见 [jspecify.md](jspecify.md)
 ，本节仅指不述。AppService 消费侧补充：`Optional` 链上构造可空值用 `Optional.ofNullable(...).map(...).orElse(null)`，条件更新（如
-`changeNickname`）用 `.map(...).ifPresent(...)`——这一段不在 STYLEGUIDE。
+`changeNickname`）用 `.map(...).ifPresent(...)`——这一段不在 jspecify.md。
 
 每个 AppService 有一个 **主体聚合**（该用例主要操作的对象，通常是其同名聚合根）。编排规则：
 
@@ -193,8 +193,8 @@ null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
 
 ### JSpecify（nullness 注解规范）
 
-规则单一权威侧在根 [STYLEGUIDE](../../STYLEGUIDE.md) §3.2（AGENTS 注解/JSpecify
-触发词路由彼处），本节仅指不述。写侧异常与守卫配套约定见上文「Exception（异常类约定）」，决策路线见 ADR-0015
+规则单一权威侧在 [jspecify.md](jspecify.md)（空性标注规则的单源），本节仅指不述。写侧异常与守卫配套约定见上文「Exception（异常类约定）」，决策路线见
+ADR-0015
 异常类使用约定：类型族与 IAE 校验通道。
 
 ### 参数契约

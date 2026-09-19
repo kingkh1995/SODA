@@ -1,5 +1,11 @@
 package com.soda.user.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.soda.user.api.UserAuthService;
 import com.soda.user.api.UserService;
 import com.soda.user.api.command.RequestChangeEmailCommand;
@@ -15,18 +21,13 @@ import com.soda.user.web.request.CreateUserRequest;
 import com.soda.user.web.request.RequestChangeEmailRequest;
 import com.soda.user.web.request.RequestChangeMobileRequest;
 import com.soda.user.web.request.UpdateUserRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @DisplayName("UserController REST 接口")
 class UserControllerTest {
@@ -35,11 +36,13 @@ class UserControllerTest {
     private UserController controller;
 
     private static UserDTO dto() {
-        return new UserDTO(1L, "testuser", "Test", "13900139000", "test@test.com", null, null, "E", 0);
+        return new UserDTO(
+                1L, "testuser", "Test", "13900139000", "test@test.com", null, null, "E", 0);
     }
 
     private static UserDTO removedDto() {
-        return new UserDTO(1L, "testuser", "Test", "13900139000", "test@test.com", null, null, "R", 1);
+        return new UserDTO(
+                1L, "testuser", "Test", "13900139000", "test@test.com", null, null, "R", 1);
     }
 
     @BeforeEach
@@ -56,8 +59,15 @@ class UserControllerTest {
         @Test
         @DisplayName("应直接返回新建用户资料")
         void should_returnCreatedUser_when_validRequest() {
-            var request = new CreateUserRequest("testuser", "password123", "Test",
-                    "13900139000", "test@test.com", null, null);
+            var request =
+                    new CreateUserRequest(
+                            "testuser",
+                            "password123",
+                            "Test",
+                            "13900139000",
+                            "test@test.com",
+                            null,
+                            null);
             when(userService.createUser(any())).thenReturn(dto());
 
             var response = controller.createUser(request);
@@ -90,7 +100,8 @@ class UserControllerTest {
 
             controller.updateUser(42L, request, null);
 
-            ArgumentCaptor<UpdateUserCommand> captor = ArgumentCaptor.forClass(UpdateUserCommand.class);
+            ArgumentCaptor<UpdateUserCommand> captor =
+                    ArgumentCaptor.forClass(UpdateUserCommand.class);
             verify(userService).updateUser(captor.capture());
             assertThat(captor.getValue().updateMask()).isNull();
             assertThat(captor.getValue().expectedVersion()).isNull();
@@ -104,7 +115,8 @@ class UserControllerTest {
 
             controller.updateUser(42L, request, null);
 
-            ArgumentCaptor<UpdateUserCommand> captor = ArgumentCaptor.forClass(UpdateUserCommand.class);
+            ArgumentCaptor<UpdateUserCommand> captor =
+                    ArgumentCaptor.forClass(UpdateUserCommand.class);
             verify(userService).updateUser(captor.capture());
             assertThat(captor.getValue().updateMask()).isEqualTo("");
         }
@@ -128,7 +140,8 @@ class UserControllerTest {
 
             controller.updateUser(42L, request, 3);
 
-            ArgumentCaptor<UpdateUserCommand> captor = ArgumentCaptor.forClass(UpdateUserCommand.class);
+            ArgumentCaptor<UpdateUserCommand> captor =
+                    ArgumentCaptor.forClass(UpdateUserCommand.class);
             verify(userService).updateUser(captor.capture());
             assertThat(captor.getValue().expectedVersion()).isEqualTo(3);
         }
@@ -141,7 +154,8 @@ class UserControllerTest {
 
             controller.updateUser(42L, request, null);
 
-            ArgumentCaptor<UpdateUserCommand> captor = ArgumentCaptor.forClass(UpdateUserCommand.class);
+            ArgumentCaptor<UpdateUserCommand> captor =
+                    ArgumentCaptor.forClass(UpdateUserCommand.class);
             verify(userService).updateUser(captor.capture());
             assertThat(captor.getValue().expectedVersion()).isNull();
         }
@@ -224,7 +238,8 @@ class UserControllerTest {
 
             controller.requestChangeMobile(42L, request);
 
-            verify(userAuthService).requestChangeMobile(new RequestChangeMobileCommand(42L, "13900139000"));
+            verify(userAuthService)
+                    .requestChangeMobile(new RequestChangeMobileCommand(42L, "13900139000"));
         }
     }
 
@@ -252,7 +267,8 @@ class UserControllerTest {
 
             controller.requestChangeEmail(42L, request);
 
-            verify(userAuthService).requestChangeEmail(new RequestChangeEmailCommand(42L, "new@test.com"));
+            verify(userAuthService)
+                    .requestChangeEmail(new RequestChangeEmailCommand(42L, "new@test.com"));
         }
     }
 

@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("身份证号值对象")
 class IdCardTest extends DomainPrimitiveContractTest<IdCard> {
@@ -20,8 +21,12 @@ class IdCardTest extends DomainPrimitiveContractTest<IdCard> {
 
     @Override
     protected Contract<IdCard> contract() {
-        return new Contract<>(IdCard.class, () -> IdCard.of(VALID_ID_CARD), "\"" + VALID_ID_CARD + "\"",
-                "IdCard[masked=110101********1234]", "\"invalid-id-card\"",
+        return new Contract<>(
+                IdCard.class,
+                () -> IdCard.of(VALID_ID_CARD),
+                "\"" + VALID_ID_CARD + "\"",
+                "IdCard[masked=110101********1234]",
+                "\"invalid-id-card\"",
                 () -> IdCard.of("110101199003071235"));
     }
 
@@ -50,11 +55,17 @@ class IdCardTest extends DomainPrimitiveContractTest<IdCard> {
 
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {" ", "11010119900307123", "1101011990030712345", "11010119900307123Y", "abc"})
+        @ValueSource(
+                strings = {
+                    " ",
+                    "11010119900307123",
+                    "1101011990030712345",
+                    "11010119900307123Y",
+                    "abc"
+                })
         @DisplayName("非法输入抛出异常")
         void should_throw_when_invalid(String input) {
-            assertThatThrownBy(() -> IdCard.of(input))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> IdCard.of(input)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 

@@ -19,16 +19,12 @@ public record MaskedMobile(String value) implements StringLiteralType {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    /**
-     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
-     */
+    /** 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。 */
     public static MaskedMobile from(Mobile mobile) {
         return new MaskedMobile(maskOf(mobile.value()));
     }
 
-    /**
-     * 掩码生产算法：保留前 3 位和后 4 位。仅服务 {@link #from(Mobile)}。
-     */
+    /** 掩码生产算法：保留前 3 位和后 4 位。仅服务 {@link #from(Mobile)}。 */
     private static String maskOf(String rawValue) {
         return rawValue.substring(0, 3) + "****" + rawValue.substring(7);
     }

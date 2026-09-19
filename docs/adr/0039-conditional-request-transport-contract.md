@@ -31,5 +31,5 @@ Controller 因此只裸返回资源本身（无信封）、零设头样板，两
 - 缺失 `If-Match` 放行：AIP-154 只要求「提供时必须校验」（`etag` 字段本身是 MAY），不强制客户端必带；
   缺席是传输层语义、不构成并发声明，即按无版本冲突处理（持久层 `@Version` 兜底仍译 409）。
 - 装配单入口 `IfMatchAutoConfiguration`（注册解析器 + 导入 advice），随组件位于运行时类路径生效；
-  `webmvc` 切片下 `ResponseBodyAdvice` 类型不可见时不注册（见 [framework-conventions.md](../framework-conventions.md)
-  §3.2）。
+  `webmvc` 切片下 `ResponseBodyAdvice` 类型不可见时不注册（类级条件决定自动配置是否参与，见
+  [conventions/spring.md](../conventions/spring.md) §3.5）。

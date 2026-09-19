@@ -1,23 +1,30 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("PasswordHash —— PHC 白名单与格式感知遮蔽")
 class PasswordHashTest extends DomainPrimitiveContractTest<PasswordHash> {
 
-    private static final String BCRYPT = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
-    private static final String ARGON2ID = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
+    private static final String BCRYPT =
+            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+    private static final String ARGON2ID =
+            "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
 
     @Override
     protected Contract<PasswordHash> contract() {
-        return new Contract<>(PasswordHash.class, () -> PasswordHash.of(BCRYPT), "\"" + BCRYPT + "\"",
-                "PasswordHash[masked=$2a$10$***]", "\"$md5$abcdef\"",
+        return new Contract<>(
+                PasswordHash.class,
+                () -> PasswordHash.of(BCRYPT),
+                "\"" + BCRYPT + "\"",
+                "PasswordHash[masked=$2a$10$***]",
+                "\"$md5$abcdef\"",
                 () -> PasswordHash.of(ARGON2ID));
     }
 
@@ -66,7 +73,10 @@ class PasswordHashTest extends DomainPrimitiveContractTest<PasswordHash> {
         @Test
         @DisplayName("拒绝裸 SHA-256 hex（快速摘要归 Digest）")
         void should_throw_when_bareHexDigest() {
-            assertThatThrownBy(() -> PasswordHash.of("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"))
+            assertThatThrownBy(
+                            () ->
+                                    PasswordHash.of(
+                                            "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 

@@ -1,8 +1,6 @@
 package com.soda.component.api.error;
 
-/**
- * 与资源当前状态冲突 —— <b>409</b>（RFC 9110 §15.5.10）；客户端动作：换值后重试（见 aip-api-conventions §8.2）。
- */
+/** 与资源当前状态冲突 —— <b>409</b>（RFC 9110 §15.5.10）；客户端动作：换值后重试（见 aip-api-conventions §8.2）。 */
 public final class ConflictException extends ProblemDetailException {
 
     private ConflictException(String message) {

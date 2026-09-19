@@ -7,33 +7,32 @@ import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import com.soda.user.infrastructure.convertor.VerificationConvertor;
 import com.soda.user.infrastructure.repository.VerificationRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 /**
  * {@link VerificationGateway} 的 JPA 实现 — 单表 {@code verification}。
- * <p>
- * 编排：查询 → {@link VerificationConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
- * <p>
- * 唯一性机制（见 ADR-0025 活跃验证唯一性）：槽位预检按 {@code active_key}（{@code uk_active_key} 索引）
- * 等值过滤 + expire_at 残余过滤；<b>过期 I/P 行惰性删除收敛进 {@code save}</b>（INSERT 前
- * 同事务腾槽——基础设施实现细节，非领域契约）；消费反查按 {@code (subject, scene, state, expire_at)}
- * 复合索引（{@code idx_subject_scene_state_expire_at}）。
- * <p>
- * 终态守卫（同 {@code UserGatewayImpl.save} 兜底，ADR-0023）：已终态（persisted state=U）行
- * 任何写入被拒绝——V→U 迁移合法写终态，行状态才是权威，拦截陈旧聚合/重复使用绕过路径。
+ *
+ * <p>编排：查询 → {@link VerificationConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
+ *
+ * <p>唯一性机制（见 ADR-0025 活跃验证唯一性）：槽位预检按 {@code active_key}（{@code uk_active_key} 索引） 等值过滤 + expire_at
+ * 残余过滤；<b>过期 I/P 行惰性删除收敛进 {@code save}</b>（INSERT 前 同事务腾槽——基础设施实现细节，非领域契约）；消费反查按 {@code (subject,
+ * scene, state, expire_at)} 复合索引（{@code idx_subject_scene_state_expire_at}）。
+ *
+ * <p>终态守卫（同 {@code UserGatewayImpl.save} 兜底，ADR-0023）：已终态（persisted state=U）行 任何写入被拒绝——V→U
+ * 迁移合法写终态，行状态才是权威，拦截陈旧聚合/重复使用绕过路径。
  */
 @Component
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class VerificationGatewayImpl implements VerificationGateway {
 
     private final VerificationRepository verificationRepository;
@@ -91,9 +90,7 @@ public class VerificationGatewayImpl implements VerificationGateway {
 
     @Override
     public List<Verification> findAllById(Iterable<Uuid> ids) {
-        var values = StreamSupport.stream(ids.spliterator(), false)
-                .map(Uuid::value)
-                .toList();
+        var values = StreamSupport.stream(ids.spliterator(), false).map(Uuid::value).toList();
         var entities = verificationRepository.findAllById(values);
         return entities.stream().map(VerificationConvertor::toDomain).toList();
     }
@@ -111,7 +108,8 @@ public class VerificationGatewayImpl implements VerificationGateway {
             VerificationSource source, Collection<VerificationState> states) {
         return verificationRepository
                 .findFirstBySubjectAndSceneAndStateInAndExpireAtAfterOrderByExpireAtDesc(
-                        source.subject(), source.scene(),
+                        source.subject(),
+                        source.scene(),
                         states.stream().map(VerificationState::name).toList(),
                         Instant.now())
                 .map(VerificationConvertor::toDomain);

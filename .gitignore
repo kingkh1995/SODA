@@ -44,6 +44,7 @@ bin/
 /COLA/
 /kk-ddd/
 /yudao-cloud/
+/knowledge-catalog/
 
 # Gradle
 .gradle/

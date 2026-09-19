@@ -11,7 +11,8 @@ status: stable
 本篇是 DP 序列化行为的单源：字面量家族 DP（`StringLiteralType` 等，见 ADR-0028 字面量类型家族）的序列化入口继承自家族接口
 （`@JsonValue`）；反序列化按「构造器可见性」分型（§1）。 **取值原则**：`value()` 即线上值、`of` 入参类型 ≡ 序列化值类型（round-trip
 成立）；不依赖全局 Jackson 配置或隐式推断。DP 设计总则见 [dp-conventions](../dp-conventions.md)；测试侧要求见
-[dp-test-conventions](dp-test-conventions.md)。
+[dp-test-conventions](dp-test-conventions.md)。 Jackson 侧的注解落位机制与形态取值理由见 [jackson.md](jackson.md)
+§3（3.0 行为基线见 §5）——本篇只定 DP 域内的取值与形态。
 
 ## 1. 模式总表
 
@@ -21,24 +22,28 @@ status: stable
 
 | 构造器可见性                                    | `@JsonValue`（序列化）                                         | `@JsonCreator`（反序列化）                                                | 说明                                                                                                                                     |
 |-------------------------------------------------|----------------------------------------------------------------|---------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| Record + 单字段（字面量家族）                   | 继承自家族接口（record 隐式访问器）                            | 零注解（典范构造器）                                                      | 零 Jackson 代码（ADR-0028）；`@JsonValue` 标在 record component 上无效（Jackson 3.1.4 实测）                                             |
-| Record + 单字段（非家族，如集合）               | 覆写访问器并标 `@JsonValue`（public 方法）                     | 零注解                                                                    | 先例 `UpdateMask`；无 `@JsonValue` 时退化为对象形态 `{"field": …}`                                                                       |
+| Record + 单字段（字面量家族）                   | 继承自家族接口（record 隐式访问器）                            | 零注解（典范构造器）                                                      | 零 Jackson 代码（ADR-0028）                                                                                                              |
+| Record + 单字段（非家族，如集合）               | component 注解（`@JsonValue` 标在 record 组件上）              | 零注解                                                                    | 先例 `UpdateMask`；注解传播至后备字段。无 `@JsonValue` 时退化为对象形态 `{"field": …}`                                                   |
 | Record + 多字段                                 | —                                                              | **零注解**（`@JsonProperty` 与 `mode = PROPERTIES` 均省略）               | Jackson 3 `RecordDeserializer` 按 component 名推断                                                                                       |
 | Class + 单字段（private 构造器，含缓存 / 单例） | 继承自家族接口                                                 | `@JsonCreator(mode = DELEGATING)` 挂静态 `of(T)`                          | private 构造器 Jackson 不可见，creator 必须显式                                                                                          |
 | Class + 多字段（private 构造器）                | —                                                              | `@JsonCreator(mode = PROPERTIES)` 挂静态 `of(...)` + 参数 `@JsonProperty` | 参数名不可推断 → 显式；**当前零存量样例**（覆盖缺口见 framework-type-contracts 样例覆盖矩阵）                                            |
-| Enum                                            | 无（Jackson 原生输出 `name()` 短名）                           | `@JsonCreator(mode = DELEGATING)` 挂静态 `of(String)`                     | 序列化 `name()`（ADR-0005 枚举短名标识设计）                                                                                             |
+| Enum                                            | 无（Jackson 3 原生按 `toString()` 读写）                       | `@JsonCreator(mode = DELEGATING)` 挂静态 `of(String)`                     | 短名即对外合同（ADR-0005 枚举短名标识设计）；业务枚举不得覆写 `toString()`                                                               |
 | 密封继承 + 单值字面量族                         | 继承自家族接口（基类声明，子类复用）                           | **各子类** `of(String)`；基类不做反序列化入口                             | 边界声明具体子类（经实体类型变量解析）⇒ 基类路由零消费者；线形态自描述是解释（先例 `AuthAccountId`）                                     |
 | 密封继承 + 对象形态族（判别字段 + 载荷）        | 属性承载（无家族接口）：判别属性在基类声明、载荷属性由子类提供 | **基类** `@JsonCreator(mode = PROPERTIES)` 对象入口，按判别字段路由子类   | 边界声明基类（聚合字段 / 两列持久化以其为界）⇒ 基类入口兼两列 restore 工厂（一途多界）；子类无自描述单值（先例 `VerificationRecipient`） |
 | 不可反序列化类型                                | 无（不实现家族接口）                                           | `@JsonCreator(mode = DISABLED)` 构造器                                    | 判据「从 JSON 无法安全重建」；五要素见 [dp-conventions §1.4 形态模板](../dp-conventions.md#14-形态模板)                                  |
 
-❌ `@JsonValue` 标在 record component 上（Jackson 3 不识别，静默退化为对象形态）：
+❌ `@JsonValue` 无落位（不标注解、也不实现家族接口 → 退化为对象形态）：
 
 ```java
-// ❌ 组件注解无效
+// ❌ 无 @JsonValue，输出对象形态 {"fields": …}
+public record UpdateMask(Set<String> fields) implements Type {
+}
+
+// ✅ 标在 record 组件上（注解传播至后备字段；3.1.4 / 3.1.5 实测）
 public record UpdateMask(@JsonValue Set<String> fields) implements Type { }
-// ✅ 覆写访问器（public 方法）并标注
-@Override @JsonValue public Set<String> fields() { return fields; }
 ```
+
+覆写访问器并标 `@JsonValue` 与之等价（两处 Jackson 皆识别）——组件注解无额外方法、注解与声明同处，故取之。
 
 ❌ 多字段 record 显式 `PROPERTIES` + `@JsonProperty`（冗余噪声，且会与 component 名漂移）：
 
@@ -75,7 +80,7 @@ private ConcurrencyVersion(int value) { ValidateUtils.minValue(value, 0, true); 
 ```java
 // ❌ 输出描述串（持久化短名与 JSON 值脱钩）
 @JsonValue public String desc() { return desc; }
-// ✅ 不声明 @JsonValue，Jackson 原生输出 name()
+// ✅ 不声明 @JsonValue，Jackson 3 原生按 toString() 读写短名
 ```
 
 ## 2. Java ↔ JSON 类型映射
@@ -88,7 +93,7 @@ private ConcurrencyVersion(int value) { ValidateUtils.minValue(value, 0, true); 
 | `BigDecimal`   | 字符串                                                                                                                        | 经 `toPlainString()` 输出（规范值为 String、BigDecimal 为派生缓存；小数 DP `extends DecimalLiteralType`，ADR-0031） |
 | `Instant`      | 领域时间点类型 DP 用 `EpochMilli`（long 毫秒；语义值经 `toInstant()` 派生）；多字段内嵌组件按 JSR-310 默认（ISO-8601 字符串） | `EpochMilli` 的 `@JsonValue long value()` 覆盖 Jackson 默认、不受全局 feature 影响（ADR-0031）                      |
 | `Duration`     | ISO-8601 字符串                                                                                                               | Jackson 3 默认 ISO-8601（如 `PT5M`）；多字段 DP 内嵌组件按默认                                                      |
-| enum           | 字符串                                                                                                                        | Jackson 3 默认用 `name()` 序列化；`@JsonValue` 若显式声明必须为 public 方法（private 被忽略）                       |
+| enum           | 字符串                                                                                                                        | Jackson 3 默认按 `toString()` 读写（业务枚举不得覆写）；`@JsonValue` 若显式声明必须为 public 方法（private 被忽略） |
 
 > **Jackson 3 JSR-310 说明**：Jackson 3 内建 `java.time` 序列化支持，无需注册 `JavaTimeModule`；`Instant` 默认 ISO-8601 字符串
 > （`WRITE_DATES_AS_TIMESTAMPS` 默认 false——Jackson 2 为 true），`Duration` 默认 ISO-8601。 **界定（【强制】）**：仅「领域时间点类型
@@ -175,7 +180,7 @@ public record VerificationCodePolicy(
 }
 ```
 
-Enum（Jackson 原生 `name()`）：
+Enum（Jackson 3 原生按 `toString()` 读写）：
 ```java
 public enum AuthAccountType implements EnumType {
   P("password"), S("sms"), E("email"), O("oauth");

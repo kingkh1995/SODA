@@ -1,17 +1,16 @@
 package com.soda.component.domain.types;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 /**
  * SensitiveValue 家族相等性契约测试。
- * <p>
- * class-aware 相等依赖「基类 {@code @Include} 规范值 + 子类
- * {@code @EqualsAndHashCode(callSuper = true)}」的 canEqual 收窄链。子类漏标注解不报编译错，
- * 而是静默继承基类相等语义——对同值的外来敏感子类型放行 equals。Lombok 注解为 SOURCE 保留级、
+ *
+ * <p>class-aware 相等依赖「基类 {@code @Include} 规范值 + 子类 {@code @EqualsAndHashCode(callSuper = true)}」的
+ * canEqual 收窄链。子类漏标注解不报编译错， 而是静默继承基类相等语义——对同值的外来敏感子类型放行 equals。Lombok 注解为 SOURCE 保留级、
  * 运行期反射不可见，故以行为断言拦截。
  *
  * @see SensitiveValue
@@ -28,7 +27,8 @@ class SensitiveValueContractTest {
         assertThat(BankCard.of("6225880137293568")).isNotEqualTo(new Probe("6225880137293568"));
         assertThat(ChineseName.of("张三")).isNotEqualTo(new Probe("张三"));
         assertThat(PasswordHash.of("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"))
-                .isNotEqualTo(new Probe("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"));
+                .isNotEqualTo(
+                        new Probe("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"));
     }
 
     @Test
@@ -57,13 +57,14 @@ class SensitiveValueContractTest {
         assertThatThrownBy(() -> IdCard.of(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> BankCard.of(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ChineseName.of(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> PasswordHash.of(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> PasswordHash.of(null))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Probe(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     /**
-     * 探针子类 —— 模拟未来新增的敏感 DP。自身不带 callSuper 标注（继承基类 canEqual），
-     * 恰好构成「外来敏感子类型」角色：真实子类若漏标 callSuper，对其同值实例的 equals 将误判为真。
+     * 探针子类 —— 模拟未来新增的敏感 DP。自身不带 callSuper 标注（继承基类 canEqual）， 恰好构成「外来敏感子类型」角色：真实子类若漏标
+     * callSuper，对其同值实例的 equals 将误判为真。
      */
     private static final class Probe extends SensitiveValue {
         Probe(String value) {

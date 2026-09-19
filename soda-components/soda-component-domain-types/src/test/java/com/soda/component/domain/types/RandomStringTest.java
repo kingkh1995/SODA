@@ -1,22 +1,28 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("随机字符串值对象")
 class RandomStringTest extends DomainPrimitiveContractTest<RandomString> {
 
     @Override
     protected Contract<RandomString> contract() {
-        return new Contract<>(RandomString.class, () -> new RandomString("abc"), "\"abc\"",
-                "RandomString[value=abc]", "{}", () -> new RandomString("xyz"));
+        return new Contract<>(
+                RandomString.class,
+                () -> new RandomString("abc"),
+                "\"abc\"",
+                "RandomString[value=abc]",
+                "{}",
+                () -> new RandomString("xyz"));
     }
 
     @Nested
@@ -57,5 +63,4 @@ class RandomStringTest extends DomainPrimitiveContractTest<RandomString> {
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
-
 }

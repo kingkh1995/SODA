@@ -767,8 +767,8 @@ public enum Xxx implements EnumType {
 }
 ```
 
-- 【强制】序列化用 Jackson 原生 `name()` 短名（与持久化短名一致），无需 `@JsonValue`；若显式声明，方法必须 public（Jackson 3
-  忽略 private 方法上的 `@JsonValue`）。
+- 【强制】序列化：Jackson 3 起原生按 `toString()` 读写，故业务枚举不得覆写 `toString()`；短名即对外合同（与持久化短名一致）。
+  无需 `@JsonValue`；若显式声明，方法必须 public（Jackson 3 忽略 private 方法上的 `@JsonValue`）。
 - 【强制】反序列化入口 `of(String)` 一律委托 `ParseUtils.parseEnum`；编译器生成的 `valueOf(String)` 口径见 §3.1。
 - 【强制】访问器 `desc()` 返回英文描述。
 - 【强制】枚举 DP 与其它 DP **同包 `types`**（不设 `enums` 子包——`EnumType` 只是一族 DP）。

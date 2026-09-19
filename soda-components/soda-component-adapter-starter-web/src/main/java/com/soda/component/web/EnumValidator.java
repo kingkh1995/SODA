@@ -1,7 +1,9 @@
-package com.soda.component.web.validation;
+package com.soda.component.web;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,9 +11,9 @@ import java.util.stream.Stream;
 
 /**
  * {@link EnumName} 注解的校验器。
- * <p>
- * 收集目标枚举的所有 {@link Enum#name()} 值，校验输入字符串是否匹配其一。
- * null 值视为有效（由 {@code @Nullable}/@NotNull 负责 null 语义）。
+ *
+ * <p>收集目标枚举的所有 {@link Enum#name()} 值，校验输入字符串是否匹配其一。 null 值视为有效（由 {@code @Nullable}/@NotNull 负责 null
+ * 语义）。
  */
 public class EnumValidator implements ConstraintValidator<EnumName, String> {
 
@@ -19,13 +21,14 @@ public class EnumValidator implements ConstraintValidator<EnumName, String> {
 
     @Override
     public void initialize(EnumName constraintAnnotation) {
-        this.validNames = Stream.of(constraintAnnotation.value().getEnumConstants())
-                .map(Enum::name)
-                .collect(Collectors.toSet());
+        this.validNames =
+                Stream.of(constraintAnnotation.value().getEnumConstants())
+                        .map(Enum::name)
+                        .collect(Collectors.toSet());
     }
 
     @Override
-    public boolean isValid(String value, ConstraintValidatorContext context) {
+    public boolean isValid(@Nullable String value, ConstraintValidatorContext context) {
         // null 交由 @Nullable/@NotNull 处理
         return value == null || validNames.contains(value);
     }

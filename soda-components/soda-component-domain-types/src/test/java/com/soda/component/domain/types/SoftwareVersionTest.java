@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -9,16 +13,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("SoftwareVersion 值对象")
 class SoftwareVersionTest extends ComparableDomainPrimitiveContractTest<SoftwareVersion> {
 
     @Override
     protected Contract<SoftwareVersion> contract() {
-        return new Contract<>(SoftwareVersion.class, () -> SoftwareVersion.of("v2.1.3"), "\"v2.1.3\"",
-                "SoftwareVersion[value=v2.1.3]", "\"2.1.3\"", () -> SoftwareVersion.of("v2.1.10"));
+        return new Contract<>(
+                SoftwareVersion.class,
+                () -> SoftwareVersion.of("v2.1.3"),
+                "\"v2.1.3\"",
+                "SoftwareVersion[value=v2.1.3]",
+                "\"2.1.3\"",
+                () -> SoftwareVersion.of("v2.1.10"));
     }
 
     @Nested
@@ -71,17 +77,17 @@ class SoftwareVersionTest extends ComparableDomainPrimitiveContractTest<Software
     class Validation {
         static Stream<String> invalidFormats() {
             return Stream.of(
-                    "2.1.3",     // 缺前缀
-                    "v2.1",      // 缺 patch 段
-                    "v2",        // 缺两段
-                    "v2.1.3.4",  // 多一段
-                    "v2..3",     // 空段
+                    "2.1.3", // 缺前缀
+                    "v2.1", // 缺 patch 段
+                    "v2", // 缺两段
+                    "v2.1.3.4", // 多一段
+                    "v2..3", // 空段
                     "v1000.1.2", // 段超 999
-                    "v2.1.3 ",   // 尾部空白（全串匹配失败）
-                    "vv2.1.3",   // 双前缀
-                    "v-1.2.3",   // 负号
-                    "abc"        // 完全非法
-            );
+                    "v2.1.3 ", // 尾部空白（全串匹配失败）
+                    "vv2.1.3", // 双前缀
+                    "v-1.2.3", // 负号
+                    "abc" // 完全非法
+                    );
         }
 
         @Test
@@ -171,19 +177,22 @@ class SoftwareVersionTest extends ComparableDomainPrimitiveContractTest<Software
         @Test
         @DisplayName("nextPatch 递增 patch")
         void should_nextPatch() {
-            assertThat(SoftwareVersion.of("v2.1.3").nextPatch()).isEqualTo(SoftwareVersion.of("v2.1.4"));
+            assertThat(SoftwareVersion.of("v2.1.3").nextPatch())
+                    .isEqualTo(SoftwareVersion.of("v2.1.4"));
         }
 
         @Test
         @DisplayName("nextMinor 递增 minor 并清零 patch")
         void should_nextMinor() {
-            assertThat(SoftwareVersion.of("v2.1.3").nextMinor()).isEqualTo(SoftwareVersion.of("v2.2.0"));
+            assertThat(SoftwareVersion.of("v2.1.3").nextMinor())
+                    .isEqualTo(SoftwareVersion.of("v2.2.0"));
         }
 
         @Test
         @DisplayName("nextMajor 递增 major 并清零低位")
         void should_nextMajor() {
-            assertThat(SoftwareVersion.of("v2.1.3").nextMajor()).isEqualTo(SoftwareVersion.of("v3.0.0"));
+            assertThat(SoftwareVersion.of("v2.1.3").nextMajor())
+                    .isEqualTo(SoftwareVersion.of("v3.0.0"));
         }
 
         @Test

@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("已脱敏身份证号值对象")
 class MaskedIdCardTest extends DomainPrimitiveContractTest<MaskedIdCard> {
@@ -19,9 +20,13 @@ class MaskedIdCardTest extends DomainPrimitiveContractTest<MaskedIdCard> {
 
     @Override
     protected Contract<MaskedIdCard> contract() {
-        return new Contract<>(MaskedIdCard.class, () -> new MaskedIdCard(VALID_MASKED),
-                "\"" + VALID_MASKED + "\"", "MaskedIdCard[value=" + VALID_MASKED + "]",
-                "\"110101199001011234\"", () -> new MaskedIdCard("310101********5678"));
+        return new Contract<>(
+                MaskedIdCard.class,
+                () -> new MaskedIdCard(VALID_MASKED),
+                "\"" + VALID_MASKED + "\"",
+                "MaskedIdCard[value=" + VALID_MASKED + "]",
+                "\"110101199001011234\"",
+                () -> new MaskedIdCard("310101********5678"));
     }
 
     @Nested
@@ -47,7 +52,14 @@ class MaskedIdCardTest extends DomainPrimitiveContractTest<MaskedIdCard> {
     class Validation {
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {" ", "110101199001011234", "110101*******1234", "110101*********234", "110101********123"})
+        @ValueSource(
+                strings = {
+                    " ",
+                    "110101199001011234",
+                    "110101*******1234",
+                    "110101*********234",
+                    "110101********123"
+                })
         @DisplayName("非法脱敏格式抛出异常")
         void should_throw_when_invalidFormat(String input) {
             assertThatThrownBy(() -> new MaskedIdCard(input))

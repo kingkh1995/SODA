@@ -1,6 +1,10 @@
 package com.soda.user.infrastructure.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.user.infrastructure.persistence.UserPO;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,13 +17,9 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.Instant;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
- * {@link UserRepository} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）——
- * {@code user} 表列映射与审计列、派生查询、唯一索引（uk_username/uk_mobile/uk_email）、
- * 乐观锁版本（{@code @Version} 冲突检测）。
+ * {@link UserRepository} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）—— {@code user}
+ * 表列映射与审计列、派生查询、唯一索引（uk_username/uk_mobile/uk_email）、 乐观锁版本（{@code @Version} 冲突检测）。
  * 边际用途：SQL/方言/约束与派生查询的真库现实；映射语义归 convertor 包 UserConvertorTest。
  */
 @DataJpaTest
@@ -27,15 +27,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("UserRepository 真库行为")
 class UserRepositoryTest {
 
-    @Autowired
-    private TestEntityManager em;
+    @Autowired private TestEntityManager em;
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository userRepository;
 
-    /**
-     * 必填列内联 fixture（username/mobile/email/sex/avatar/开关由用例覆写）。
-     */
+    /** 必填列内联 fixture（username/mobile/email/sex/avatar/开关由用例覆写）。 */
     private static UserPO user() {
         var po = new UserPO();
         po.setNickname("爱丽丝");
@@ -95,7 +91,9 @@ class UserRepositoryTest {
             var reloaded = userRepository.findById(saved.getId()).orElseThrow();
             assertThat(reloaded.getNickname()).isEqualTo("新昵称");
             assertThat(reloaded.getCreatedDate()).isEqualTo(createdAt);
-            assertThat(reloaded.getLastModifiedDate()).isNotEqualTo(Instant.EPOCH).isAfterOrEqualTo(createdAt);
+            assertThat(reloaded.getLastModifiedDate())
+                    .isNotEqualTo(Instant.EPOCH)
+                    .isAfterOrEqualTo(createdAt);
             assertThat(reloaded.getVersion()).isEqualTo(1);
         }
     }
@@ -115,8 +113,8 @@ class UserRepositoryTest {
             userRepository.saveAndFlush(bob);
             em.clear();
 
-            assertThat(userRepository.findByUsername("bob")).hasValueSatisfying(
-                    row -> assertThat(row.getId()).isEqualTo(bob.getId()));
+            assertThat(userRepository.findByUsername("bob"))
+                    .hasValueSatisfying(row -> assertThat(row.getId()).isEqualTo(bob.getId()));
         }
 
         @Test
@@ -135,8 +133,8 @@ class UserRepositoryTest {
             userRepository.saveAndFlush(saved);
             em.clear();
 
-            assertThat(userRepository.findByMobile("13900139000")).hasValueSatisfying(
-                    row -> assertThat(row.getId()).isEqualTo(saved.getId()));
+            assertThat(userRepository.findByMobile("13900139000"))
+                    .hasValueSatisfying(row -> assertThat(row.getId()).isEqualTo(saved.getId()));
         }
 
         @Test
@@ -147,8 +145,8 @@ class UserRepositoryTest {
             userRepository.saveAndFlush(saved);
             em.clear();
 
-            assertThat(userRepository.findByEmail("alice@example.com")).hasValueSatisfying(
-                    row -> assertThat(row.getId()).isEqualTo(saved.getId()));
+            assertThat(userRepository.findByEmail("alice@example.com"))
+                    .hasValueSatisfying(row -> assertThat(row.getId()).isEqualTo(saved.getId()));
         }
     }
 

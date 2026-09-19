@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("手机号值对象")
 class MobileTest extends DomainPrimitiveContractTest<Mobile> {
@@ -18,8 +19,13 @@ class MobileTest extends DomainPrimitiveContractTest<Mobile> {
 
     @Override
     protected Contract<Mobile> contract() {
-        return new Contract<>(Mobile.class, () -> Mobile.of(VALID_MOBILE), "\"13800138000\"",
-                "Mobile[masked=138****8000]", "12345", () -> Mobile.of("13900139000"));
+        return new Contract<>(
+                Mobile.class,
+                () -> Mobile.of(VALID_MOBILE),
+                "\"13800138000\"",
+                "Mobile[masked=138****8000]",
+                "12345",
+                () -> Mobile.of("13900139000"));
     }
 
     @Nested
@@ -54,7 +60,8 @@ class MobileTest extends DomainPrimitiveContractTest<Mobile> {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"1380013800", "138001380000", "12300138000", "1380013800a", "abc", "  "})
+        @ValueSource(
+                strings = {"1380013800", "138001380000", "12300138000", "1380013800a", "abc", "  "})
         @DisplayName("非法手机号格式拒绝")
         void should_throw_when_invalidPattern(String invalid) {
             assertThatThrownBy(() -> Mobile.of(invalid))

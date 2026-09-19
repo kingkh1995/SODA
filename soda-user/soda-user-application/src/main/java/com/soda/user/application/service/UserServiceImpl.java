@@ -25,7 +25,9 @@ import com.soda.user.domain.types.Avatar;
 import com.soda.user.domain.types.Nickname;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.Username;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,27 +35,33 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link PasswordHasher}。
- * <p>
- * 凭证/验证码用例由 {@link UserAuthServiceImpl} 承载，本类只管资料与状态机用例。
+ * 用户聚合根的 ApplicationService 实现 — 编排 {@link UserGateway}、{@link DomainEventBus}、{@link
+ * PasswordHasher}。
+ *
+ * <p>凭证/验证码用例由 {@link UserAuthServiceImpl} 承载，本类只管资料与状态机用例。
  */
 @Slf4j
 @Transactional
 @Service
-public class UserServiceImpl extends AbstractAppService<User, UserId, UserGateway> implements UserService {
+public class UserServiceImpl extends AbstractAppService<User, UserId, UserGateway>
+        implements UserService {
 
-    /**
-     * update_mask 允许的字段名（AIP-161 白名单）——与请求体字段名一致，含未知名 → 400 INVALID_ARGUMENT。
-     */
+    /** update_mask 允许的字段名（AIP-161 白名单）——与请求体字段名一致，含未知名 → 400 INVALID_ARGUMENT。 */
     private static final String FIELD_NICKNAME = "nickname";
+
     private static final String FIELD_SEX = "sex";
     private static final String FIELD_AVATAR = "avatar";
-    private static final Set<String> UPDATABLE_FIELDS = Set.of(FIELD_NICKNAME, FIELD_SEX, FIELD_AVATAR);
+    private static final Set<String> UPDATABLE_FIELDS =
+            Set.of(FIELD_NICKNAME, FIELD_SEX, FIELD_AVATAR);
 
     private final UserDTOConvertor userDtoConvertor;
     private final PasswordHasher passwordHasher;
 
-    public UserServiceImpl(UserGateway userGateway, UserDTOConvertor userDtoConvertor, DomainEventBus domainEventBus, PasswordHasher passwordHasher) {
+    public UserServiceImpl(
+            UserGateway userGateway,
+            UserDTOConvertor userDtoConvertor,
+            DomainEventBus domainEventBus,
+            PasswordHasher passwordHasher) {
         super(User.class, userGateway, domainEventBus);
         this.userDtoConvertor = userDtoConvertor;
         this.passwordHasher = passwordHasher;
@@ -74,15 +82,16 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
         if (email != null && gateway.existsByEmail(email)) {
             throw ConflictException.alreadyExists("Email", command.email());
         }
-        var user = User.createBuilder()
-                .username(username)
-                .nickname(new Nickname(command.nickname()))
-                .mobile(mobile)
-                .email(email)
-                .sex(Optional.ofNullable(command.sex()).map(Sex::of).orElse(null))
-                .avatar(Optional.ofNullable(command.avatar()).map(Avatar::new).orElse(null))
-                .passwordHash(passwordHasher.hash(new SecretValue(command.password())))
-                .build();
+        var user =
+                User.createBuilder()
+                        .username(username)
+                        .nickname(new Nickname(command.nickname()))
+                        .mobile(mobile)
+                        .email(email)
+                        .sex(Optional.ofNullable(command.sex()).map(Sex::of).orElse(null))
+                        .avatar(Optional.ofNullable(command.avatar()).map(Avatar::new).orElse(null))
+                        .passwordHash(passwordHasher.hash(new SecretValue(command.password())))
+                        .build();
         saveAndPublishEvents(user);
         return userDtoConvertor.convert(user);
     }
@@ -90,8 +99,12 @@ public class UserServiceImpl extends AbstractAppService<User, UserId, UserGatewa
     @Override
     public UserDTO updateUser(UpdateUserCommand command) {
         log.info("updateUser: command={}", command);
-        var user = requireIfMatch(new UserId(command.userId()),
-                Optional.ofNullable(command.expectedVersion()).map(ConcurrencyVersion::of).orElse(null));
+        var user =
+                requireIfMatch(
+                        new UserId(command.userId()),
+                        Optional.ofNullable(command.expectedVersion())
+                                .map(ConcurrencyVersion::of)
+                                .orElse(null));
         // 掩码语态（省略 / 精确覆盖 / 全量替换）归一化与判定单一源在 UpdateMask（AIP-134 §3.5 / AIP-161）。
         // 值合法性归各 DP 构造器（Nickname / Sex / Avatar 自校验抛 IAE → 400），本层不校验 Command 属性。
         var updateMask = UpdateMask.parse(command.updateMask(), UPDATABLE_FIELDS);

@@ -1,22 +1,28 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("邮箱值对象")
 class EmailTest extends DomainPrimitiveContractTest<Email> {
 
     @Override
     protected Contract<Email> contract() {
-        return new Contract<>(Email.class, () -> Email.of("t@t.com"), "\"t@t.com\"",
-                "Email[masked=t***@t.com]", "\"invalid-email\"", () -> Email.of("u@t.com"));
+        return new Contract<>(
+                Email.class,
+                () -> Email.of("t@t.com"),
+                "\"t@t.com\"",
+                "Email[masked=t***@t.com]",
+                "\"invalid-email\"",
+                () -> Email.of("u@t.com"));
     }
 
     @Nested
@@ -52,16 +58,21 @@ class EmailTest extends DomainPrimitiveContractTest<Email> {
         @Test
         @DisplayName("null 拒绝")
         void should_throw_when_valueIsNull() {
-            assertThatThrownBy(() -> Email.of(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Email.of(null)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @ParameterizedTest(name = "[{index}] \"{0}\"")
-        @ValueSource(strings = {"  ", "  user@example.com  ", "userexample.com", "user@", "user@example"})
+        @ValueSource(
+                strings = {
+                    "  ",
+                    "  user@example.com  ",
+                    "userexample.com",
+                    "user@",
+                    "user@example"
+                })
         @DisplayName("非法格式邮箱拒绝（空白 / 无 @ / 无域名 / 无顶级域名）")
         void should_throw_when_invalidFormat(String value) {
-            assertThatThrownBy(() -> Email.of(value))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Email.of(value)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 

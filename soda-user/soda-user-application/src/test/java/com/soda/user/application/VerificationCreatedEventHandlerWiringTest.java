@@ -1,5 +1,10 @@
 package com.soda.user.application;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.soda.component.domain.gateway.EmailSender;
 import com.soda.component.domain.gateway.SmsSender;
 import com.soda.component.domain.types.Mobile;
@@ -14,6 +19,7 @@ import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,23 +36,19 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Duration;
 import java.time.Instant;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
 /**
  * {@link VerificationCreatedEventHandler} 事务接线测试 — AFTER_COMMIT 语义。
- * <p>
- * 单元测试（直接调用 {@code onVerificationCreated}）无法覆盖的接线由本测试补齐：
- * 用真实的 Spring 监听器发现机制（{@link GenericApplicationContext} +
- * {@link TransactionalEventListenerFactory} 处理 {@code @TransactionalEventListener}）
- * 驱动事件发布，配合 {@link TransactionSynchronizationManager} 模拟事务提交/回滚，验证：
+ *
+ * <p>单元测试（直接调用 {@code onVerificationCreated}）无法覆盖的接线由本测试补齐： 用真实的 Spring 监听器发现机制（{@link
+ * GenericApplicationContext} + {@link TransactionalEventListenerFactory} 处理
+ * {@code @TransactionalEventListener}） 驱动事件发布，配合 {@link TransactionSynchronizationManager}
+ * 模拟事务提交/回滚，验证：
+ *
  * <ul>
- *   <li>事务中发布不立即投递，提交后才投递并落库（AFTER_COMMIT）</li>
- *   <li>事务回滚不投递（AFTER_COMMIT 监听器不触发）</li>
- *   <li>无事务上下文时 fallbackExecution 立即执行</li>
+ *   <li>事务中发布不立即投递，提交后才投递并落库（AFTER_COMMIT）
+ *   <li>事务回滚不投递（AFTER_COMMIT 监听器不触发）
  * </ul>
+ *
  * 行为契约（发送 → PENDING → 落库、发送失败语义）见 {@link VerificationCreatedEventHandlerTest}。
  */
 @ExtendWith(MockitoExtension.class)
@@ -57,12 +59,9 @@ class VerificationCreatedEventHandlerWiringTest {
     private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
     private static final String VALID_CODE = "123456";
 
-    @Mock
-    private SmsSender smsSender;
-    @Mock
-    private EmailSender emailSender;
-    @Mock
-    private VerificationGateway verificationGateway;
+    @Mock private SmsSender smsSender;
+    @Mock private EmailSender emailSender;
+    @Mock private VerificationGateway verificationGateway;
 
     private GenericApplicationContext context;
 
@@ -78,11 +77,14 @@ class VerificationCreatedEventHandlerWiringTest {
 
     @BeforeEach
     void setUp() {
-        var handler = new VerificationCreatedEventHandler(smsSender, emailSender, verificationGateway);
+        var handler =
+                new VerificationCreatedEventHandler(smsSender, emailSender, verificationGateway);
         context = new GenericApplicationContext();
         AnnotationConfigUtils.registerAnnotationConfigProcessors(context);
         context.getBeanFactory()
-                .registerSingleton("transactionalEventListenerFactory", new TransactionalEventListenerFactory());
+                .registerSingleton(
+                        "transactionalEventListenerFactory",
+                        new TransactionalEventListenerFactory());
         context.getBeanFactory().registerSingleton("verificationCreatedEventHandler", handler);
         context.refresh();
     }
@@ -124,14 +126,5 @@ class VerificationCreatedEventHandlerWiringTest {
 
         verify(smsSender, never()).send(any(), any());
         verify(verificationGateway, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("无事务上下文时立即执行（fallbackExecution）")
-    void should_executeImmediately_when_noTransactionActive() {
-        context.publishEvent(new VerificationCreatedEvent(initializedSmsVerification()));
-
-        verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
-        verify(verificationGateway).save(any(Verification.class));
     }
 }

@@ -1,14 +1,15 @@
 package com.soda.user.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UserVerificationScene 验证场景枚举")
 class UserVerificationSceneTest extends EnumDomainPrimitiveContractTest<UserVerificationScene> {
@@ -26,7 +27,8 @@ class UserVerificationSceneTest extends EnumDomainPrimitiveContractTest<UserVeri
         @CsvSource({"UCC", "UPR", "ULG", "URG"})
         @DisplayName("合法名逐一解析")
         void should_lookup_when_validName(String name) {
-            assertThat(UserVerificationScene.of(name)).isEqualTo(UserVerificationScene.valueOf(name));
+            assertThat(UserVerificationScene.of(name))
+                    .isEqualTo(UserVerificationScene.valueOf(name));
         }
 
         @Test
@@ -43,9 +45,10 @@ class UserVerificationSceneTest extends EnumDomainPrimitiveContractTest<UserVeri
         @Test
         @DisplayName("常量集快照")
         void should_exposeExactConstants() {
-            assertThat(UserVerificationScene.values()).containsExactly(
-                    UserVerificationScene.UCC, UserVerificationScene.UPR,
-                    UserVerificationScene.ULG, UserVerificationScene.URG);
+            assertThat(UserVerificationScene.values())
+                    .containsExactly(
+                            UserVerificationScene.UCC, UserVerificationScene.UPR,
+                            UserVerificationScene.ULG, UserVerificationScene.URG);
         }
     }
 
@@ -54,7 +57,9 @@ class UserVerificationSceneTest extends EnumDomainPrimitiveContractTest<UserVeri
     class Display {
 
         @ParameterizedTest(name = "{0} → desc={1}")
-        @CsvSource(textBlock = """
+        @CsvSource(
+                textBlock =
+                        """
                     UCC,   user-credential-change
                     UPR,   user-password-reset
                     ULG,   user-login

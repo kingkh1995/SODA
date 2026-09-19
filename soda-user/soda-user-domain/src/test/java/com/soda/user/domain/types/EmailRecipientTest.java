@@ -1,14 +1,16 @@
 package com.soda.user.domain.types;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import com.soda.component.domain.types.Email;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("EmailRecipient 邮箱投递端点")
 class EmailRecipientTest extends DomainPrimitiveContractTest<VerificationRecipient> {
@@ -17,9 +19,13 @@ class EmailRecipientTest extends DomainPrimitiveContractTest<VerificationRecipie
 
     @Override
     protected Contract<VerificationRecipient> contract() {
-        return new Contract<>(VerificationRecipient.class, () -> new EmailRecipient(EMAIL),
-                "{\"target\":\"user@example.com\",\"channel\":\"E\"}", "EmailRecipient[target=" + EMAIL + "]",
-                "{}", () -> new EmailRecipient(Email.of("other@example.com")));
+        return new Contract<>(
+                VerificationRecipient.class,
+                () -> new EmailRecipient(EMAIL),
+                "{\"target\":\"user@example.com\",\"channel\":\"E\"}",
+                "EmailRecipient[target=" + EMAIL + "]",
+                "{}",
+                () -> new EmailRecipient(Email.of("other@example.com")));
     }
 
     @Nested
@@ -53,7 +59,8 @@ class EmailRecipientTest extends DomainPrimitiveContractTest<VerificationRecipie
         @Test
         @DisplayName("端点工厂按 channel=E 路由到 EmailRecipient")
         void should_routeToEmailRecipient_when_channelE() {
-            assertThat(VerificationRecipient.of("E", EMAIL.value())).isEqualTo(new EmailRecipient(EMAIL));
+            assertThat(VerificationRecipient.of("E", EMAIL.value()))
+                    .isEqualTo(new EmailRecipient(EMAIL));
         }
 
         @Test

@@ -1,20 +1,26 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("PositiveInt 值对象")
 class PositiveIntTest extends ComparableDomainPrimitiveContractTest<PositiveInt> {
 
     @Override
     protected Contract<PositiveInt> contract() {
-        return new Contract<>(PositiveInt.class, () -> PositiveInt.of(6), "6",
-                "PositiveInt[value=6]", "\"not-a-number\"", () -> PositiveInt.of(7));
+        return new Contract<>(
+                PositiveInt.class,
+                () -> PositiveInt.of(6),
+                "6",
+                "PositiveInt[value=6]",
+                "\"not-a-number\"",
+                () -> PositiveInt.of(7));
     }
 
     @Nested

@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 
 /**
  * 用户名 DP — 4-30 位字母数字，不可变、自校验、可比较。
- * <p>
- * 唯一性由 {@link UserGateway#existsByUsername(Username)} 和 DB 唯一索引双重保证。
+ *
+ * <p>唯一性由 {@link UserGateway#existsByUsername(Username)} 和 DB 唯一索引双重保证。
  *
  * @see StringLiteralType
  */
@@ -21,11 +21,10 @@ public record Username(String value) implements StringLiteralType, Comparable<Us
 
     /**
      * 注销终态默认值（ADR-0023）— R 行键释放后领域恢复的占位用户名。
-     * <p>
-     * 合法 {@code Username}（4-30 位字母数字）；只存在于领域内存，<b>从不落库</b>
-     * （DB 中 R 行 {@code username} 为 NULL，见 convertor 空值映射）。
-     * "removed" 仍是可注册用户名（DB 无此值），无命名空间浪费。
-     * 契约：消费方不得将 {@link #REMOVED} 当作真实登录名处理（R 为吸收态，无登录业务）。
+     *
+     * <p>合法 {@code Username}（4-30 位字母数字）；只存在于领域内存，<b>从不落库</b> （DB 中 R 行 {@code username} 为 NULL，见
+     * convertor 空值映射）。 "removed" 仍是可注册用户名（DB 无此值），无命名空间浪费。 契约：消费方不得将 {@link #REMOVED} 当作真实登录名处理（R
+     * 为吸收态，无登录业务）。
      */
     public static final Username REMOVED = new Username("removed");
 

@@ -1,12 +1,13 @@
 package com.soda.user.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UserState 枚举")
 class UserStateTest extends EnumDomainPrimitiveContractTest<UserState> {
@@ -33,8 +34,7 @@ class UserStateTest extends EnumDomainPrimitiveContractTest<UserState> {
         void should_throw_when_invalidName() {
             assertThatThrownBy(() -> UserState.of(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> UserState.of(""))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> UserState.of("")).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> UserState.of("X"))
                     .isInstanceOf(IllegalArgumentException.class);
         }

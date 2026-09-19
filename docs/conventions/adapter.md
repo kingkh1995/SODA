@@ -1,14 +1,14 @@
 ---
 type: Convention
 title: Adapter 转换器约定 — WebAssembler 与 MapStruct
-description: 写 WebAssembler 协议转换器（转换方向/方法命名/使用约定/适用边界）时读；写 MapStruct 映射约定时按指针去 STYLEGUIDE §3.4。仅协议转换用 MapStruct，infrastructure convertor 手写。本文只收契约语义，注解速查与四条定案单源在 STYLEGUIDE §3.4。
+description: 写 WebAssembler 协议转换器（转换方向/方法命名/使用约定/适用边界）时读；写 MapStruct 映射约定时按指针去 mapstruct.md。仅协议转换用 MapStruct，infrastructure convertor 手写。本文只收契约语义，MapStruct 机制规则与四条定案单源在 conventions/mapstruct.md。
 tags: [ convention, adapter, mapstruct ]
 status: stable
 ---
 
 # Adapter 转换器约定
 
-> 指针：MapStruct 注解用法速查表与四条定案 **单源**在根 [STYLEGUIDE](../../STYLEGUIDE.md) §3.4；adapter
+> 指针：MapStruct 机制规则与四条定案 **单源**在 [mapstruct.md](mapstruct.md)；adapter
 > 层测试映射见 [test-conventions](../test-conventions.md) §2。本文只收转换器的 **契约语义**（转换什么、怎么命名、怎么用）。
 
 ## 1. WebAssembler（协议转换器）
@@ -31,13 +31,14 @@ status: stable
 
 **使用约定**：
 
-- Spring Bean 注入 Controller（`componentModel = "spring"`）；Controller 只注入 assembler 与 api 层接口
+- Spring Bean 注入 Controller（`componentModel` 的常量形态与装配规则单源见 [mapstruct.md](mapstruct.md) §2）；Controller
+  只注入 assembler 与 api 层接口
 - 转换不是 1:1 字段复制：分页包装、多实体聚合、路径参数并入命令（`userId` 走 URL 路径，不进 Request body，ADR-0009）由方法签名承载
 - 可直接实例化单测——测试中经 `Mappers.getMapper(...)` 获取实现；不在 Request/Response 上定义静态转换方法
 
 ## 2. MapStruct 用法（披露指针）
 
-本文不重复 MapStruct 注解用法与四条定案（单源见上方指针 / 根 [STYLEGUIDE](../../STYLEGUIDE.md) §3.4）。
+本文不重复 MapStruct 机制规则与四条定案（单源见上方指针 / [mapstruct.md](mapstruct.md)）。
 
 ## 3. 关联
 
@@ -45,5 +46,6 @@ status: stable
   手写的边界理由）
 - 端点命名（`requestChange*Code` 介词偏离 / 自定义方法 RPC 名消歧）见 [aip-api-conventions.md](aip-api-conventions.md)
   §3.7
-- [STYLEGUIDE](../../STYLEGUIDE.md) §3.4（MapStruct
-  注解用法速查）、[framework-type-contracts.md](../conventions/framework-type-contracts.md)「API・Adapter 类型指针」（类型索引）
+- [mapstruct.md](mapstruct.md)（MapStruct
+  使用规范：注解形态 / 映射语义 / 构建接线 / null 与 JSpecify
+  缺口）、[framework-type-contracts.md](../conventions/framework-type-contracts.md)「API・Adapter 类型指针」（类型索引）

@@ -27,27 +27,34 @@ SODA 文档体系标准（OKF v0.2 适配 × Google 注释规范 × agent 写作
 
 docs/ 树本身是事实源（filesystem 即真相，块内文件清单将漂移）；下表只标 **语义归属**：
 
-| 路径                                       | 语义归属                                                                                            |
-|--------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `index.md`                                 | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                     |
-| `adr/`                                     | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计） |
-| `research/`                                | 研究笔记（引用外部材料）                                                                            |
-| `agents/`                                  | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                |
-| `framework-conventions.md`                 | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                   |
-| `test-conventions.md`                      | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                          |
-| `dp-conventions.md`                        | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                     |
-| `conventions/`                             | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                         |
-| `conventions/framework-type-contracts.md`  | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                    |
-| `conventions/framework-crosscutting.md`    | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                |
-| `conventions/dp-json-conventions.md`       | DP 序列化契约族（模式总表 / 类型映射 / BigDecimal DP 模式 / 禁止 Serializable）                     |
-| `conventions/dp-validation-conventions.md` | DP 校验与归一化（三入口职责 / 校验收敛 / 编排 / 归一化细则）                                        |
-| `conventions/dp-test-conventions.md`       | DP 必测分组与 @Nested 分组矩阵                                                                      |
-| `conventions/aip-api-conventions.md`       | HTTP API 设计规范（资源 / 方法 / 字段 / 分页 / 错误处理）                                           |
-| `doc-conventions.md`                       | 本文件                                                                                              |
+| 路径                                       | 语义归属                                                                                               |
+|--------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `index.md`                                 | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                        |
+| `adr/`                                     | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计）    |
+| `research/`                                | 研究笔记（引用外部材料）                                                                               |
+| `agents/`                                  | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                   |
+| `framework-conventions.md`                 | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                      |
+| `test-conventions.md`                      | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                             |
+| `dp-conventions.md`                        | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                        |
+| `conventions/`                             | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                            |
+| `conventions/framework-type-contracts.md`  | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                       |
+| `conventions/framework-crosscutting.md`    | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                   |
+| `conventions/dp-json-conventions.md`       | DP 序列化契约族（模式总表 / 类型映射 / BigDecimal DP 模式 / 禁止 Serializable）                        |
+| `conventions/dp-validation-conventions.md` | DP 校验与归一化（三入口职责 / 校验收敛 / 编排 / 归一化细则）                                           |
+| `conventions/dp-test-conventions.md`       | DP 必测分组与 @Nested 分组矩阵                                                                         |
+| `conventions/aip-api-conventions.md`       | HTTP API 设计规范（资源 / 方法 / 字段 / 分页 / 错误处理）                                              |
+| `conventions/jackson.md`                   | Jackson 3 使用规范（接入与共享 / 注解落位 / 多态 / 3.0 行为基线）                                      |
+| `conventions/jspecify.md`                  | JSpecify 空性标注规范（`@NullMarked` 基线 / `@Nullable` 位置契约 / 泛型与覆写 / 外部库边界）           |
+| `conventions/lombok.md`                    | Lombok 使用规范（注解准入与禁用集 / 访问器与 fluent / 构造器与 Builder / 相等与调试 / 日志与构建接线） |
+| `conventions/mapstruct.md`                 | MapStruct 使用规范（`@Mapper` 与注入 / 映射语义 / 构建接线 / Null 与 JSpecify 缺口）                   |
+| `conventions/spring.md`                    | Spring Framework 使用规范（DI / 组件与自动配置 / 事务 / 事件 / Web MVC 扩展点 / 校验）                 |
+| `conventions/modulith.md`                  | Spring Modulith 使用规范（`@ApplicationModule` / `allowedDependencies` / verify 与反向校验）           |
+| `doc-conventions.md`                       | 本文件                                                                                                 |
 
 `docs/index.md` 只列一级条目（目录 + 一句话定位，不承载正文——OKF §8）；conventions/ 族在 index 的 conventions/
 条目下列举（adapter / dp-test-conventions / framework-type-contracts / framework-crosscutting /
-dp-validation-conventions / dp-json-conventions / aip-api-conventions），详细契约经 framework-type-contracts.md 类型清单表触达。
+dp-validation-conventions / dp-json-conventions / aip-api-conventions / jackson / jspecify / lombok / mapstruct /
+spring / modulith），详细契约经 framework-type-contracts.md 类型清单表触达。
 
 **不引入 `log.md`**（OKF §9 为 MAY，非合规必需）：变更史由 git log/blame 承载；V1 零残留条款（§9）禁止历史回溯内容入库——log 条目本身即历史回溯。
 

@@ -9,7 +9,5 @@ import com.soda.component.api.command.Command;
  * @see com.soda.user.api.UserAuthService#changeMobile
  */
 public record ChangeMobileCommand(
-        @JsonProperty("userId") Long userId,
-        @JsonProperty("code") String code
-) implements Command {
-}
+        @JsonProperty("userId") Long userId, @JsonProperty("code") String code)
+        implements Command {}

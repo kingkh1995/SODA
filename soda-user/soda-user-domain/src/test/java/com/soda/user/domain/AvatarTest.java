@@ -1,17 +1,18 @@
 package com.soda.user.domain;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import com.soda.user.domain.types.Avatar;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Avatar 值对象")
 class AvatarTest extends DomainPrimitiveContractTest<Avatar> {
@@ -20,8 +21,12 @@ class AvatarTest extends DomainPrimitiveContractTest<Avatar> {
 
     @Override
     protected Contract<Avatar> contract() {
-        return new Contract<>(Avatar.class, () -> new Avatar(VALID_URL), "\"" + VALID_URL + "\"",
-                "Avatar[value=" + VALID_URL + "]", "\"not-a-uri\"",
+        return new Contract<>(
+                Avatar.class,
+                () -> new Avatar(VALID_URL),
+                "\"" + VALID_URL + "\"",
+                "Avatar[value=" + VALID_URL + "]",
+                "\"not-a-uri\"",
                 () -> new Avatar("https://a.com/2.png"));
     }
 

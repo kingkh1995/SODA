@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("已脱敏银行卡号值对象")
 class MaskedBankCardTest extends DomainPrimitiveContractTest<MaskedBankCard> {
@@ -18,9 +19,13 @@ class MaskedBankCardTest extends DomainPrimitiveContractTest<MaskedBankCard> {
 
     @Override
     protected Contract<MaskedBankCard> contract() {
-        return new Contract<>(MaskedBankCard.class, () -> new MaskedBankCard(VALID_MASKED_16),
-                "\"" + VALID_MASKED_16 + "\"", "MaskedBankCard[value=" + VALID_MASKED_16 + "]",
-                "\"6225881234566789\"", () -> new MaskedBankCard("622577******6789"));
+        return new Contract<>(
+                MaskedBankCard.class,
+                () -> new MaskedBankCard(VALID_MASKED_16),
+                "\"" + VALID_MASKED_16 + "\"",
+                "MaskedBankCard[value=" + VALID_MASKED_16 + "]",
+                "\"6225881234566789\"",
+                () -> new MaskedBankCard("622577******6789"));
     }
 
     @Nested
@@ -53,7 +58,19 @@ class MaskedBankCardTest extends DomainPrimitiveContractTest<MaskedBankCard> {
     class Validation {
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {" ", "6225881234566789", "622588**6789", "622588**********6789", "622588***********6789", "622588************6789", "622588*************6789", "622588**************6789", "abc588******6789", "622588******67"})
+        @ValueSource(
+                strings = {
+                    " ",
+                    "6225881234566789",
+                    "622588**6789",
+                    "622588**********6789",
+                    "622588***********6789",
+                    "622588************6789",
+                    "622588*************6789",
+                    "622588**************6789",
+                    "abc588******6789",
+                    "622588******67"
+                })
         @DisplayName("非法脱敏格式抛出异常")
         void should_throw_when_invalidFormat(String input) {
             assertThatThrownBy(() -> new MaskedBankCard(input))

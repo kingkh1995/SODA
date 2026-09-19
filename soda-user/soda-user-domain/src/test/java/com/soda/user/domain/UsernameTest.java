@@ -1,16 +1,17 @@
 package com.soda.user.domain;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.Username;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Username 值对象")
 class UsernameTest extends ComparableDomainPrimitiveContractTest<Username> {
@@ -20,8 +21,13 @@ class UsernameTest extends ComparableDomainPrimitiveContractTest<Username> {
 
     @Override
     protected Contract<Username> contract() {
-        return new Contract<>(Username.class, () -> new Username(VALID_USERNAME), "\"testuser\"",
-                "Username[value=testuser]", "{}", () -> new Username("ztestuser"));
+        return new Contract<>(
+                Username.class,
+                () -> new Username(VALID_USERNAME),
+                "\"testuser\"",
+                "Username[value=testuser]",
+                "{}",
+                () -> new Username("ztestuser"));
     }
 
     @Nested

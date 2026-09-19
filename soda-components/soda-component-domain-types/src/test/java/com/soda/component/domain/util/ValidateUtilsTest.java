@@ -1,14 +1,14 @@
 package com.soda.component.domain.util;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.regex.Pattern;
-
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link ValidateUtils} 失败语义契约：所有校验失败统一抛出 {@link IllegalArgumentException}，
@@ -24,8 +24,7 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("非 null 值通过")
         void should_pass_when_valueNonNull() {
-            assertThatCode(() -> ValidateUtils.notNull("value"))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.notNull("value")).doesNotThrowAnyException();
         }
 
         @Test
@@ -43,8 +42,7 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("合法文本通过")
         void should_pass_when_textValid() {
-            assertThatCode(() -> ValidateUtils.hasText("valid"))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.hasText("valid")).doesNotThrowAnyException();
         }
 
         @Test
@@ -66,22 +64,19 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("含边界：高于 min 通过")
         void should_pass_when_aboveMinInclusive() {
-            assertThatCode(() -> ValidateUtils.minValue(10, 5, true))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.minValue(10, 5, true)).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("排除边界：高于 min 通过")
         void should_pass_when_aboveMinExclusive() {
-            assertThatCode(() -> ValidateUtils.minValue(6, 5, false))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.minValue(6, 5, false)).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("含边界：等于 min 通过")
         void should_pass_when_equalToMinInclusive() {
-            assertThatCode(() -> ValidateUtils.minValue(5, 5, true))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.minValue(5, 5, true)).doesNotThrowAnyException();
         }
 
         @Test
@@ -114,8 +109,7 @@ class ValidateUtilsTest {
         @DisplayName("匹配格式的值通过")
         void should_pass_when_formatValid() {
             var digit = Pattern.compile("\\d+");
-            assertThatCode(() -> ValidateUtils.matches("123", digit))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.matches("123", digit)).doesNotThrowAnyException();
         }
 
         @Test
@@ -160,15 +154,13 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("长度小于上限通过")
         void should_pass_when_withinLimit() {
-            assertThatCode(() -> ValidateUtils.maxLength("hello", 10))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.maxLength("hello", 10)).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("长度等于上限通过")
         void should_pass_when_lengthAtLimit() {
-            assertThatCode(() -> ValidateUtils.maxLength("hello", 5))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.maxLength("hello", 5)).doesNotThrowAnyException();
         }
 
         @Test
@@ -193,22 +185,19 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("区间内的值通过")
         void should_pass_when_withinRange() {
-            assertThatCode(() -> ValidateUtils.range(5, 1, 10))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.range(5, 1, 10)).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("下边界值通过")
         void should_pass_when_atMinBoundary() {
-            assertThatCode(() -> ValidateUtils.range(1, 1, 10))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.range(1, 1, 10)).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("上边界值通过")
         void should_pass_when_atMaxBoundary() {
-            assertThatCode(() -> ValidateUtils.range(10, 1, 10))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.range(10, 1, 10)).doesNotThrowAnyException();
         }
 
         @Test
@@ -233,8 +222,7 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("前缀匹配通过")
         void should_pass_when_prefixMatches() {
-            assertThatCode(() -> ValidateUtils.hasPrefix("P:42", "P:"))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.hasPrefix("P:42", "P:")).doesNotThrowAnyException();
         }
 
         @Test
@@ -256,15 +244,13 @@ class ValidateUtilsTest {
         @Test
         @DisplayName("相等值通过")
         void should_pass_when_valuesEqual() {
-            assertThatCode(() -> ValidateUtils.equals("a", "a"))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.equals("a", "a")).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("双 null 视为相等（Objects.equals 契约）")
         void should_pass_when_bothNull() {
-            assertThatCode(() -> ValidateUtils.equals(null, null))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> ValidateUtils.equals(null, null)).doesNotThrowAnyException();
         }
 
         @Test

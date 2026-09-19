@@ -1,12 +1,13 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UUID 标识符值对象")
 class UuidTest extends ComparableDomainPrimitiveContractTest<Uuid> {
@@ -15,8 +16,12 @@ class UuidTest extends ComparableDomainPrimitiveContractTest<Uuid> {
 
     @Override
     protected Contract<Uuid> contract() {
-        return new Contract<>(Uuid.class, () -> new Uuid(VALID_UUID), "\"" + VALID_UUID + "\"",
-                "Uuid[value=" + VALID_UUID + "]", "12345",
+        return new Contract<>(
+                Uuid.class,
+                () -> new Uuid(VALID_UUID),
+                "\"" + VALID_UUID + "\"",
+                "Uuid[value=" + VALID_UUID + "]",
+                "12345",
                 () -> new Uuid("650e8400-e29b-41d4-a716-446655440000"));
     }
 
@@ -79,15 +84,13 @@ class UuidTest extends ComparableDomainPrimitiveContractTest<Uuid> {
         @Test
         @DisplayName("null 拒绝")
         void should_throw_when_valueIsNull() {
-            assertThatThrownBy(() -> new Uuid(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Uuid(null)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("空白字符串拒绝")
         void should_throw_when_valueIsBlank() {
-            assertThatThrownBy(() -> new Uuid("  "))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Uuid("  ")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test

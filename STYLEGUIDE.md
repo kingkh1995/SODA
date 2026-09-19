@@ -72,64 +72,16 @@ ADR-0015），其余拒绝维持 IAE / ISE。
 
 ## 3. 注解
 
-### 3.1 Jackson
+本节仅作索引——注解与库用法规则的单源在各规范篇，规则正文不在本文件。
 
-| 用途     | 注解                                                                                                                                                          | 位置                                               |
-|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
-| 序列化   | `@JsonValue`                                                                                                                                                  | record 组件（`@JsonValue long value`）或访问器方法 |
-| 反序列化 | 无需（Jackson 3 原生推断 record 典范构造器，模式总表见 [conventions/dp-json-conventions.md §1 模式总表](docs/conventions/dp-json-conventions.md#1-模式总表)） | —                                                  |
-
-Entity JSON 契约见 conventions/framework-type-contracts.md「Entity」条目；框架契约型注解（`@JsonTypeInfo`/`@JsonAutoDetect`
-等）随各自契约文档，不入本章。
-
-### 3.2 JSpecify 空性标注
-
-项目使用 JSpecify 1.0（Spring 7 自身即 `@NullMarked`），覆盖全部 4 个注解；编译期明确空性，杜绝 NPE。本节是空性标注规则的
-**单源**——框架层文档只指不述。
-
-| 注解 | 语义 | 本项目使用 |
-|---|---|---|
-| `@NullMarked` | 作用域内默认 `@NonNull` | ✅ 必须 — 仅包级（`package-info.java` 第一行） |
-| `@Nullable` | 该类型可含 null | ✅ 按场景（见下） |
-| `@NonNull` | 排除 null | ⚠️ 仅非空投影，禁止冗余标注 |
-| `@NullUnmarked` | 退出 `@NullMarked` | ❌ 禁止 |
-
-**标注位置**：字段类型、参数、返回、类型参数（`List<@Nullable T>`）、record 组件。 **必须加 `@Nullable`**：实体的可选字段（getter
-返回 `Optional<T>`）、瞬态字段（`private @Nullable ID id`——创建路径为 null，由 `isIdentified()`
-窄化守卫）、工厂/构造器中对应可选字段的参数、立即校验拒绝
-null 的工具参数。 **禁止加 `@Nullable`**：public/protected 方法返回值（用 `Optional<T>` 或空集合；项目约定返回值永不为
-null）。 **`getId()` 例外**：`Identifiable.getId()` 返回 `@NonNull`，未标识时抛 `NullPointerException`（防御编程：调用方
-bug，异常类型即语义）；瞬态语义由 `isIdentified()` 表达。 **`assignId` 参数守卫**：`Entity.assignId` 用
-`Objects.requireNonNull` 抛 NPE（基础设施回调，DB 生成 ID 失败 = 系统 bug，非业务决策分支）；同值重复回填幂等，异值回填抛裸
-`IllegalStateException`（两个持久化身份赋给同一实体 = 基础设施 bug）。 **不返回
-`Optional<@Nullable T>`**——Optional 本身表达可空返回。
-**局部变量**：根类型不标注，由赋值推断。
-**外部库互操作**：未标 `@NullMarked` 的库返回值是 unspecified nullness——调用点显式检查或 `Optional.ofNullable()` 包装。
-
-### 3.3 Lombok
-
-| 注解 | 使用场景 |
-|---|---|
-| `@Getter` | 字段 getter；Entity 基类不适用（需 final 语义） |
-| `@Accessors(fluent = true)` | 访问器名 `value()` 对齐 record 风格 |
-| `@RequiredArgsConstructor` | 基类构造函数 |
-| `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` | 非 record 的 class DP，配合 `@Include` 显式标记参与字段 |
-| `@UtilityClass` | 不用于有 `import static` 交叉引用的工具类（编译期符号解析先于 Lombok）——保持显式 `final class` + 私有构造器 |
-| `@Builder` | 仅限 Entity/Aggregate 双 Builder（恢复构造器 + `createBuilder()`）；值对象一律静态工厂 `of`/`from`/`parse` |
-| `@Setter` / `@NoArgsConstructor(access = PUBLIC)` | 仅限持久化 PO（infrastructure 载体）；domain / api / application 禁止 |
-| `@Slf4j` | 日志允许 |
-| 其余（`@Value` / `@With` / `@Data` / `@SuperBuilder` / `@AllArgsConstructor`） | 禁用——record 与显式构造器已覆盖其场景 |
-
-### 3.4 MapStruct
-
-| 规则       | 内容                                                                                                                                                                                                                                    |
-|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 适用边界   | 仅 adapter 协议转换（Request → Command、DTO → Response）；infrastructure PO ↔ 领域 convertor 手写——final 类 + 全量构造含显式 null 清空列语义（见 conventions/framework-type-contracts.md「Convertor（基础设施）」节），不采用 MapStruct |
-| 组件模型   | `@Mapper(componentModel = "spring")` 固定——生产注入生成 bean；`Mappers.getMapper(...)` 仅测试                                                                                                                                           |
-| 映射策略   | by-name 优先；仅名称不一致时写显式 `@Mapping`                                                                                                                                                                                           |
-| 未映射目标 | `unmappedTargetPolicy = ERROR`——协议字段漏映射编译期拦截；有意不映射须显式 `ignore = true` 自证                                                                                                                                         |
-
-转换器契约语义（命名、方向、使用约定）归 `docs/conventions/adapter.md` WebAssembler 条目。
+| 库               | 规范篇                                                         |
+|------------------|----------------------------------------------------------------|
+| Jackson          | [docs/conventions/jackson.md](docs/conventions/jackson.md)     |
+| JSpecify         | [docs/conventions/jspecify.md](docs/conventions/jspecify.md)   |
+| Lombok           | [docs/conventions/lombok.md](docs/conventions/lombok.md)       |
+| MapStruct        | [docs/conventions/mapstruct.md](docs/conventions/mapstruct.md) |
+| Spring Framework | [docs/conventions/spring.md](docs/conventions/spring.md)       |
+| Spring Modulith  | [docs/conventions/modulith.md](docs/conventions/modulith.md)   |
 
 ## 4. 注释规范
 

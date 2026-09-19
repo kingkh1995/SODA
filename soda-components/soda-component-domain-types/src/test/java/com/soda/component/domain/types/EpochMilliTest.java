@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,16 +12,17 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("EpochMilli 值对象")
 class EpochMilliTest extends ComparableDomainPrimitiveContractTest<EpochMilli> {
 
     @Override
     protected Contract<EpochMilli> contract() {
-        return new Contract<>(EpochMilli.class, () -> new EpochMilli(1738080000000L), "1738080000000",
-                "EpochMilli[value=1738080000000]", "{\"value\":1738080000000}",
+        return new Contract<>(
+                EpochMilli.class,
+                () -> new EpochMilli(1738080000000L),
+                "1738080000000",
+                "EpochMilli[value=1738080000000]",
+                "{\"value\":1738080000000}",
                 () -> new EpochMilli(1738080000001L));
     }
 
@@ -105,7 +110,8 @@ class EpochMilliTest extends ComparableDomainPrimitiveContractTest<EpochMilli> {
         @DisplayName("亚毫秒截断到毫秒（毫秒单位契约）")
         void should_truncateSubMillis() {
             var em = EpochMilli.from(Instant.parse("2026-08-09T12:00:00.123456789Z"));
-            assertThat(em.value()).isEqualTo(Instant.parse("2026-08-09T12:00:00.123Z").toEpochMilli());
+            assertThat(em.value())
+                    .isEqualTo(Instant.parse("2026-08-09T12:00:00.123Z").toEpochMilli());
             assertThat(em.toInstant()).isEqualTo(Instant.parse("2026-08-09T12:00:00.123Z"));
         }
     }
@@ -120,7 +126,9 @@ class EpochMilliTest extends ComparableDomainPrimitiveContractTest<EpochMilli> {
             var base = EpochMilli.from(Instant.parse("2026-08-09T12:00:00Z"));
             assertThat(base.plus(Duration.ofMinutes(5)))
                     .isEqualTo(EpochMilli.from(Instant.parse("2026-08-09T12:05:00Z")));
-            assertThat(EpochMilli.from(Instant.parse("2026-08-09T12:05:00Z")).minus(Duration.ofMinutes(5)))
+            assertThat(
+                            EpochMilli.from(Instant.parse("2026-08-09T12:05:00Z"))
+                                    .minus(Duration.ofMinutes(5)))
                     .isEqualTo(base);
         }
 

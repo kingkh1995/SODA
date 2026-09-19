@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("已脱敏邮箱值对象")
 class MaskedEmailTest extends DomainPrimitiveContractTest<MaskedEmail> {
@@ -18,9 +19,13 @@ class MaskedEmailTest extends DomainPrimitiveContractTest<MaskedEmail> {
 
     @Override
     protected Contract<MaskedEmail> contract() {
-        return new Contract<>(MaskedEmail.class, () -> new MaskedEmail(VALID_MASKED),
-                "\"" + VALID_MASKED + "\"", "MaskedEmail[value=" + VALID_MASKED + "]",
-                "\"test@example.com\"", () -> new MaskedEmail("a***@domain.org"));
+        return new Contract<>(
+                MaskedEmail.class,
+                () -> new MaskedEmail(VALID_MASKED),
+                "\"" + VALID_MASKED + "\"",
+                "MaskedEmail[value=" + VALID_MASKED + "]",
+                "\"test@example.com\"",
+                () -> new MaskedEmail("a***@domain.org"));
     }
 
     @Nested
@@ -39,7 +44,14 @@ class MaskedEmailTest extends DomainPrimitiveContractTest<MaskedEmail> {
     class Validation {
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {" ", "test@example.com", "te***@example.com", "***@example.com", "t***@example"})
+        @ValueSource(
+                strings = {
+                    " ",
+                    "test@example.com",
+                    "te***@example.com",
+                    "***@example.com",
+                    "t***@example"
+                })
         @DisplayName("非法脱敏格式抛出异常")
         void should_throw_when_invalidFormat(String input) {
             assertThatThrownBy(() -> new MaskedEmail(input))

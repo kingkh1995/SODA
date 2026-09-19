@@ -18,6 +18,7 @@ status: stable
 - **[0001](0001-module-architecture.md)** — 读写分离业务模块分层（写侧 COLA / 读侧混装 / api 共用）
 - **[0008](0008-layered-component-starters.md)** — 分层 starter 一架构层一组件模块
 - **[0019](0019-adapter-starter-channel-split.md)** — Adapter starter 按入站通道拆分
+- **[0042](0042-dual-root-package-model.md)** — 双根包建模：两个应用根 + 单向跨根校验
 
 ## DDD 概念边界
 
@@ -25,6 +26,8 @@ status: stable
 - **[0016](0016-type-class-mapping-ownership.md)** — 判别值映射归属（type↔class）
 - **[0017](0017-aggregate-lifecycle-removal-semantics.md)** — 聚合删除语义：终态迁移，领域无擦除
 - **[0023](0023-terminal-key-release-and-archive.md)** — 注销终态键释放与归档审计
+- **[0040](0040-entity-equality-reference-semantics.md)** — 实体相等性：引用相等，身份判断经 `getId()`
+- **[0041](0041-nullable-return-carrier-roles.md)** — 可空返回载体：按角色二分 `@Nullable T` 与 `Optional`
 
 ## User / AuthAccount / 凭证
 
@@ -58,6 +61,7 @@ status: stable
 
 - **[0022](0022-dev-database-management.md)** — 开发阶段数据库管理约定（H2-only / 单 V1 / 严禁外键与存储过程）
 - **[0024](0024-gateway-save-unified-routing.md)** — Gateway save 统一路由（全权委托 Spring Data JPA）
+- **[0043](0043-persistence-scan-root-ownership.md)** — JPA 扫描根由持久化模块自持（入口只留 `@SpringBootApplication`）
 
 ## API 与错误
 

@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("真实姓名值对象")
 class ChineseNameTest extends DomainPrimitiveContractTest<ChineseName> {
@@ -18,8 +19,13 @@ class ChineseNameTest extends DomainPrimitiveContractTest<ChineseName> {
 
     @Override
     protected Contract<ChineseName> contract() {
-        return new Contract<>(ChineseName.class, () -> ChineseName.of(VALID_NAME), "\"" + VALID_NAME + "\"",
-                "ChineseName[masked=张*]", "\"John\"", () -> ChineseName.of("李四"));
+        return new Contract<>(
+                ChineseName.class,
+                () -> ChineseName.of(VALID_NAME),
+                "\"" + VALID_NAME + "\"",
+                "ChineseName[masked=张*]",
+                "\"John\"",
+                () -> ChineseName.of("李四"));
     }
 
     @Nested

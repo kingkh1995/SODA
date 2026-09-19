@@ -1,5 +1,7 @@
 package com.soda.component.web.conditional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -9,18 +11,17 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * If-Match 入站装配：注册 {@link IfMatchResolver}；非 Servlet 环境自动退避（见 ADR-0039）。
- * <p>
- * 出站 {@code ETag} 头与入站 If-Match 的线上行为由 {@code ConditionalRequestMvcTest} 以完整 MVC 覆盖。
+ *
+ * <p>出站 {@code ETag} 头与入站 If-Match 的线上行为由 {@code ConditionalRequestMvcTest} 以完整 MVC 覆盖。
  */
 @DisplayName("IfMatchAutoConfiguration 装配")
 class IfMatchAutoConfigurationTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(IfMatchAutoConfiguration.class));
+    private final ApplicationContextRunner runner =
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(IfMatchAutoConfiguration.class));
 
     @Test
     @DisplayName("注册 IfMatchResolver 参数解析器")

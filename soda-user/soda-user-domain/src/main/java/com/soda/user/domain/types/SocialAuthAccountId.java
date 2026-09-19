@@ -3,24 +3,26 @@ package com.soda.user.domain.types;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
 /**
  * 社交认证账户标识符 DP — 派生自 {@link SocialType} + openId。
- * <p>
- * 格式：{@code "O:{社交类型短名}:{openId}"}（如 {@code "O:GE:open123"}、{@code "O:DT:456"}）。
- * <p>
- * payload 是两段组合（{@link SocialType} 短名 + openId），故 {@code of(String)} 的拆分与
- * {@code from(SocialType, String)} 的装配是同一派生的两个方向，各自直达私有构造器。
+ *
+ * <p>格式：{@code "O:{社交类型短名}:{openId}"}（如 {@code "O:GE:open123"}、{@code "O:DT:456"}）。
+ *
+ * <p>payload 是两段组合（{@link SocialType} 短名 + openId），故 {@code of(String)} 的拆分与 {@code
+ * from(SocialType, String)} 的装配是同一派生的两个方向，各自直达私有构造器。
  *
  * @see AuthAccountId
  */
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 @Getter
 @Accessors(fluent = true)
-public final class SocialAuthAccountId extends AuthAccountId implements Comparable<SocialAuthAccountId> {
+public final class SocialAuthAccountId extends AuthAccountId
+        implements Comparable<SocialAuthAccountId> {
 
     private final SocialType socialType;
     private final String openId;
@@ -31,9 +33,7 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         this.openId = openId;
     }
 
-    /**
-     * 反序列化入口 — 格式 {@code "O:{社交类型短名}:{openId}"}。
-     */
+    /** 反序列化入口 — 格式 {@code "O:{社交类型短名}:{openId}"}。 */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SocialAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, prefix(AuthAccountType.O));
@@ -45,9 +45,7 @@ public final class SocialAuthAccountId extends AuthAccountId implements Comparab
         return new SocialAuthAccountId(socialType, openId);
     }
 
-    /**
-     * 从 {@link SocialType} + openId 构造。
-     */
+    /** 从 {@link SocialType} + openId 构造。 */
     public static SocialAuthAccountId from(SocialType socialType, String openId) {
         ValidateUtils.notNull(socialType);
         ValidateUtils.hasText(openId);

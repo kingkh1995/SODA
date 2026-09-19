@@ -1,26 +1,33 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.UserId;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("PasswordAuthAccountId 值对象")
-class PasswordAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<PasswordAuthAccountId> {
+class PasswordAuthAccountIdTest
+        extends ComparableDomainPrimitiveContractTest<PasswordAuthAccountId> {
 
     @Override
     protected Contract<PasswordAuthAccountId> contract() {
-        return new Contract<>(PasswordAuthAccountId.class, () -> PasswordAuthAccountId.of("P:42"),
-                "\"P:42\"", "PasswordAuthAccountId[value=P:42]", "\"invalid\"",
+        return new Contract<>(
+                PasswordAuthAccountId.class,
+                () -> PasswordAuthAccountId.of("P:42"),
+                "\"P:42\"",
+                "PasswordAuthAccountId[value=P:42]",
+                "\"invalid\"",
                 () -> PasswordAuthAccountId.of("P:43"));
     }
 
@@ -51,7 +58,8 @@ class PasswordAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<Pa
         @Test
         @DisplayName("authAccountType 返回 P")
         void should_returnP_when_authAccountType() {
-            assertThat(PasswordAuthAccountId.from(new UserId(42L)).accountType()).isEqualTo(AuthAccountType.P);
+            assertThat(PasswordAuthAccountId.from(new UserId(42L)).accountType())
+                    .isEqualTo(AuthAccountType.P);
         }
     }
 

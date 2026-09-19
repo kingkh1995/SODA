@@ -870,7 +870,7 @@ SODA 错误响应采用 **Spring RFC 9457 `ProblemDetail` 最小集**，与框�
 
 | 文档                                                       | 关联点                                       |
 |------------------------------------------------------------|----------------------------------------------|
-| [STYLEGUIDE.md](../../STYLEGUIDE.md) §3.4                  | MapStruct 注解用法（adapter 转换器）         |
+| [mapstruct.md](mapstruct.md)                               | MapStruct 使用规范                           |
 | [dp-conventions.md](../dp-conventions.md)                  | Domain Primitive 设计规范（与字段格式联动）  |
 | [framework-type-contracts.md](framework-type-contracts.md) | 框架类型契约（Entity / Aggregate / Gateway） |
 | [adapter.md](adapter.md)                                   | Adapter 转换器约定（**不动**，独立 effort）  |

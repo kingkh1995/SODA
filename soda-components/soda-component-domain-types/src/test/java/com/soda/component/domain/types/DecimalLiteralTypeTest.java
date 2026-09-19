@@ -1,17 +1,16 @@
 package com.soda.component.domain.types;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * {@link DecimalLiteralType} 基类契约测试——防回归缓存不变量与类型作用域相等性。
- */
+/** {@link DecimalLiteralType} 基类契约测试——防回归缓存不变量与类型作用域相等性。 */
 @DisplayName("DecimalLiteralType 基类契约")
 class DecimalLiteralTypeTest {
 

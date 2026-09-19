@@ -2,9 +2,9 @@ package com.soda.component.api.command;
 
 /**
  * 命令接口标记（Marker）— 所有写操作入参的统一契约。
- * <p>
- * Record 实现此接口后，可被 {@code CommandExecutor}（未来模块）按类型统一派发，
- * 并支撑 AIP-163 的 validateOnly 语义（经 {@link #validateOnly()} 声明）。
+ *
+ * <p>Record 实现此接口后，可被 {@code CommandExecutor}（未来模块）按类型统一派发， 并支撑 AIP-163 的 validateOnly 语义（经 {@link
+ * #validateOnly()} 声明）。
  *
  * <pre>{@code
  * public record CreateUserCommand(

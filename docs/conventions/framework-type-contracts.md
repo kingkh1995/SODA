@@ -31,18 +31,25 @@ Verification 双概念模型）。
 
 具有连续身份标识（identity thread）的领域对象。实现 `Identifiable`、`EventSource` 接口，直接持有 `Identifier` DP 作为身份标识。
 `Identifiable.getId()` 返回 `@NonNull`（未标识时抛 `NullPointerException`，防御编程：调用方 bug，异常类型即语义）；瞬态语义由
-`isIdentified()` 表达。使用
-Lombok `@EqualsAndHashCode` 生成基于字段的相等判断（排除 `domainEvents`），子类通过 `@EqualsAndHashCode(callSuper = true)`
-继承父类字段。 **双 Builder 模式**：业务模块 Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化
+`isIdentified()` 表达。 **相等性**：实体族（`Entity` / `Aggregate` / `AuthAccount` 族）一律 **不重写** `equals`/`hashCode`
+（保持
+`Object` 引用相等），实体不具备可比较性、不得作 `Set`/`Map` 键；跨实例身份判断一律经 `getId()` 显式表达。值对象（DP /
+`Identifier`
+族 / 字面量家族）相反，值相等必须保留——决策理由见 [ADR-0040](../adr/0040-entity-equality-reference-semantics.md)，注解落位
+（`@EqualsAndHashCode` 的角色分裂、`callSuper` 矩阵）见 [lombok.md](lombok.md) §5，本节不重述。 **双 Builder 模式**：业务模块
+Entity/Aggregate 采用双 `@Builder` 模式。`createBuilder()` 暴露业务字段（不含持久化
 ID，由服务端 `assignId()` 填补），`builder()`（Lombok 默认命名，挂全参数恢复构造器）暴露全部持久化字段（含 ID）。 **JSON
 序列化契约**：序列化走 `Entity` 基类字段可见性（`@JsonAutoDetect(fieldVisibility = ANY)`），属性名即字段名；反序列化唯一入口为
 **全参数恢复构造器**——`@JsonCreator(mode = PROPERTIES)` + `@JsonProperty` + `@Builder`（restoreBuilder）统一挂在全参数构造器上，确保
 JSON 反序列化与手动恢复路径一致。创建路径使用独立的无 id 构造器（`User` 拆双构造器；其余实体 id 非空由 `Entity` 构造器链路保证）。
 `id` 参数标 `@JsonProperty(required = true)`，缺 id 由 Jackson `required` + `Entity.assignId` 非空校验双重拦截（双构造器实体的恢复构造器委托后经
 `assignId` 补 id；单构造器实体由 `Entity` 构造器链路保证），JSON 缺 `id` 视为非法输入（实体 JSON
-只表达已持久化状态）。新增字段必须同步补充构造器参数，round-trip 全等断言测试（`assertEquals(restored, original)` + 非法
-JSON 拒绝）兜底防字段/参数漂移。 **多态实体分派（type↔class 规则，见 ADR-0016 判别值映射归属（type↔class））**：子类层次用
-sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句自动发现，无需 `@JsonSubTypes`）。完整规则：
+只表达已持久化状态）。新增字段必须同步补充构造器参数，round-trip **逐字段比对**（实体不重写 `equals`，全等断言在引用相等下失效）+
+非法 JSON 拒绝兜底防字段/参数漂移。契约机制（注解组合、字段可见性、creator 选择）单源在 [jackson.md](jackson.md)
+§3，本节只声明类型契约。 **多态实体分派（type↔class 规则，见 ADR-0016 判别值映射归属（type↔class））**：子类层次用
+sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句自动发现，无需 `@JsonSubTypes`）。机制面（
+`Id.NAME` 取值、判别串即线格式合同）单源在
+[jackson.md](jackson.md) §4。完整规则：
 
 - **何时用类**：种类间有行为或字段差异（含前瞻差异）→ sealed class 层次。调用方逻辑（构造、按类型查询、分派、领域方法传参）一律用
   class。
@@ -87,8 +94,8 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 ### EnumType
 
 枚举类型的契约接口（`com.soda.component.domain.EnumType`），继承 `Type`，同时也是 Domain Primitive（ADR-0005）。提供 `desc()`
-返回英文描述。序列化：Jackson 原生输出 `name()` 短名（与持久化短名一致），各枚举提供 `of(String)`（`@JsonCreator` 入口）。与字面量家族（
-`StringLiteralType` 等）平行，不参与家族契约（ADR-0028）。
+返回英文描述。序列化：Jackson 3 起原生按 `toString()` 读写，故业务枚举不得覆写 `toString()`；短名即对外合同（与持久化短名一致）。
+各枚举提供 `of(String)`（`@JsonCreator` 入口）。与字面量家族（`StringLiteralType` 等）平行，不参与家族契约（ADR-0028）。
 
 ### StateEnumType
 
@@ -159,7 +166,7 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 | `SmsContent` / `EmailContent`                                                                    | 短信内容（≤70 字符）/ 邮件内容（subject ≤255＋body）                                                         |
 | `Masked*` 五族（MaskedMobile / MaskedBankCard / MaskedIdCard / MaskedChineseName / MaskedEmail） | 敏感值的展示伴生 DP：PATTERN 星号掩码输出（星号段有上界）、原值不可逆推                                      |
 | `Mobile` / `BankCard` / `IdCard` / `ChineseName`                                                 | 敏感字面量具体族：格式校验＋归一化＋toString 脱敏（SensitiveValue 系）；等值查询走盲索引                     |
-| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson `name()` 短名）                                                   |
+| `Sex`                                                                                            | 性别枚举 DP（EnumType 系：`M`/`F`，Jackson 按 `toString()` 读写短名）                                        |
 
 **命名/使用约定**：不把 `Alphabet` 称 Policy（与验证码策略词冲突）或 charset（与 `java.nio.charset.Charset` 混淆）；`Fen`/
 `WanYuan` 单位明示、不裸称「元」；不把 `EpochMilli` 叫 Timestamp（JDBC 类型歧义），领域时间字段不用裸 `Instant`（线上格式不受 DP
@@ -212,7 +219,7 @@ api / adapter 层类型的契约语义归专项文档与 javadoc，此处只作�
 |---------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | `Command`                                                                             | 写操作命令 marker（api 层，不带校验注解——校验在 Request `@Valid` 与 DP 构造器）                                               | [adapter.md](adapter.md) §1、ADR-0009                                                       |
 | `Request` / `Response`                                                                | HTTP 协议体专用类型（adapter 层，Response 不含信封）                                                                          | [adapter.md](adapter.md) §1                                                                 |
-| `WebAssembler`                                                                        | MapStruct 协议转换器（Request→Command 入站、DTO→Response 出站，`to{Action}Command` 命名、同参不同名）                         | [adapter.md](adapter.md)、[STYLEGUIDE](../../STYLEGUIDE.md) §3.4                            |
+| `WebAssembler`                                                                        | MapStruct 协议转换器（Request→Command 入站、DTO→Response 出站，`to{Action}Command` 命名、同参不同名）                         | [adapter.md](adapter.md)、[mapstruct.md](mapstruct.md)                                      |
 | `HttpValidatorSource` / `@IfMatch` / `IfMatchResolver` / `HttpValidatorHeadersAdvice` | 条件请求 validator 源（`version`→`ETag` 强验证器）＋入站归一化（`@IfMatch Integer` 参数注入）＋响应头统一派生（只写头不求值） | javadoc（`com.soda.component.web` 公开入口 + `conditional` 内部实现）、RFC 7232 §2、AIP-154 |
 
 ### AbstractPersistable / AbstractAuditable（基础设施持久化基类）

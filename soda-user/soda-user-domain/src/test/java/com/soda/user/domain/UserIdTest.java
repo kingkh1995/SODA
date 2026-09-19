@@ -1,14 +1,15 @@
 package com.soda.user.domain;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.types.LongId;
 import com.soda.user.domain.types.UserId;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("UserId 值对象")
 class UserIdTest extends ComparableDomainPrimitiveContractTest<UserId> {
@@ -17,8 +18,13 @@ class UserIdTest extends ComparableDomainPrimitiveContractTest<UserId> {
 
     @Override
     protected Contract<UserId> contract() {
-        return new Contract<>(UserId.class, () -> new UserId(42L), "42",
-                "UserId[value=42]", "\"not-a-number\"", () -> new UserId(43L));
+        return new Contract<>(
+                UserId.class,
+                () -> new UserId(42L),
+                "42",
+                "UserId[value=42]",
+                "\"not-a-number\"",
+                () -> new UserId(43L));
     }
 
     @Nested
@@ -44,15 +50,13 @@ class UserIdTest extends ComparableDomainPrimitiveContractTest<UserId> {
         @Test
         @DisplayName("0 值拒绝（minValue exclusive）")
         void should_throw_when_zero() {
-            assertThatThrownBy(() -> new UserId(0L))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new UserId(0L)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("负值拒绝")
         void should_throw_when_negative() {
-            assertThatThrownBy(() -> new UserId(-1L))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new UserId(-1L)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new UserId(-100L))
                     .isInstanceOf(IllegalArgumentException.class);
         }

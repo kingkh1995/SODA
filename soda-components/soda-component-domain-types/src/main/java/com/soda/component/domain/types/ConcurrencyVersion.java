@@ -5,17 +5,17 @@ import com.soda.component.domain.IntLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.TypeConfig;
 import com.soda.component.domain.util.ValidateUtils;
-import lombok.EqualsAndHashCode;
 
+import lombok.EqualsAndHashCode;
 
 /**
  * 乐观锁版本号 DP（并发令牌）— 不可变、自校验、可比较、带缓存。
- * <p>
- * 命名明示并发语义：与 {@code SoftwareVersion}（软件版本号）区分（见 ADR-0020）；
- * 对应 IDDD {@code ConcurrencySafeEntity.concurrencyVersion}。
- * <p>
- * 缓存范围至少 [0, 99]，通过 SPI 接口 {@link com.soda.component.domain.util.TypeConfigProvider}
- * 的 {@code versionCacheHigh()} 自定义上限（参考 {@link Integer} 缓存设计）。
+ *
+ * <p>命名明示并发语义：与 {@code SoftwareVersion}（软件版本号）区分（见 ADR-0020）； 对应 IDDD {@code
+ * ConcurrencySafeEntity.concurrencyVersion}。
+ *
+ * <p>缓存范围至少 [0, 99]，通过 SPI 接口 {@link com.soda.component.domain.util.TypeConfigProvider} 的 {@code
+ * versionCacheHigh()} 自定义上限（参考 {@link Integer} 缓存设计）。
  *
  * @see IntLiteralType
  * @see TypeConfig
@@ -27,15 +27,18 @@ public final class ConcurrencyVersion implements IntLiteralType, Comparable<Conc
 
     private static final int CACHE_HIGH = Math.max(99, TypeConfig.PROVIDER.versionCacheHigh());
 
-    /**
-     * 定长实例缓存 — 数组 O(1) 索引，无 auto-boxing；越界值回落构造新实例。
-     */
+    /** 定长实例缓存 — 数组 O(1) 索引，无 auto-boxing；越界值回落构造新实例。 */
     private static final ConcurrencyVersion[] CACHE = createCache();
 
-    /**
-     * 初始版本号（0）。
-     */
-    public static final ConcurrencyVersion INITIAL = CACHE[0];  // 0 始终在缓存范围
+    /** 初始版本号（0）。 */
+    public static final ConcurrencyVersion INITIAL = CACHE[0]; // 0 始终在缓存范围
+
+    private final int value;
+
+    private ConcurrencyVersion(int value) {
+        ValidateUtils.minValue(value, 0, true);
+        this.value = value;
+    }
 
     private static ConcurrencyVersion[] createCache() {
         var cache = new ConcurrencyVersion[CACHE_HIGH - CACHE_LOW + 1];
@@ -45,47 +48,30 @@ public final class ConcurrencyVersion implements IntLiteralType, Comparable<Conc
         return cache;
     }
 
-    private final int value;
-
-    private ConcurrencyVersion(int value) {
-        ValidateUtils.minValue(value, 0, true);
-        this.value = value;
-    }
-
-    /**
-     * 从可靠输入构造。缓存范围内的值返回缓存实例。
-     */
+    /** 从可靠输入构造。缓存范围内的值返回缓存实例。 */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static ConcurrencyVersion of(int value) {
         var idx = value - CACHE_LOW;
         return 0 <= idx && idx < CACHE.length ? CACHE[idx] : new ConcurrencyVersion(value);
     }
 
-    /**
-     * 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。
-     */
+    /** 从字符串解析构造。格式同 {@link ParseUtils#parseInt}。 */
     public static ConcurrencyVersion parse(String s) {
         return of(ParseUtils.parseInt(s));
     }
 
-    /**
-     * 包装 → 原语适配入口 —— {@code Integer} 静态类型（如可空的乐观锁版本列）守卫后委托 {@link #of(int)}。
-     */
+    /** 包装 → 原语适配入口 —— {@code Integer} 静态类型（如可空的乐观锁版本列）守卫后委托 {@link #of(int)}。 */
     public static ConcurrencyVersion from(Integer value) {
         ValidateUtils.notNull(value);
         return of(value);
     }
 
-    /**
-     * 规范值访问器 — {@code @JsonValue} 继承自 {@link IntLiteralType}（ADR-0028）。
-     */
+    /** 规范值访问器 — {@code @JsonValue} 继承自 {@link IntLiteralType}（ADR-0028）。 */
     public int value() {
         return value;
     }
 
-    /**
-     * 返回递增后的新版本号（不修改自身）。
-     */
+    /** 返回递增后的新版本号（不修改自身）。 */
     public ConcurrencyVersion next() {
         return of(value + 1);
     }

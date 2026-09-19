@@ -1,24 +1,22 @@
 package com.soda.user.infrastructure.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.SecretValue;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-/**
- * {@link PasswordHasherImpl} 单元测试 —— 真实 BCrypt 行为与 {@code needsRehash} 强度判定。
- */
+/** {@link PasswordHasherImpl} 单元测试 —— 真实 BCrypt 行为与 {@code needsRehash} 强度判定。 */
 @DisplayName("PasswordHasherImpl")
 class PasswordHasherImplTest {
 
-    /**
-     * 盐 + 校验和段（53 字符），换前缀构造不同成本的合法 bcrypt 形态。
-     */
-    private static final String BCRYPT_TAIL = "N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+    /** 盐 + 校验和段（53 字符），换前缀构造不同成本的合法 bcrypt 形态。 */
+    private static final String BCRYPT_TAIL =
+            "N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
     private final PasswordHasherImpl hasher = new PasswordHasherImpl();
 
@@ -73,8 +71,10 @@ class PasswordHasherImplTest {
         @Test
         @DisplayName("needsRehash —— 非 bcrypt 形态不评估，返回假")
         void should_notFlagNonBcryptForm() {
-            assertThat(hasher.needsRehash(
-                    PasswordHash.of("$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG")))
+            assertThat(
+                            hasher.needsRehash(
+                                    PasswordHash.of(
+                                            "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG")))
                     .isFalse();
         }
     }
@@ -94,7 +94,10 @@ class PasswordHasherImplTest {
         @DisplayName("verify 不拦超长候选 —— 存量截断哈希靠对称性照常匹配")
         void should_allowLongCandidateOnVerify() {
             var stored = hasher.hash(new SecretValue("a".repeat(72)));
-            assertThat(hasher.verify(stored, new SecretValue("a".repeat(72) + "-entirely-different-tail")))
+            assertThat(
+                            hasher.verify(
+                                    stored,
+                                    new SecretValue("a".repeat(72) + "-entirely-different-tail")))
                     .as("BCrypt 只取前 72 字节：与存量哈希同前缀即匹配（守卫只在 hash 入口）")
                     .isTrue();
         }

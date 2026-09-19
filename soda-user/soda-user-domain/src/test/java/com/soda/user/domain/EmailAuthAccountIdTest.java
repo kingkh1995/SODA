@@ -1,26 +1,32 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.types.Email;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("EmailAuthAccountId 值对象")
 class EmailAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<EmailAuthAccountId> {
 
     @Override
     protected Contract<EmailAuthAccountId> contract() {
-        return new Contract<>(EmailAuthAccountId.class, () -> EmailAuthAccountId.of("E:user@test.com"),
-                "\"E:user@test.com\"", "EmailAuthAccountId[value=E:user@test.com]", "\"invalid\"",
+        return new Contract<>(
+                EmailAuthAccountId.class,
+                () -> EmailAuthAccountId.of("E:user@test.com"),
+                "\"E:user@test.com\"",
+                "EmailAuthAccountId[value=E:user@test.com]",
+                "\"invalid\"",
                 () -> EmailAuthAccountId.of("E:zser@test.com"));
     }
 
@@ -53,7 +59,8 @@ class EmailAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<Email
         @Test
         @DisplayName("authAccountType 返回 E")
         void should_returnE_when_authAccountType() {
-            assertThat(EmailAuthAccountId.of("E:a@b.com").accountType()).isEqualTo(AuthAccountType.E);
+            assertThat(EmailAuthAccountId.of("E:a@b.com").accountType())
+                    .isEqualTo(AuthAccountType.E);
         }
     }
 
@@ -100,7 +107,8 @@ class EmailAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<Email
         @Test
         @DisplayName("identifier 返回规范化编码值")
         void should_returnCanonicalValue_when_identifier() {
-            assertThat(EmailAuthAccountId.of("E:user@test.com").identifier()).isEqualTo("E:user@test.com");
+            assertThat(EmailAuthAccountId.of("E:user@test.com").identifier())
+                    .isEqualTo("E:user@test.com");
         }
     }
 }

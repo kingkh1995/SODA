@@ -12,7 +12,9 @@ import com.soda.user.infrastructure.convertor.UserArchiveConvertor;
 import com.soda.user.infrastructure.convertor.UserConvertor;
 import com.soda.user.infrastructure.repository.UserArchiveRepository;
 import com.soda.user.infrastructure.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,23 +24,19 @@ import java.util.stream.StreamSupport;
 
 /**
  * {@link UserGateway} 的 JPA 实现 — 单表 {@code user} + 派生账户组装。
- * <p>
- * 编排：查询 → {@link UserConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
- * <p>
- * 乐观锁：JPA {@code @Version} 自动校验 {@code WHERE version = ?} 并递增（领域层
- * 「递增由基础设施层负责」契约，IDDD ConcurrencySafeEntity 同款），flush 后经
- * {@code Versioned.assignVersion} 把落库版本回填聚合（聚合令牌与行版本恒一致——响应
- * {@code ETag} / 下次 {@code If-Match} 自洽的前提）；冲突抛
- * {@code ObjectOptimisticLockingFailureException}。
- * <p>
- * 注销终态（ADR-0017/0023）：无删除契约，终态 R 由 {@code save} 持久化 state 列；
- * D→R 迁移在 save 内走特殊分支——归档原键（{@code user_archive} 审计表，同事务）
- * 后三键（username/mobile/email）置空落库（键释放，领域不感知）；
- * 已终态行（persisted state=R）任何写入被拒绝（基础设施兜底守卫）。
+ *
+ * <p>编排：查询 → {@link UserConvertor} 双向转换。领域↔持久化映射逻辑见 convertor。
+ *
+ * <p>乐观锁：JPA {@code @Version} 自动校验 {@code WHERE version = ?} 并递增（领域层 「递增由基础设施层负责」契约，IDDD
+ * ConcurrencySafeEntity 同款），flush 后经 {@code Versioned.assignVersion} 把落库版本回填聚合（聚合令牌与行版本恒一致——响应
+ * {@code ETag} / 下次 {@code If-Match} 自洽的前提）；冲突抛 {@code ObjectOptimisticLockingFailureException}。
+ *
+ * <p>注销终态（ADR-0017/0023）：无删除契约，终态 R 由 {@code save} 持久化 state 列； D→R 迁移在 save 内走特殊分支——归档原键（{@code
+ * user_archive} 审计表，同事务） 后三键（username/mobile/email）置空落库（键释放，领域不感知）； 已终态行（persisted
+ * state=R）任何写入被拒绝（基础设施兜底守卫）。
  */
 @Component
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class UserGatewayImpl implements UserGateway {
 
     private final UserRepository userRepository;
@@ -97,9 +95,7 @@ public class UserGatewayImpl implements UserGateway {
 
     @Override
     public List<User> findAllById(Iterable<UserId> ids) {
-        var values = StreamSupport.stream(ids.spliterator(), false)
-                .map(UserId::value)
-                .toList();
+        var values = StreamSupport.stream(ids.spliterator(), false).map(UserId::value).toList();
         return userRepository.findAllById(values).stream().map(UserConvertor::toDomain).toList();
     }
 

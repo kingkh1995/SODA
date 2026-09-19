@@ -1,14 +1,15 @@
 package com.soda.user.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("AuthAccountType 枚举")
 class AuthAccountTypeTest extends EnumDomainPrimitiveContractTest<AuthAccountType> {
@@ -44,7 +45,11 @@ class AuthAccountTypeTest extends EnumDomainPrimitiveContractTest<AuthAccountTyp
         @DisplayName("常量集快照")
         void should_exposeExactConstants() {
             assertThat(AuthAccountType.values())
-                    .containsExactly(AuthAccountType.P, AuthAccountType.S, AuthAccountType.E, AuthAccountType.O);
+                    .containsExactly(
+                            AuthAccountType.P,
+                            AuthAccountType.S,
+                            AuthAccountType.E,
+                            AuthAccountType.O);
         }
     }
 
@@ -53,7 +58,9 @@ class AuthAccountTypeTest extends EnumDomainPrimitiveContractTest<AuthAccountTyp
     class Display {
 
         @ParameterizedTest(name = "{0} → desc={1}")
-        @CsvSource(textBlock = """
+        @CsvSource(
+                textBlock =
+                        """
                     P,     password
                     S,     sms
                     E,     email

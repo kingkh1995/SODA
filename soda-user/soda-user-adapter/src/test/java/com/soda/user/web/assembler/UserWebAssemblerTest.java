@@ -1,5 +1,7 @@
 package com.soda.user.web.assembler;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.soda.user.api.dto.UserDTO;
 import com.soda.user.web.request.ChangeEmailRequest;
 import com.soda.user.web.request.ChangeMobileRequest;
@@ -9,6 +11,7 @@ import com.soda.user.web.request.CreateUserRequest;
 import com.soda.user.web.request.RequestChangeEmailRequest;
 import com.soda.user.web.request.RequestChangeMobileRequest;
 import com.soda.user.web.request.UpdateUserRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,8 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("UserWebAssembler 转换器")
 class UserWebAssemblerTest {
@@ -36,7 +37,15 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("CreateUserRequest 映射到 CreateUserCommand")
         void should_mapCreateUserRequest_when_toCreateCommand() {
-            var request = new CreateUserRequest("testuser", "test1234", "测试用户", "13800138000", "test@example.com", "1", null);
+            var request =
+                    new CreateUserRequest(
+                            "testuser",
+                            "test1234",
+                            "测试用户",
+                            "13800138000",
+                            "test@example.com",
+                            "1",
+                            null);
 
             var cmd = assembler.toCreateCommand(request);
 
@@ -52,7 +61,8 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("CreateUserRequest 可空字段为 null 时正常映射")
         void should_mapCreateUserRequest_when_nullableFieldsAreNull() {
-            var request = new CreateUserRequest("testuser", "test1234", "测试用户", null, null, null, null);
+            var request =
+                    new CreateUserRequest("testuser", "test1234", "测试用户", null, null, null, null);
 
             var cmd = assembler.toCreateCommand(request);
 
@@ -175,7 +185,17 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("UserDTO 映射到 UserResponse")
         void should_mapUserDto_when_toResponse() {
-            var dto = new UserDTO(1L, "testuser", "测试用户", "13800138000", "test@example.com", "1", null, "E", 3);
+            var dto =
+                    new UserDTO(
+                            1L,
+                            "testuser",
+                            "测试用户",
+                            "13800138000",
+                            "test@example.com",
+                            "1",
+                            null,
+                            "E",
+                            3);
 
             var response = assembler.toResponse(dto);
 
@@ -193,10 +213,28 @@ class UserWebAssemblerTest {
         @Test
         @DisplayName("UserDTO 列表映射到 UserResponse 列表")
         void should_mapUserDtoList_when_toResponseList() {
-            var dtos = List.of(
-                    new UserDTO(1L, "user1", "用户1", "13800138000", "u1@test.com", "1", null, "E", 1),
-                    new UserDTO(2L, "user2", "用户2", "13900139000", "u2@test.com", "2", "avatar.png", "D", 2)
-            );
+            var dtos =
+                    List.of(
+                            new UserDTO(
+                                    1L,
+                                    "user1",
+                                    "用户1",
+                                    "13800138000",
+                                    "u1@test.com",
+                                    "1",
+                                    null,
+                                    "E",
+                                    1),
+                            new UserDTO(
+                                    2L,
+                                    "user2",
+                                    "用户2",
+                                    "13900139000",
+                                    "u2@test.com",
+                                    "2",
+                                    "avatar.png",
+                                    "D",
+                                    2));
 
             var resps = assembler.toResponseList(dtos);
 

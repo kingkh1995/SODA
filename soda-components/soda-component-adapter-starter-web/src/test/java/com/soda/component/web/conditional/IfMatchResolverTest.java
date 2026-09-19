@@ -1,5 +1,10 @@
 package com.soda.component.web.conditional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.soda.component.web.IfMatch;
 
 import org.junit.jupiter.api.DisplayName;
@@ -11,14 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-/**
- * {@link IfMatchResolver} 入站归一化行为：缺失 / 通配放行、首值提取、弱标签与非法值拒绝。
- */
+/** {@link IfMatchResolver} 入站归一化行为：缺失 / 通配放行、首值提取、弱标签与非法值拒绝。 */
 @DisplayName("IfMatchResolver 入站归一化")
 class IfMatchResolverTest {
 
@@ -36,20 +34,18 @@ class IfMatchResolverTest {
     }
 
     private Object resolve(String... ifMatchValues) throws Exception {
-        return resolver.resolveArgument(param("handle", Integer.class), null, webRequest(ifMatchValues), null);
+        return resolver.resolveArgument(
+                param("handle", Integer.class), null, webRequest(ifMatchValues), null);
     }
 
     @SuppressWarnings("unused")
     private static class Sample {
 
-        void handle(@IfMatch Integer version) {
-        }
+        void handle(@IfMatch Integer version) {}
 
-        void plain(String value) {
-        }
+        void plain(String value) {}
 
-        void wrongType(@IfMatch String version) {
-        }
+        void wrongType(@IfMatch String version) {}
     }
 
     @Nested
@@ -76,13 +72,19 @@ class IfMatchResolverTest {
         @Test
         @DisplayName("缺失 If-Match → null 放行")
         void should_returnNull_when_ifMatchMissing() throws Exception {
-            assertThat(resolver.resolveArgument(param("handle", Integer.class), null, webRequest(), null)).isNull();
+            assertThat(
+                            resolver.resolveArgument(
+                                    param("handle", Integer.class), null, webRequest(), null))
+                    .isNull();
         }
 
         @Test
         @DisplayName("通配 * → null 放行")
         void should_returnNull_when_ifMatchWildcard() throws Exception {
-            assertThat(resolver.resolveArgument(param("handle", Integer.class), null, webRequest("*"), null)).isNull();
+            assertThat(
+                            resolver.resolveArgument(
+                                    param("handle", Integer.class), null, webRequest("*"), null))
+                    .isNull();
         }
 
         @Test
@@ -106,8 +108,11 @@ class IfMatchResolverTest {
         @DisplayName("弱标签 → 412")
         void should_rejectWeakValidator_when_ifMatchWeak() throws Exception {
             assertThatThrownBy(() -> resolve("W/\"3\""))
-                    .isInstanceOfSatisfying(ResponseStatusException.class,
-                            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.PRECONDITION_FAILED))
+                    .isInstanceOfSatisfying(
+                            ResponseStatusException.class,
+                            ex ->
+                                    assertThat(ex.getStatusCode())
+                                            .isEqualTo(HttpStatus.PRECONDITION_FAILED))
                     .hasMessageContaining("requires strong comparison");
         }
 
@@ -122,8 +127,13 @@ class IfMatchResolverTest {
         @Test
         @DisplayName("非 Integer 参数 → 装配期快速失败")
         void should_failFast_when_nonIntegerParameter() throws Exception {
-            assertThatThrownBy(() -> resolver.resolveArgument(
-                    param("wrongType", String.class), null, webRequest("\"3\""), null))
+            assertThatThrownBy(
+                            () ->
+                                    resolver.resolveArgument(
+                                            param("wrongType", String.class),
+                                            null,
+                                            webRequest("\"3\""),
+                                            null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("@IfMatch 仅支持 Integer 参数");
         }

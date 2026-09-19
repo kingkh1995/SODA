@@ -1,5 +1,8 @@
 package com.soda.user.infrastructure.convertor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.Uuid;
@@ -9,20 +12,17 @@ import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
  * {@link VerificationConvertor} 转换单测（source/recipient 双概念，见 ADR-0026）。
- * <p>
- * {@code toPersistence} 全量构造（创建路径 INSERT 的数据来源，ADR-0024）——重点验证：
- * subject 裸键、channel/target 双列（见 ADR-0026）、active_key 恒设
- * source.compositeKey()（终态清 NULL 收敛进 gateway.save）、restore 双参工厂。
+ *
+ * <p>{@code toPersistence} 全量构造（创建路径 INSERT 的数据来源，ADR-0024）——重点验证： subject 裸键、channel/target 双列（见
+ * ADR-0026）、active_key 恒设 source.compositeKey()（终态清 NULL 收敛进 gateway.save）、restore 双参工厂。
  */
 @DisplayName("VerificationConvertor 转换")
 class VerificationConvertorTest {
@@ -51,7 +51,8 @@ class VerificationConvertorTest {
     }
 
     @Test
-    @DisplayName("toPersistence：active_key 恒设 source.compositeKey()（终态清 NULL 收敛进 gateway.save，见 ADR-0025）")
+    @DisplayName(
+            "toPersistence：active_key 恒设 source.compositeKey()（终态清 NULL 收敛进 gateway.save，见 ADR-0025）")
     void should_alwaysSetActiveKey() {
         var initialized = uccVerification(VerificationState.I, EXPIRE_AT);
         var pending = uccVerification(VerificationState.P, EXPIRE_AT);
@@ -60,12 +61,9 @@ class VerificationConvertorTest {
 
         assertThat(VerificationConvertor.toPersistence(initialized).getActiveKey())
                 .isEqualTo("UCC:1");
-        assertThat(VerificationConvertor.toPersistence(pending).getActiveKey())
-                .isEqualTo("UCC:1");
-        assertThat(VerificationConvertor.toPersistence(verified).getActiveKey())
-                .isEqualTo("UCC:1");
-        assertThat(VerificationConvertor.toPersistence(used).getActiveKey())
-                .isEqualTo("UCC:1");
+        assertThat(VerificationConvertor.toPersistence(pending).getActiveKey()).isEqualTo("UCC:1");
+        assertThat(VerificationConvertor.toPersistence(verified).getActiveKey()).isEqualTo("UCC:1");
+        assertThat(VerificationConvertor.toPersistence(used).getActiveKey()).isEqualTo("UCC:1");
     }
 
     @Test
@@ -95,13 +93,14 @@ class VerificationConvertorTest {
     @Test
     @DisplayName("toPersistence → toDomain 往返（EmailRecipient）：channel/target 双列还原 Email")
     void should_roundTripEmailRecipient() {
-        var verification = Verification.builder()
-                .id(Uuid.random())
-                .source(UCC_SOURCE)
-                .state(VerificationState.P)
-                .code(new VerificationCode("ABCDEF12", EXPIRE_AT))
-                .recipient(new EmailRecipient(EMAIL))
-                .build();
+        var verification =
+                Verification.builder()
+                        .id(Uuid.random())
+                        .source(UCC_SOURCE)
+                        .state(VerificationState.P)
+                        .code(new VerificationCode("ABCDEF12", EXPIRE_AT))
+                        .recipient(new EmailRecipient(EMAIL))
+                        .build();
 
         var po = VerificationConvertor.toPersistence(verification);
         assertThat(po.getChannel()).isEqualTo("E");
@@ -115,7 +114,9 @@ class VerificationConvertorTest {
     @Test
     @DisplayName("restore 未知 channel：IAE 快速失败（脏数据）")
     void should_rejectUnknownChannel() {
-        var po = VerificationConvertor.toPersistence(uccVerification(VerificationState.I, EXPIRE_AT));
+        var po =
+                VerificationConvertor.toPersistence(
+                        uccVerification(VerificationState.I, EXPIRE_AT));
         po.setChannel("X");
 
         assertThatThrownBy(() -> VerificationConvertor.toDomain(po))

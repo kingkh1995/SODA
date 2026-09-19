@@ -6,13 +6,14 @@ import com.soda.component.domain.types.Sex;
 import com.soda.user.api.dto.UserDTO;
 import com.soda.user.domain.User;
 import com.soda.user.domain.types.Avatar;
+
 import org.springframework.stereotype.Component;
 
 /**
  * User 聚合根 → {@link UserDTO} 转换器。
- * <p>
- * 出站 DTO 组装：领域值对象 unwrap 为基础类型。
- * 枚举输出 {@code name()}，与 {@link com.soda.component.domain.EnumType} 的 Jackson 序列化约定一致。
+ *
+ * <p>出站 DTO 组装：领域值对象 unwrap 为基础类型。 枚举输出 {@code name()}，与 {@link com.soda.component.domain.EnumType}
+ * 的 Jackson 序列化约定一致。
  */
 @Component
 public class UserDTOConvertor {

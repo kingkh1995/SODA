@@ -1,20 +1,26 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Active 值对象")
 class ActiveTest extends DomainPrimitiveContractTest<Active> {
 
     @Override
     protected Contract<Active> contract() {
-        return new Contract<>(Active.class, () -> Active.of(true), "true",
-                "Active[value=true]", "\"not-boolean\"", () -> Active.FALSE);
+        return new Contract<>(
+                Active.class,
+                () -> Active.of(true),
+                "true",
+                "Active[value=true]",
+                "\"not-boolean\"",
+                () -> Active.FALSE);
     }
 
     @Nested

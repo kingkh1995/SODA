@@ -1,16 +1,17 @@
 package com.soda.user.domain;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
 import com.soda.component.domain.types.RandomString;
 import com.soda.user.domain.types.VerificationCode;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("验证码值对象")
 class VerificationCodeTest extends DomainPrimitiveContractTest<VerificationCode> {
@@ -20,9 +21,12 @@ class VerificationCodeTest extends DomainPrimitiveContractTest<VerificationCode>
 
     @Override
     protected Contract<VerificationCode> contract() {
-        return new Contract<>(VerificationCode.class, () -> VerificationCode.from(CODE, Instant.EPOCH),
+        return new Contract<>(
+                VerificationCode.class,
+                () -> VerificationCode.from(CODE, Instant.EPOCH),
                 "{\"code\":\"123456\",\"expireAt\":\"1970-01-01T00:00:00Z\"}",
-                "VerificationCode[code=123456, expireAt=1970-01-01T00:00:00Z]", "{}",
+                "VerificationCode[code=123456, expireAt=1970-01-01T00:00:00Z]",
+                "{}",
                 () -> VerificationCode.from(new RandomString("654321"), Instant.EPOCH));
     }
 
@@ -75,13 +79,15 @@ class VerificationCodeTest extends DomainPrimitiveContractTest<VerificationCode>
         @Test
         @DisplayName("不匹配返回 false")
         void should_notMatch_when_differentCode() {
-            assertThat(VerificationCode.from(CODE, EXPIRE_AT).matches(new RandomString("654321"))).isFalse();
+            assertThat(VerificationCode.from(CODE, EXPIRE_AT).matches(new RandomString("654321")))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("过期前未过期")
         void should_notExpired_when_beforeExpireAt() {
-            assertThat(VerificationCode.from(CODE, EXPIRE_AT).expiredAt(EXPIRE_AT.minusSeconds(1))).isFalse();
+            assertThat(VerificationCode.from(CODE, EXPIRE_AT).expiredAt(EXPIRE_AT.minusSeconds(1)))
+                    .isFalse();
         }
 
         @Test
@@ -95,7 +101,8 @@ class VerificationCodeTest extends DomainPrimitiveContractTest<VerificationCode>
         @Test
         @DisplayName("过期后已过期")
         void should_expired_when_afterExpireAt() {
-            assertThat(VerificationCode.from(CODE, EXPIRE_AT).expiredAt(EXPIRE_AT.plusSeconds(1))).isTrue();
+            assertThat(VerificationCode.from(CODE, EXPIRE_AT).expiredAt(EXPIRE_AT.plusSeconds(1)))
+                    .isTrue();
         }
     }
 }

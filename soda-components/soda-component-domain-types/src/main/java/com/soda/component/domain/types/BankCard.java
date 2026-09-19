@@ -2,14 +2,15 @@ package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
+
 import lombok.EqualsAndHashCode;
 
 import java.util.regex.Pattern;
 
 /**
  * 银行卡号 DP —— 银行卡号格式校验（13-19 位数字），不可变、自校验。
- * <p>
- * {@code maskedValue()} 由 {@link MaskedBankCard} 的掩码算法即时生成。
+ *
+ * <p>{@code maskedValue()} 由 {@link MaskedBankCard} 的掩码算法即时生成。
  *
  * @see SensitiveValue
  * @see MaskedBankCard 掩码权威实现
@@ -25,9 +26,7 @@ public final class BankCard extends SensitiveValue {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    /**
-     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
-     */
+    /** 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。 */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static BankCard of(String raw) {
         return new BankCard(raw);

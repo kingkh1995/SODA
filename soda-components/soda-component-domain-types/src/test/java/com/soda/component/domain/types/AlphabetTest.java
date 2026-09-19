@@ -1,22 +1,28 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("字符集值对象")
 class AlphabetTest extends DomainPrimitiveContractTest<Alphabet> {
 
     @Override
     protected Contract<Alphabet> contract() {
-        return new Contract<>(Alphabet.class, () -> new Alphabet("abc"), "\"abc\"",
-                "Alphabet[value=abc]", "{}", () -> new Alphabet("abd"));
+        return new Contract<>(
+                Alphabet.class,
+                () -> new Alphabet("abc"),
+                "\"abc\"",
+                "Alphabet[value=abc]",
+                "{}",
+                () -> new Alphabet("abd"));
     }
 
     @Nested

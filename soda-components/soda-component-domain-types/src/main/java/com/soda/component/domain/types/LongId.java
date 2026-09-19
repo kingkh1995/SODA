@@ -5,12 +5,10 @@ import com.soda.component.domain.LongLiteralType;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
-
 /**
  * 通用长整型标识符 DP — 不可变、自校验、可比较。
- * <p>
- * 值域 value ≥ 1：0 与负数非法。
- * 紧凑构造器为主入口，提供 {@code parse(String)} 字符串解析。
+ *
+ * <p>值域 value ≥ 1：0 与负数非法。 紧凑构造器为主入口，提供 {@code parse(String)} 字符串解析。
  *
  * @see Identifier
  */

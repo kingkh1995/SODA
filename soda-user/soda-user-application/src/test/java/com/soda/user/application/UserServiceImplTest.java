@@ -1,5 +1,15 @@
 package com.soda.user.application;
 
+import static com.soda.user.domain.types.UserState.D;
+import static com.soda.user.domain.types.UserState.E;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.soda.component.api.error.ConflictException;
 import com.soda.component.api.error.NotFoundException;
 import com.soda.component.api.error.PreconditionFailedException;
@@ -26,6 +36,7 @@ import com.soda.user.domain.types.PasswordAuthAccountId;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.UserState;
 import com.soda.user.domain.types.Username;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,38 +48,27 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static com.soda.user.domain.types.UserState.D;
-import static com.soda.user.domain.types.UserState.E;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserServiceImpl")
 class UserServiceImplTest {
 
     private static final UserId USER_ID = new UserId(1L);
-    private static final PasswordHash STUB_HASH = PasswordHash.of(
-            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+    private static final PasswordHash STUB_HASH =
+            PasswordHash.of("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    @Mock
-    private UserGateway userGateway;
-    @Mock
-    private DomainEventBus domainEventBus;
-    @Mock
-    private PasswordHasher passwordHasher;
+    @Mock private UserGateway userGateway;
+    @Mock private DomainEventBus domainEventBus;
+    @Mock private PasswordHasher passwordHasher;
     private UserServiceImpl service;
     private UserDTOConvertor userDTOConvertor;
 
     private static User createEnabledUser() {
-        var passwordAccount = PasswordAuthAccount.builder()
-                .id(PasswordAuthAccountId.from(USER_ID))
-                .active(com.soda.component.domain.types.Active.TRUE)
-                .passwordHash(STUB_HASH)
-                .build();
+        var passwordAccount =
+                PasswordAuthAccount.builder()
+                        .id(PasswordAuthAccountId.from(USER_ID))
+                        .active(com.soda.component.domain.types.Active.TRUE)
+                        .passwordHash(STUB_HASH)
+                        .build();
         return User.builder()
                 .id(USER_ID)
                 .version(ConcurrencyVersion.of(1))
@@ -81,11 +81,12 @@ class UserServiceImplTest {
     }
 
     private static User createUserWithSexAndAvatar(Sex sex, Avatar avatar) {
-        var passwordAccount = PasswordAuthAccount.builder()
-                .id(PasswordAuthAccountId.from(USER_ID))
-                .active(Active.TRUE)
-                .passwordHash(STUB_HASH)
-                .build();
+        var passwordAccount =
+                PasswordAuthAccount.builder()
+                        .id(PasswordAuthAccountId.from(USER_ID))
+                        .active(Active.TRUE)
+                        .passwordHash(STUB_HASH)
+                        .build();
         return User.builder()
                 .id(USER_ID)
                 .version(ConcurrencyVersion.of(1))
@@ -102,7 +103,8 @@ class UserServiceImplTest {
     @BeforeEach
     void setUp() {
         userDTOConvertor = new UserDTOConvertor();
-        service = new UserServiceImpl(userGateway, userDTOConvertor, domainEventBus, passwordHasher);
+        service =
+                new UserServiceImpl(userGateway, userDTOConvertor, domainEventBus, passwordHasher);
     }
 
     @Nested
@@ -112,17 +114,18 @@ class UserServiceImplTest {
         @Test
         @DisplayName("成功创建用户并返回完整用户对象")
         void should_returnUser_when_createSucceeds() {
-            var command = new CreateUserCommand(
-                    "testuser", "password123", "Test_User",
-                    null, null, null, null);
+            var command =
+                    new CreateUserCommand(
+                            "testuser", "password123", "Test_User", null, null, null, null);
 
             when(passwordHasher.hash(any(SecretValue.class))).thenReturn(STUB_HASH);
             when(userGateway.save(any(User.class)))
-                    .thenAnswer(invocation -> {
-                        User user = invocation.getArgument(0);
-                        user.assignId(USER_ID);
-                        return USER_ID;
-                    });
+                    .thenAnswer(
+                            invocation -> {
+                                User user = invocation.getArgument(0);
+                                user.assignId(USER_ID);
+                                return USER_ID;
+                            });
 
             var result = service.createUser(command);
 
@@ -141,9 +144,9 @@ class UserServiceImplTest {
         @Test
         @DisplayName("用户名已存在时抛出异常")
         void should_throw_when_usernameExists() {
-            var command = new CreateUserCommand(
-                    "existing", "password123", "Existing",
-                    null, null, null, null);
+            var command =
+                    new CreateUserCommand(
+                            "existing", "password123", "Existing", null, null, null, null);
 
             when(userGateway.existsByUsername(any())).thenReturn(true);
 
@@ -155,9 +158,15 @@ class UserServiceImplTest {
         @Test
         @DisplayName("手机号已存在时抛出异常")
         void should_throw_when_mobileExists() {
-            var command = new CreateUserCommand(
-                    "testuser", "password123", "Test_User",
-                    "13800138000", null, null, null);
+            var command =
+                    new CreateUserCommand(
+                            "testuser",
+                            "password123",
+                            "Test_User",
+                            "13800138000",
+                            null,
+                            null,
+                            null);
 
             when(userGateway.existsByMobile(any())).thenReturn(true);
 
@@ -169,9 +178,15 @@ class UserServiceImplTest {
         @Test
         @DisplayName("邮箱已存在时抛出异常")
         void should_throw_when_emailExists() {
-            var command = new CreateUserCommand(
-                    "testuser", "password123", "Test_User",
-                    null, "test@example.com", null, null);
+            var command =
+                    new CreateUserCommand(
+                            "testuser",
+                            "password123",
+                            "Test_User",
+                            null,
+                            "test@example.com",
+                            null,
+                            null);
 
             when(userGateway.existsByEmail(any())).thenReturn(true);
 
@@ -202,8 +217,7 @@ class UserServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    service.disableUser(new DisableUserCommand(USER_ID.value())))
+            assertThatThrownBy(() -> service.disableUser(new DisableUserCommand(USER_ID.value())))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
         }
@@ -216,19 +230,21 @@ class UserServiceImplTest {
         @Test
         @DisplayName("启用用户并发布事件")
         void should_enableUserAndFireEvent_when_enable() {
-            var user = User.builder()
-                    .id(USER_ID)
-                    .version(ConcurrencyVersion.of(1))
-                    .username(new Username("test"))
-                    .nickname(new Nickname("Test"))
-                    .state(UserState.D)
-                    .passwordAccount(PasswordAuthAccount.builder()
-                            .id(PasswordAuthAccountId.from(USER_ID))
-                            .active(Active.TRUE)
-                            .passwordHash(STUB_HASH)
-                            .build())
-                    .accounts(List.of())
-                    .build();
+            var user =
+                    User.builder()
+                            .id(USER_ID)
+                            .version(ConcurrencyVersion.of(1))
+                            .username(new Username("test"))
+                            .nickname(new Nickname("Test"))
+                            .state(UserState.D)
+                            .passwordAccount(
+                                    PasswordAuthAccount.builder()
+                                            .id(PasswordAuthAccountId.from(USER_ID))
+                                            .active(Active.TRUE)
+                                            .passwordHash(STUB_HASH)
+                                            .build())
+                            .accounts(List.of())
+                            .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
             service.enableUser(new EnableUserCommand(USER_ID.value()));
@@ -242,8 +258,7 @@ class UserServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    service.enableUser(new EnableUserCommand(USER_ID.value())))
+            assertThatThrownBy(() -> service.enableUser(new EnableUserCommand(USER_ID.value())))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
         }
@@ -293,8 +308,10 @@ class UserServiceImplTest {
         @DisplayName("updateMask=\"avatar\" + 请求 avatar=null → 清空 avatar（AIP-134 精确覆盖）")
         void should_clearAvatar_when_updateMaskHitsAndValueIsNull() {
             when(userGateway.findById(USER_ID))
-                    .thenReturn(Optional.of(createUserWithSexAndAvatar(null,
-                            new Avatar("https://example.com/a.png"))));
+                    .thenReturn(
+                            Optional.of(
+                                    createUserWithSexAndAvatar(
+                                            null, new Avatar("https://example.com/a.png"))));
             var command = new UpdateUserCommand(USER_ID.value(), "avatar", null, null, null, 1);
 
             var dto = service.updateUser(command);
@@ -307,7 +324,8 @@ class UserServiceImplTest {
         @DisplayName("updateMask=\"nickname,sex\" → DTO 含更新后业务字段（响应即资源本身）")
         void should_returnUpdatedFields_when_updateMaskHits() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createEnabledUser()));
-            var command = new UpdateUserCommand(USER_ID.value(), "nickname,sex", "新昵称", "F", null, 1);
+            var command =
+                    new UpdateUserCommand(USER_ID.value(), "nickname,sex", "新昵称", "F", null, 1);
 
             var dto = service.updateUser(command);
 
@@ -318,7 +336,8 @@ class UserServiceImplTest {
         @Test
         @DisplayName("updateMask=\"*\" → 全量替换（请求体缺省的可空字段一并清空）")
         void should_replaceAllFields_when_updateMaskWildcard() {
-            var initial = createUserWithSexAndAvatar(Sex.F, new Avatar("https://example.com/a.png"));
+            var initial =
+                    createUserWithSexAndAvatar(Sex.F, new Avatar("https://example.com/a.png"));
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(initial));
             var command = new UpdateUserCommand(USER_ID.value(), "*", "新昵称", null, null, 1);
 
@@ -347,7 +366,8 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("updateMask=\"nickname\" + 请求 nickname=null → IllegalArgumentException（DP 构造器拦截 →400）")
+        @DisplayName(
+                "updateMask=\"nickname\" + 请求 nickname=null → IllegalArgumentException（DP 构造器拦截 →400）")
         void should_throw_when_updateMaskNicknameHitAndValueBlank() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createEnabledUser()));
             var command = new UpdateUserCommand(USER_ID.value(), "nickname", null, null, null, 1);
@@ -409,7 +429,8 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("expectedVersion 失配 → PreconditionFailedException（译 412，见 ADR-0037 / ADR-0039）")
+        @DisplayName(
+                "expectedVersion 失配 → PreconditionFailedException（译 412，见 ADR-0037 / ADR-0039）")
         void should_throw_when_expectedVersionMismatches() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createEnabledUser()));
             var command = new UpdateUserCommand(USER_ID.value(), null, "新昵称", null, null, 999);
@@ -429,19 +450,21 @@ class UserServiceImplTest {
         @Test
         @DisplayName("注销禁用用户：D→R 并保存，返回 R 态内存快照（释放前原键 + state=R）")
         void should_deregisterUserAndPersist_when_disabled() {
-            var user = User.builder()
-                    .id(USER_ID)
-                    .version(ConcurrencyVersion.of(1))
-                    .username(new Username("testuser"))
-                    .nickname(new Nickname("Test_User"))
-                    .state(UserState.D)
-                    .passwordAccount(PasswordAuthAccount.builder()
-                            .id(PasswordAuthAccountId.from(USER_ID))
-                            .active(Active.TRUE)
-                            .passwordHash(STUB_HASH)
-                            .build())
-                    .accounts(List.of())
-                    .build();
+            var user =
+                    User.builder()
+                            .id(USER_ID)
+                            .version(ConcurrencyVersion.of(1))
+                            .username(new Username("testuser"))
+                            .nickname(new Nickname("Test_User"))
+                            .state(UserState.D)
+                            .passwordAccount(
+                                    PasswordAuthAccount.builder()
+                                            .id(PasswordAuthAccountId.from(USER_ID))
+                                            .active(Active.TRUE)
+                                            .passwordHash(STUB_HASH)
+                                            .build())
+                            .accounts(List.of())
+                            .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
             var dto = service.deregisterUser(new DeregisterUserCommand(USER_ID.value()));
@@ -459,7 +482,10 @@ class UserServiceImplTest {
             var user = createEnabledUser();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.deregisterUser(
+                                            new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only disabled user can be deregistered");
 
@@ -472,8 +498,10 @@ class UserServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.deregisterUser(
+                                            new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
         }
@@ -481,22 +509,27 @@ class UserServiceImplTest {
         @Test
         @DisplayName("已注销用户再次注销抛 IAE，不保存不发布")
         void should_throw_when_alreadyDeregistered() {
-            var user = User.builder()
-                    .id(USER_ID)
-                    .version(ConcurrencyVersion.of(1))
-                    .username(new Username("testuser"))
-                    .nickname(new Nickname("Test_User"))
-                    .state(UserState.R)
-                    .passwordAccount(PasswordAuthAccount.builder()
-                            .id(PasswordAuthAccountId.from(USER_ID))
-                            .active(Active.TRUE)
-                            .passwordHash(STUB_HASH)
-                            .build())
-                    .accounts(List.of())
-                    .build();
+            var user =
+                    User.builder()
+                            .id(USER_ID)
+                            .version(ConcurrencyVersion.of(1))
+                            .username(new Username("testuser"))
+                            .nickname(new Nickname("Test_User"))
+                            .state(UserState.R)
+                            .passwordAccount(
+                                    PasswordAuthAccount.builder()
+                                            .id(PasswordAuthAccountId.from(USER_ID))
+                                            .active(Active.TRUE)
+                                            .passwordHash(STUB_HASH)
+                                            .build())
+                            .accounts(List.of())
+                            .build();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> service.deregisterUser(new DeregisterUserCommand(USER_ID.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.deregisterUser(
+                                            new DeregisterUserCommand(USER_ID.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only disabled user can be deregistered");
 

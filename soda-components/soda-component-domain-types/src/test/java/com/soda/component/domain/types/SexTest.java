@@ -1,12 +1,13 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Sex 枚举")
 class SexTest extends EnumDomainPrimitiveContractTest<Sex> {
@@ -36,22 +37,19 @@ class SexTest extends EnumDomainPrimitiveContractTest<Sex> {
         @Test
         @DisplayName("null 名拒绝")
         void should_throw_when_nameIsNull() {
-            assertThatThrownBy(() -> Sex.of(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Sex.of(null)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("空名拒绝")
         void should_throw_when_nameIsBlank() {
-            assertThatThrownBy(() -> Sex.of(""))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Sex.of("")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("未知名拒绝")
         void should_throw_when_unknownName() {
-            assertThatThrownBy(() -> Sex.of("X"))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Sex.of("X")).isInstanceOf(IllegalArgumentException.class);
         }
     }
 

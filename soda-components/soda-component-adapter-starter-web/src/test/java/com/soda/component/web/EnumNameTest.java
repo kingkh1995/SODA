@@ -1,8 +1,11 @@
-package com.soda.component.web.validation;
+package com.soda.component.web;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -10,11 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * {@link EnumName} 约束的行为测试：单值校验、null 语义与容器元素校验。
- */
+/** {@link EnumName} 约束的行为测试：单值校验、null 语义与容器元素校验。 */
 @DisplayName("EnumName 枚举常量名约束")
 class EnumNameTest {
 
@@ -70,11 +69,10 @@ class EnumNameTest {
     }
 
     private enum Color {
-        RED, GREEN
+        RED,
+        GREEN
     }
 
     private record Bean(
-            @EnumName(Color.class) String color,
-            List<@EnumName(Color.class) String> colors) {
-    }
+            @EnumName(Color.class) String color, List<@EnumName(Color.class) String> colors) {}
 }

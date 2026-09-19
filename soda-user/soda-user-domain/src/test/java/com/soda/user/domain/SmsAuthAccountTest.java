@@ -1,22 +1,23 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Mobile;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
 import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-/**
- * {@link SmsAuthAccount} 单元测试。
- */
+/** {@link SmsAuthAccount} 单元测试。 */
 @DisplayName("SmsAuthAccount 短信认证账户")
 class SmsAuthAccountTest {
 
@@ -88,9 +89,7 @@ class SmsAuthAccountTest {
         @Test
         @DisplayName("createBuilder 从 mobile 派生 ID 并默认启用")
         void should_setDefaults_when_usingCreateBuilder() {
-            var account = SmsAuthAccount.createBuilder()
-                    .mobile(MOBILE)
-                    .build();
+            var account = SmsAuthAccount.createBuilder().mobile(MOBILE).build();
 
             assertThat(account.getId()).isEqualTo(ID);
             assertThat(account.isActive()).isTrue();
@@ -99,10 +98,7 @@ class SmsAuthAccountTest {
         @Test
         @DisplayName("builder 恢复所有字段")
         void should_restoreAllFields_when_usingBuilder() {
-            var account = SmsAuthAccount.builder()
-                    .id(ID)
-                    .active(Active.FALSE)
-                    .build();
+            var account = SmsAuthAccount.builder().id(ID).active(Active.FALSE).build();
 
             assertThat(account.getId()).isEqualTo(ID);
             assertThat(account.isActive()).isFalse();
@@ -116,18 +112,20 @@ class SmsAuthAccountTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            var account = SmsAuthAccount.createBuilder()
-                    .mobile(MOBILE)
-                    .build();
+            var account = SmsAuthAccount.createBuilder().mobile(MOBILE).build();
             var json = MAPPER.writeValueAsString(account);
+            var restored = MAPPER.readValue(json, SmsAuthAccount.class);
 
-            assertThat(MAPPER.readValue(json, SmsAuthAccount.class)).isEqualTo(account);
+            // 实体不重写 equals（引用相等，见 ADR-0040）：round-trip 的「不丢字段」保证由逐字段比对承担
+            assertThat(restored.getId()).isEqualTo(account.getId());
+            assertThat(restored.isActive()).isEqualTo(account.isActive());
         }
 
         @Test
         @DisplayName("缺少 id 的 JSON 拒绝")
         void should_reject_when_missingId() {
-            var json = """
+            var json =
+                    """
                     {"active":true}
                     """;
 
@@ -141,17 +139,14 @@ class SmsAuthAccountTest {
     class Equality {
 
         @Test
-        @DisplayName("相同字段相等，不同 ID 不等")
-        void should_beEqual_when_sameFields() {
+        @DisplayName("同 id 不同实例不相等（引用相等，见 ADR-0040）")
+        void should_notBeEqual_when_sameFieldsButDifferentInstances() {
             var same = accountWith(Active.TRUE);
             var equal = accountWith(Active.TRUE);
-            var diffId = SmsAuthAccount.builder()
-                    .id(SmsAuthAccountId.from(Mobile.of("13900139000")))
-                    .active(Active.TRUE)
-                    .build();
 
-            assertThat(same).isEqualTo(equal);
-            assertThat(same).isNotEqualTo(diffId);
+            assertThat(same.getId()).isEqualTo(equal.getId());
+            assertThat(same).isNotSameAs(equal);
+            assertThat(same).isNotEqualTo(equal);
         }
     }
 

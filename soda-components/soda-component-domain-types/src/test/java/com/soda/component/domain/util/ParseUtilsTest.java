@@ -1,5 +1,9 @@
 package com.soda.component.domain.util;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,13 +12,9 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 import java.net.URI;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
- * {@link ParseUtils} 解析契约：不可靠输入（null / 类型不符 / 格式非法）统一抛出
- * {@link IllegalArgumentException}；{@code Number} 宽化接受，字符串输入自动 trim。
+ * {@link ParseUtils} 解析契约：不可靠输入（null / 类型不符 / 格式非法）统一抛出 {@link IllegalArgumentException}；{@code
+ * Number} 宽化接受，字符串输入自动 trim。
  */
 @DisplayName("ParseUtils 解析工具")
 class ParseUtilsTest {
@@ -101,7 +101,8 @@ class ParseUtilsTest {
         @Test
         @DisplayName("合法数字字符串解析（含 Long.MAX_VALUE）")
         void should_parse_when_maxLongString() {
-            assertThat(ParseUtils.parseLong(String.valueOf(Long.MAX_VALUE))).isEqualTo(Long.MAX_VALUE);
+            assertThat(ParseUtils.parseLong(String.valueOf(Long.MAX_VALUE)))
+                    .isEqualTo(Long.MAX_VALUE);
         }
 
         @Test
@@ -167,7 +168,8 @@ class ParseUtilsTest {
         @Test
         @DisplayName("合法枚举名返回对应常量")
         void should_returnConstant_when_validName() {
-            assertThat(ParseUtils.parseEnum(Thread.State.class, "RUNNABLE")).isEqualTo(Thread.State.RUNNABLE);
+            assertThat(ParseUtils.parseEnum(Thread.State.class, "RUNNABLE"))
+                    .isEqualTo(Thread.State.RUNNABLE);
         }
 
         @Test

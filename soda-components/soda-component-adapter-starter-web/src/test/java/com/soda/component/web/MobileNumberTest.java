@@ -1,8 +1,11 @@
-package com.soda.component.web.validation;
+package com.soda.component.web;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -10,12 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * {@link MobileNumber} 约束的行为测试：组合 {@code Pattern} 的违规归属、
- * null 语义与容器元素校验。
- */
+/** {@link MobileNumber} 约束的行为测试：组合 {@code Pattern} 的违规归属、 null 语义与容器元素校验。 */
 @DisplayName("MobileNumber 手机号格式约束")
 class MobileNumberTest {
 
@@ -52,7 +50,8 @@ class MobileNumberTest {
         assertThat(violations).hasSize(1);
         var violation = violations.iterator().next();
         assertThat(violation.getMessage()).isEqualTo("must be a valid mobile number");
-        assertThat(violation.getConstraintDescriptor().getAnnotation().annotationType()).isEqualTo(MobileNumber.class);
+        assertThat(violation.getConstraintDescriptor().getAnnotation().annotationType())
+                .isEqualTo(MobileNumber.class);
         assertThat(violation.getPropertyPath().toString()).isEqualTo("mobile");
     }
 
@@ -65,8 +64,5 @@ class MobileNumberTest {
                 .isEqualTo("mobiles[1].<list element>");
     }
 
-    private record Bean(
-            @MobileNumber String mobile,
-            List<@MobileNumber String> mobiles) {
-    }
+    private record Bean(@MobileNumber String mobile, List<@MobileNumber String> mobiles) {}
 }

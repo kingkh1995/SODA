@@ -1,26 +1,32 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("SocialAuthAccountId 值对象")
 class SocialAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SocialAuthAccountId> {
 
     @Override
     protected Contract<SocialAuthAccountId> contract() {
-        return new Contract<>(SocialAuthAccountId.class, () -> SocialAuthAccountId.of("O:GE:12345"),
-                "\"O:GE:12345\"", "SocialAuthAccountId[value=O:GE:12345]", "\"invalid\"",
+        return new Contract<>(
+                SocialAuthAccountId.class,
+                () -> SocialAuthAccountId.of("O:GE:12345"),
+                "\"O:GE:12345\"",
+                "SocialAuthAccountId[value=O:GE:12345]",
+                "\"invalid\"",
                 () -> SocialAuthAccountId.of("O:GE:12346"));
     }
 

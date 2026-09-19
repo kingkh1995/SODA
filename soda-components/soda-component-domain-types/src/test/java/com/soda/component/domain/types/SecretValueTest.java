@@ -1,13 +1,15 @@
 package com.soda.component.domain.types;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
 
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import tools.jackson.core.JacksonException;
 
 @DisplayName("SecretValue 敏感值对象")
 class SecretValueTest {

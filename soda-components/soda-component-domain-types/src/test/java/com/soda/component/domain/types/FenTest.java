@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,16 +14,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("Fen 值对象")
 class FenTest extends ComparableDomainPrimitiveContractTest<Fen> {
 
     @Override
     protected Contract<Fen> contract() {
-        return new Contract<>(Fen.class, () -> new Fen(1500), "1500",
-                "Fen[value=1500]", "\"not-a-number\"", () -> new Fen(1501));
+        return new Contract<>(
+                Fen.class,
+                () -> new Fen(1500),
+                "1500",
+                "Fen[value=1500]",
+                "\"not-a-number\"",
+                () -> new Fen(1501));
     }
 
     @Nested
@@ -69,8 +75,7 @@ class FenTest extends ComparableDomainPrimitiveContractTest<Fen> {
         @Test
         @DisplayName("parse(null) 拒绝")
         void should_throw_when_parseNull() {
-            assertThatThrownBy(() -> Fen.parse(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Fen.parse(null)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -83,8 +88,7 @@ class FenTest extends ComparableDomainPrimitiveContractTest<Fen> {
         @Test
         @DisplayName("parse 空字符串拒绝")
         void should_throw_when_parseEmptyString() {
-            assertThatThrownBy(() -> Fen.parse(""))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Fen.parse("")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test

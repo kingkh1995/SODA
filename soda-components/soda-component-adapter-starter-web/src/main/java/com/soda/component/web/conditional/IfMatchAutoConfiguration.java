@@ -9,9 +9,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.List;
 
 /**
- * If-Match 入站装配 —— 注册 {@link IfMatchResolver}，并导入 {@link HttpValidatorHeadersAdvice} 出站头派生（见 ADR-0039）。
- * <p>
- * 经 {@code META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports} 注册：
+ * If-Match 入站装配 —— 注册 {@link IfMatchResolver}，并导入 {@link HttpValidatorHeadersAdvice} 出站头派生（见
+ * ADR-0039）。
+ *
+ * <p>经 {@code META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports} 注册：
  * 组件 adapter-starter-web 位于运行时类路径即生效。
  */
 @AutoConfiguration

@@ -1,6 +1,9 @@
 package com.soda.component.domain.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.soda.component.domain.Gateway;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -10,17 +13,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * 加密族/哈希族网关端口契约测试（ADR-0033）——断言两轴：
- * 方法面宽度（四端口最小面）与入参签名纪律（禁止 String 与基本类型）。
- */
+/** 加密族/哈希族网关端口契约测试（ADR-0033）——断言两轴： 方法面宽度（四端口最小面）与入参签名纪律（禁止 String 与基本类型）。 */
 @DisplayName("加密与哈希网关端口契约")
 class GatewayPortsContractTest {
 
     private static Set<String> methods(Class<?> type) {
-        return Arrays.stream(type.getDeclaredMethods()).map(Method::getName).collect(Collectors.toSet());
+        return Arrays.stream(type.getDeclaredMethods())
+                .map(Method::getName)
+                .collect(Collectors.toSet());
     }
 
     @Test
@@ -47,7 +47,8 @@ class GatewayPortsContractTest {
     @Test
     @DisplayName("PasswordHasher 方法面 = hash / verify / needsRehash")
     void should_declarePasswordHasherMethods() {
-        assertThat(methods(PasswordHasher.class)).containsExactlyInAnyOrder("hash", "verify", "needsRehash");
+        assertThat(methods(PasswordHasher.class))
+                .containsExactlyInAnyOrder("hash", "verify", "needsRehash");
     }
 
     @Test
@@ -61,8 +62,14 @@ class GatewayPortsContractTest {
     void should_forbidStringAndPrimitiveParams() {
         Stream.of(Encryptor.class, Decryptor.class, PasswordHasher.class, Digester.class)
                 .flatMap(type -> Arrays.stream(type.getDeclaredMethods()))
-                .forEach(method -> assertThat(method.getParameterTypes())
-                        .as("%s.%s", method.getDeclaringClass().getSimpleName(), method.getName())
-                        .noneMatch(pt -> pt.equals(String.class) || pt.isPrimitive()));
+                .forEach(
+                        method ->
+                                assertThat(method.getParameterTypes())
+                                        .as(
+                                                "%s.%s",
+                                                method.getDeclaringClass().getSimpleName(),
+                                                method.getName())
+                                        .noneMatch(
+                                                pt -> pt.equals(String.class) || pt.isPrimitive()));
     }
 }

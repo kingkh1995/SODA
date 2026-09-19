@@ -1,22 +1,23 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Active;
 import com.soda.component.domain.types.Email;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.EmailAuthAccountId;
 import com.soda.user.domain.types.VerificationCodePolicy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
 import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-/**
- * {@link EmailAuthAccount} 单元测试。
- */
+/** {@link EmailAuthAccount} 单元测试。 */
 @DisplayName("EmailAuthAccount 邮箱认证账户")
 class EmailAuthAccountTest {
 
@@ -64,7 +65,8 @@ class EmailAuthAccountTest {
         @Test
         @DisplayName("默认策略为邮箱默认策略常量")
         void should_useDefaultEmailPolicy_when_defaultPolicy() {
-            assertThat(EmailAuthAccount.DEFAULT_POLICY).isEqualTo(VerificationCodePolicy.DEFAULT_EMAIL);
+            assertThat(EmailAuthAccount.DEFAULT_POLICY)
+                    .isEqualTo(VerificationCodePolicy.DEFAULT_EMAIL);
         }
     }
 
@@ -94,9 +96,7 @@ class EmailAuthAccountTest {
         @Test
         @DisplayName("createBuilder 从 email 派生 ID 并默认启用")
         void should_setDefaults_when_usingCreateBuilder() {
-            var account = EmailAuthAccount.createBuilder()
-                    .email(EMAIL)
-                    .build();
+            var account = EmailAuthAccount.createBuilder().email(EMAIL).build();
 
             assertThat(account.getId()).isEqualTo(EmailAuthAccountId.from(EMAIL));
             assertThat(account.isActive()).isTrue();
@@ -105,10 +105,7 @@ class EmailAuthAccountTest {
         @Test
         @DisplayName("builder 恢复所有字段")
         void should_restoreAllFields_when_usingBuilder() {
-            var account = EmailAuthAccount.builder()
-                    .id(ID)
-                    .active(Active.FALSE)
-                    .build();
+            var account = EmailAuthAccount.builder().id(ID).active(Active.FALSE).build();
 
             assertThat(account.getId()).isEqualTo(ID);
             assertThat(account.isActive()).isFalse();
@@ -124,14 +121,18 @@ class EmailAuthAccountTest {
         void should_roundTrip() throws Exception {
             var account = accountWith(Active.TRUE);
             var json = MAPPER.writeValueAsString(account);
+            var restored = MAPPER.readValue(json, EmailAuthAccount.class);
 
-            assertThat(MAPPER.readValue(json, EmailAuthAccount.class)).isEqualTo(account);
+            // 实体不重写 equals（引用相等，见 ADR-0040）：round-trip 的「不丢字段」保证由逐字段比对承担
+            assertThat(restored.getId()).isEqualTo(account.getId());
+            assertThat(restored.isActive()).isEqualTo(account.isActive());
         }
 
         @Test
         @DisplayName("缺少 id 的 JSON 拒绝")
         void should_reject_when_missingId() {
-            var json = """
+            var json =
+                    """
                     {"active":true}
                     """;
 
@@ -145,17 +146,14 @@ class EmailAuthAccountTest {
     class Equality {
 
         @Test
-        @DisplayName("相同字段相等，不同 ID 不等")
-        void should_beEqual_when_sameFields() {
+        @DisplayName("同 id 不同实例不相等（引用相等，见 ADR-0040）")
+        void should_notBeEqual_when_sameFieldsButDifferentInstances() {
             var same = accountWith(Active.TRUE);
             var equal = accountWith(Active.TRUE);
-            var diffId = EmailAuthAccount.builder()
-                    .id(EmailAuthAccountId.from(Email.of("other@example.com")))
-                    .active(Active.TRUE)
-                    .build();
 
-            assertThat(same).isEqualTo(equal);
-            assertThat(same).isNotEqualTo(diffId);
+            assertThat(same.getId()).isEqualTo(equal.getId());
+            assertThat(same).isNotSameAs(equal);
+            assertThat(same).isNotEqualTo(equal);
         }
     }
 

@@ -21,9 +21,6 @@ spring:
         format_sql: true
   flyway:
     enabled: true
-  mvc:
-    problemdetails:
-      enabled: true
 
 logging:
   level:

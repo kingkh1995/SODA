@@ -22,3 +22,15 @@
 - `dp-validation-conventions.md` — DP 校验与归一化（三入口职责 / 校验收敛 / 编排 / 归一化细则）
 - `dp-json-conventions.md` — DP JSON 序列化契约（模式总表 / 类型映射 / BigDecimal DP 模式 / 禁止 Serializable）
 - `aip-api-conventions.md` — AIP API 设计规范（资源 / 方法 / 字段 / 分页 / 错误处理）
+- `jackson.md` — Jackson 3 使用规范（接入与共享 / 注解落位 / 多态 / 3.0 行为基线）
+- `jspecify.md` — JSpecify 空性标注规范（`@NullMarked` 基线 / `@Nullable` 位置契约 / 泛型与覆写 / 外部库边界）
+- `lombok.md` — Lombok 使用规范（注解准入与禁用集 / 访问器与 fluent / 构造器与 Builder / 相等与调试 / 日志与构建接线）
+- `mapstruct.md` — MapStruct 使用规范（`@Mapper` 与注入 / 映射语义 / 构建接线 / Null 与 JSpecify 缺口）
+- `spring.md` — Spring Framework 使用规范（DI / 组件与自动配置 / 事务 / 事件 / Web MVC 扩展点 / 校验）
+- `modulith.md` — Spring Modulith 使用规范（`@ApplicationModule` / `allowedDependencies` / verify 与反向校验）
+
+## research/
+
+- `foundation-deps-official-practices.md` — 基础依赖官方规则与最佳实践（Jackson / JSpecify / Lombok / MapStruct / Spring
+  Framework / Spring Modulith 的官方规则清单 · 过时对照 · 逐条来源）
+- `entity-equality-in-ddd.md` — 实体相等性在 DDD 一手文献中的裁定依据（Evans 2003 / Vernon 2013 / JPA / Hibernate）

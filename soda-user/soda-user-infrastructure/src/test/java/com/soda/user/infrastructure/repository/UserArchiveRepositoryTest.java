@@ -1,6 +1,9 @@
 package com.soda.user.infrastructure.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.soda.user.infrastructure.persistence.UserArchivePO;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,27 +11,20 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
- * {@link UserArchiveRepository} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）——
- * {@code user_archive} 归档快照列映射、{@code archive_time} 审计填充、主键 1:1 路由
- * （id 恒有 → 恒 merge，ADR-0024）。
+ * {@link UserArchiveRepository} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）—— {@code user_archive}
+ * 归档快照列映射、{@code archive_time} 审计填充、主键 1:1 路由 （id 恒有 → 恒 merge，ADR-0024）。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DisplayName("UserArchiveRepository 真库行为")
 class UserArchiveRepositoryTest {
 
-    @Autowired
-    private TestEntityManager em;
+    @Autowired private TestEntityManager em;
 
-    @Autowired
-    private UserArchiveRepository userArchiveRepository;
+    @Autowired private UserArchiveRepository userArchiveRepository;
 
-    /**
-     * 快照行内联 fixture（可空键由用例覆写）。
-     */
+    /** 快照行内联 fixture（可空键由用例覆写）。 */
     private static UserArchivePO archive(Long id) {
         var po = new UserArchivePO();
         po.setId(id);

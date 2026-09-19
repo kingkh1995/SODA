@@ -1,14 +1,15 @@
 package com.soda.user.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.EnumDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("VerificationState 枚举")
 class VerificationStateTest extends EnumDomainPrimitiveContractTest<VerificationState> {
@@ -43,8 +44,12 @@ class VerificationStateTest extends EnumDomainPrimitiveContractTest<Verification
         @Test
         @DisplayName("常量集快照")
         void should_exposeExactConstants() {
-            assertThat(VerificationState.values()).containsExactly(
-                    VerificationState.I, VerificationState.P, VerificationState.V, VerificationState.U);
+            assertThat(VerificationState.values())
+                    .containsExactly(
+                            VerificationState.I,
+                            VerificationState.P,
+                            VerificationState.V,
+                            VerificationState.U);
         }
     }
 
@@ -53,7 +58,9 @@ class VerificationStateTest extends EnumDomainPrimitiveContractTest<Verification
     class Display {
 
         @ParameterizedTest(name = "{0} → desc={1}")
-        @CsvSource(textBlock = """
+        @CsvSource(
+                textBlock =
+                        """
                     I,     initialized
                     P,     pending
                     V,     verified
@@ -76,7 +83,9 @@ class VerificationStateTest extends EnumDomainPrimitiveContractTest<Verification
     class RichMethods {
 
         @ParameterizedTest(name = "{0}.terminal() = {1}")
-        @CsvSource(textBlock = """
+        @CsvSource(
+                textBlock =
+                        """
                     I,     false
                     P,     false
                     V,     false

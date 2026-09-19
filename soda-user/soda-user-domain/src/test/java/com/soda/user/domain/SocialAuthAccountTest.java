@@ -1,25 +1,27 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Active;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SocialAuthAccountId;
 import com.soda.user.domain.types.SocialType;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
 import tools.jackson.core.JacksonException;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-/**
- * {@link SocialAuthAccount} 单元测试。
- */
+/** {@link SocialAuthAccount} 单元测试。 */
 @DisplayName("SocialAuthAccount 社交认证账户")
 class SocialAuthAccountTest {
 
-    private static final SocialAuthAccountId ID = SocialAuthAccountId.from(SocialType.GE, "open123");
+    private static final SocialAuthAccountId ID =
+            SocialAuthAccountId.from(SocialType.GE, "open123");
 
     private static SocialAuthAccount accountWith(Active active) {
         return SocialAuthAccount.builder().id(ID).active(active).build();
@@ -73,20 +75,24 @@ class SocialAuthAccountTest {
         @Test
         @DisplayName("createBuilder 缺 socialType 拒绝")
         void should_throw_when_socialTypeIsNull() {
-            assertThatThrownBy(() -> SocialAuthAccount.createBuilder()
-                    .socialType(null)
-                    .openId("open123")
-                    .build())
+            assertThatThrownBy(
+                            () ->
+                                    SocialAuthAccount.createBuilder()
+                                            .socialType(null)
+                                            .openId("open123")
+                                            .build())
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("createBuilder 缺 openId 拒绝")
         void should_throw_when_openIdIsNull() {
-            assertThatThrownBy(() -> SocialAuthAccount.createBuilder()
-                    .socialType(SocialType.GE)
-                    .openId(null)
-                    .build())
+            assertThatThrownBy(
+                            () ->
+                                    SocialAuthAccount.createBuilder()
+                                            .socialType(SocialType.GE)
+                                            .openId(null)
+                                            .build())
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -105,10 +111,11 @@ class SocialAuthAccountTest {
         @Test
         @DisplayName("createBuilder 从社交平台与 openId 派生 ID 并默认启用")
         void should_setDefaults_when_usingCreateBuilder() {
-            var account = SocialAuthAccount.createBuilder()
-                    .socialType(SocialType.GE)
-                    .openId("open123")
-                    .build();
+            var account =
+                    SocialAuthAccount.createBuilder()
+                            .socialType(SocialType.GE)
+                            .openId("open123")
+                            .build();
 
             assertThat(account.getId()).isEqualTo(ID);
             assertThat(account.isActive()).isTrue();
@@ -117,10 +124,7 @@ class SocialAuthAccountTest {
         @Test
         @DisplayName("builder 恢复所有字段")
         void should_restoreAllFields_when_usingBuilder() {
-            var account = SocialAuthAccount.builder()
-                    .id(ID)
-                    .active(Active.FALSE)
-                    .build();
+            var account = SocialAuthAccount.builder().id(ID).active(Active.FALSE).build();
 
             assertThat(account.getId()).isEqualTo(ID);
             assertThat(account.isActive()).isFalse();
@@ -134,19 +138,24 @@ class SocialAuthAccountTest {
         @Test
         @DisplayName("Jackson round-trip 一致")
         void should_roundTrip() throws Exception {
-            var original = SocialAuthAccount.createBuilder()
-                    .socialType(SocialType.GE)
-                    .openId("open123")
-                    .build();
+            var original =
+                    SocialAuthAccount.createBuilder()
+                            .socialType(SocialType.GE)
+                            .openId("open123")
+                            .build();
             var json = MAPPER.writeValueAsString(original);
+            var restored = MAPPER.readValue(json, SocialAuthAccount.class);
 
-            assertThat(MAPPER.readValue(json, SocialAuthAccount.class)).isEqualTo(original);
+            // 实体不重写 equals（引用相等，见 ADR-0040）：round-trip 的「不丢字段」保证由逐字段比对承担
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.isActive()).isEqualTo(original.isActive());
         }
 
         @Test
         @DisplayName("缺少 id 的 JSON 拒绝")
         void should_reject_when_missingId() {
-            var json = """
+            var json =
+                    """
                     {"active":true}
                     """;
 
@@ -160,19 +169,15 @@ class SocialAuthAccountTest {
     class Equality {
 
         @Test
-        @DisplayName("相同字段相等，不同 ID 不等")
-        void should_beEqual_when_sameFields() {
+        @DisplayName("同 id 不同实例不相等（引用相等，见 ADR-0040）")
+        void should_notBeEqual_when_sameFieldsButDifferentInstances() {
             var same = accountWith(Active.TRUE);
             var equal = accountWith(Active.TRUE);
-            var diffId = SocialAuthAccount.builder()
-                    .id(SocialAuthAccountId.from(SocialType.GE, "otherOpen"))
-                    .active(Active.TRUE)
-                    .build();
 
-            assertThat(same).isEqualTo(equal);
-            assertThat(same).isNotEqualTo(diffId);
+            assertThat(same.getId()).isEqualTo(equal.getId());
+            assertThat(same).isNotSameAs(equal);
+            assertThat(same).isNotEqualTo(equal);
         }
-
     }
 
     @Nested

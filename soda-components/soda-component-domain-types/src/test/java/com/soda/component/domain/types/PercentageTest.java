@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,16 +12,18 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("Percentage 值对象")
 class PercentageTest extends ComparableDomainPrimitiveContractTest<Percentage> {
 
     @Override
     protected Contract<Percentage> contract() {
-        return new Contract<>(Percentage.class, () -> Percentage.of("12.34"), "\"12.34\"",
-                "Percentage[value=12.34]", "{}", () -> Percentage.of("56.78"));
+        return new Contract<>(
+                Percentage.class,
+                () -> Percentage.of("12.34"),
+                "\"12.34\"",
+                "Percentage[value=12.34]",
+                "{}",
+                () -> Percentage.of("56.78"));
     }
 
     @Nested

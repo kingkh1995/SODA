@@ -19,16 +19,12 @@ public record MaskedBankCard(String value) implements StringLiteralType {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    /**
-     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
-     */
+    /** 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。 */
     public static MaskedBankCard from(BankCard bankCard) {
         return new MaskedBankCard(maskOf(bankCard.value()));
     }
 
-    /**
-     * 掩码生产算法：保留 BIN 前 6 位和后 4 位，长度不变。仅服务 {@link #from(BankCard)}。
-     */
+    /** 掩码生产算法：保留 BIN 前 6 位和后 4 位，长度不变。仅服务 {@link #from(BankCard)}。 */
     private static String maskOf(String rawValue) {
         var len = rawValue.length();
         var prefixLen = Math.min(6, len - 4);

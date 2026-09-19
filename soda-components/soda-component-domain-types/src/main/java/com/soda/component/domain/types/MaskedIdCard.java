@@ -23,16 +23,12 @@ public record MaskedIdCard(String value) implements StringLiteralType {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    /**
-     * 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。
-     */
+    /** 由原始值 DP 派生脱敏值（掩码算法唯一公开通道）。 */
     public static MaskedIdCard from(IdCard idCard) {
         return new MaskedIdCard(maskOf(idCard.value()));
     }
 
-    /**
-     * 掩码生产算法：保留前 6 位（地址码）和后 4 位，中间 8 位替换为 *。仅服务 {@link #from(IdCard)}。
-     */
+    /** 掩码生产算法：保留前 6 位（地址码）和后 4 位，中间 8 位替换为 *。仅服务 {@link #from(IdCard)}。 */
     private static String maskOf(String rawValue) {
         return rawValue.substring(0, 6) + "********" + rawValue.substring(14);
     }

@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,22 +12,21 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("已脱敏真实姓名值对象")
 class MaskedChineseNameTest extends DomainPrimitiveContractTest<MaskedChineseName> {
 
-    /**
-     * maskOf(ChineseName.of("张三")) = "张*" — 2 字原始名脱敏输出（保留首字 + 1 个 `*`）
-     */
+    /** maskOf(ChineseName.of("张三")) = "张*" — 2 字原始名脱敏输出（保留首字 + 1 个 `*`） */
     private static final String VALID_MASKED = "张*";
 
     @Override
     protected Contract<MaskedChineseName> contract() {
-        return new Contract<>(MaskedChineseName.class, () -> new MaskedChineseName(VALID_MASKED),
-                "\"" + VALID_MASKED + "\"", "MaskedChineseName[value=" + VALID_MASKED + "]",
-                "\"张三\"", () -> new MaskedChineseName("李*"));
+        return new Contract<>(
+                MaskedChineseName.class,
+                () -> new MaskedChineseName(VALID_MASKED),
+                "\"" + VALID_MASKED + "\"",
+                "MaskedChineseName[value=" + VALID_MASKED + "]",
+                "\"张三\"",
+                () -> new MaskedChineseName("李*"));
     }
 
     @Nested

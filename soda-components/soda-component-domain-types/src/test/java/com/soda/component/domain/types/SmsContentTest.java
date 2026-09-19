@@ -1,22 +1,28 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("短信内容值对象")
 class SmsContentTest extends DomainPrimitiveContractTest<SmsContent> {
 
     @Override
     protected Contract<SmsContent> contract() {
-        return new Contract<>(SmsContent.class, () -> new SmsContent("hello"), "\"hello\"",
-                "SmsContent[value=hello]", "{}", () -> new SmsContent("world"));
+        return new Contract<>(
+                SmsContent.class,
+                () -> new SmsContent("hello"),
+                "\"hello\"",
+                "SmsContent[value=hello]",
+                "{}",
+                () -> new SmsContent("world"));
     }
 
     @Nested

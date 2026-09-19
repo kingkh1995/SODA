@@ -1,3 +1,10 @@
+plugins {
+    id 'java-test-fixtures'
+}
+
 dependencies {
-    implementation 'org.springframework.modulith:spring-modulith-starter-test'
+    // 本模块只产出测试支撑件（testFixtures），main 为空——测试栈因此结构性地
+    // 进不了任何生产类路径。消费方一律经 testFixtures(...) 变体引入。
+    testFixturesApi 'org.springframework.modulith:spring-modulith-core'
+    testFixturesApi 'org.assertj:assertj-core'
 }

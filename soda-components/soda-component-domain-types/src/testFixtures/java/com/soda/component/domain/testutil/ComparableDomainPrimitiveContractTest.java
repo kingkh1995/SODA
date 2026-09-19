@@ -1,17 +1,17 @@
 package com.soda.component.domain.testutil;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * {@code Comparable} DP 的契约基类 —— 在 {@link DomainPrimitiveContractTest} 之上追加「比较」组。
- * <p>
- * 未实现 {@link Comparable} 的 DP 不得继承本类（建组需适用形态命中，见 dp-test-conventions §2 表规则）。
- * <p>
- * <b>样例次序约定</b>：{@code contract().other()} 须严格大于 {@code contract().sample()}；
+ *
+ * <p>未实现 {@link Comparable} 的 DP 不得继承本类（建组需适用形态命中，见 dp-test-conventions §2 表规则）。
+ *
+ * <p><b>样例次序约定</b>：{@code contract().other()} 须严格大于 {@code contract().sample()}；
  * 「比较」组据此钉住自然序方向，异值序实现（如字典序 vs 数值序）漂移即时暴露。
  *
  * @param <T> 被测 DP 类型

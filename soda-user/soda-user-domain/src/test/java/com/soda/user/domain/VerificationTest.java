@@ -1,5 +1,10 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.RandomString;
@@ -9,29 +14,27 @@ import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationCodePolicy;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
  * 验证实体测试（source/recipient 双概念形态，见 ADR-0026）。
- * <p>
- * 测试场景：
+ *
+ * <p>测试场景：
+ *
  * <ul>
- *   <li>create -> state=I，source 恒必填（非空即 Verification 对 source 的唯一要求）、policy 必传</li>
- *   <li>markSent() -> state=P（重复 markSent / 非 I 状态 -> exception）</li>
- *   <li>verify(correct code) -> state=V</li>
- *   <li>use() after verify -> state=U</li>
- *   <li>verify(wrong code) -> exception</li>
- *   <li>verify expired -> exception</li>
- *   <li>use without verify -> exception</li>
- *   <li>verify used verification -> exception</li>
+ *   <li>create -> state=I，source 恒必填（非空即 Verification 对 source 的唯一要求）、policy 必传
+ *   <li>markSent() -> state=P（重复 markSent / 非 I 状态 -> exception）
+ *   <li>verify(correct code) -> state=V
+ *   <li>use() after verify -> state=U
+ *   <li>verify(wrong code) -> exception
+ *   <li>verify expired -> exception
+ *   <li>use without verify -> exception
+ *   <li>verify used verification -> exception
  * </ul>
  */
 @DisplayName("Verification 实体")
@@ -84,12 +87,13 @@ class VerificationTest {
         @DisplayName("source 不透明——聚合原样持有任意场景/主体串（URG 端点值 subject 同构）")
         void should_storeSourceAsIs_when_created() {
             var source = new VerificationSource("URG", "13800138000");
-            var verification = Verification.createBuilder()
-                    .source(source)
-                    .recipient(new SmsRecipient(MOBILE))
-                    .generator(CODE_GENERATOR)
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
-                    .build();
+            var verification =
+                    Verification.createBuilder()
+                            .source(source)
+                            .recipient(new SmsRecipient(MOBILE))
+                            .generator(CODE_GENERATOR)
+                            .policy(VerificationCodePolicy.DEFAULT_SMS)
+                            .build();
 
             assertThat(verification.getSource()).isEqualTo(source);
         }
@@ -97,11 +101,13 @@ class VerificationTest {
         @Test
         @DisplayName("createBuilder 缺 source -> 拒绝（source 恒必填——非空即唯一要求，见 ADR-0026）")
         void should_throw_when_sourceIsNull() {
-            assertThatThrownBy(() -> Verification.createBuilder()
-                    .recipient(new SmsRecipient(MOBILE))
-                    .generator(CODE_GENERATOR)
-                    .policy(VerificationCodePolicy.DEFAULT_SMS)
-                    .build())
+            assertThatThrownBy(
+                            () ->
+                                    Verification.createBuilder()
+                                            .recipient(new SmsRecipient(MOBILE))
+                                            .generator(CODE_GENERATOR)
+                                            .policy(VerificationCodePolicy.DEFAULT_SMS)
+                                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("must not be null");
         }
@@ -109,11 +115,13 @@ class VerificationTest {
         @Test
         @DisplayName("createBuilder 缺 policy -> 拒绝（policy 必传——聚合不做通道→策略映射，见 ADR-0026）")
         void should_throw_when_policyIsNull() {
-            assertThatThrownBy(() -> Verification.createBuilder()
-                    .source(UCC_SOURCE)
-                    .recipient(new SmsRecipient(MOBILE))
-                    .generator(CODE_GENERATOR)
-                    .build())
+            assertThatThrownBy(
+                            () ->
+                                    Verification.createBuilder()
+                                            .source(UCC_SOURCE)
+                                            .recipient(new SmsRecipient(MOBILE))
+                                            .generator(CODE_GENERATOR)
+                                            .build())
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("must not be null");
         }
@@ -139,11 +147,17 @@ class VerificationTest {
             var json = MAPPER.writeValueAsString(original);
             var restored = MAPPER.readValue(json, Verification.class);
 
-            assertThat(restored).isEqualTo(original);
+            // 实体不重写 equals（引用相等，见 ADR-0040）：round-trip 的「不丢字段」保证由逐字段比对承担
+            assertThat(restored.getId()).isEqualTo(original.getId());
+            assertThat(restored.getSource()).isEqualTo(original.getSource());
+            assertThat(restored.getState()).isEqualTo(original.getState());
+            assertThat(restored.getCode()).isEqualTo(original.getCode());
+            assertThat(restored.getRecipient()).isEqualTo(original.getRecipient());
         }
 
         @Test
-        @DisplayName("缺少 id 的 JSON 拒绝（required=true 双屏障，docs/conventions/framework-type-contracts.md JSON 契约）")
+        @DisplayName(
+                "缺少 id 的 JSON 拒绝（required=true 双屏障，docs/conventions/framework-type-contracts.md JSON 契约）")
         void should_reject_when_missingId() {
             var original = restoredSms(VerificationState.P, Instant.parse("2026-08-15T12:00:00Z"));
             var tree = MAPPER.readTree(MAPPER.writeValueAsString(original));
@@ -225,7 +239,8 @@ class VerificationTest {
         void should_throw_when_codeExpired() {
             var verification = restoredSms(VerificationState.P, Instant.EPOCH);
 
-            assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
+            assertThatThrownBy(
+                            () -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -237,7 +252,8 @@ class VerificationTest {
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
             verification.use();
 
-            assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
+            assertThatThrownBy(
+                            () -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -248,7 +264,8 @@ class VerificationTest {
             verification.markSent();
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
 
-            assertThatThrownBy(() -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
+            assertThatThrownBy(
+                            () -> verification.verify(Instant.now(), new RandomString(VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -290,8 +307,7 @@ class VerificationTest {
             verification.verify(Instant.now(), new RandomString(VALID_CODE));
             verification.use();
 
-            assertThatThrownBy(verification::use)
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(verification::use).isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

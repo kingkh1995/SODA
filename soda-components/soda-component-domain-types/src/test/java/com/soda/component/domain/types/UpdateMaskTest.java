@@ -1,6 +1,11 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,10 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-
 @DisplayName("UpdateMask —— update_mask 归一化与覆盖判定")
 class UpdateMaskTest extends DomainPrimitiveContractTest<UpdateMask> {
 
@@ -24,9 +25,13 @@ class UpdateMaskTest extends DomainPrimitiveContractTest<UpdateMask> {
 
     @Override
     protected Contract<UpdateMask> contract() {
-        return new Contract<>(UpdateMask.class, () -> UpdateMask.parse("nickname,sex", ALLOWED),
-                "[\"nickname\",\"sex\"]", "UpdateMask[fields=[nickname, sex]]",
-                "[\"*\"]", () -> UpdateMask.parse("nickname", ALLOWED));
+        return new Contract<>(
+                UpdateMask.class,
+                () -> UpdateMask.parse("nickname,sex", ALLOWED),
+                "[\"nickname\",\"sex\"]",
+                "UpdateMask[fields=[nickname, sex]]",
+                "[\"*\"]",
+                () -> UpdateMask.parse("nickname", ALLOWED));
     }
 
     @Nested

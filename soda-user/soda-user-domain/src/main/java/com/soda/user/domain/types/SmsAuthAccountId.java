@@ -4,16 +4,17 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
 /**
  * 短信认证账户标识符 DP — 派生自 {@link Mobile}。
- * <p>
- * 值 = {@code "S:{mobile}"}（如 {@code "S:13800138000"}），统一 {@link AuthAccountId} 格式。
- * <p>
- * payload 即 {@link Mobile} 本身，故 {@code of(String)} 与 {@code from(Mobile)} 是同一派生，各自直达私有构造器。
+ *
+ * <p>值 = {@code "S:{mobile}"}（如 {@code "S:13800138000"}），统一 {@link AuthAccountId} 格式。
+ *
+ * <p>payload 即 {@link Mobile} 本身，故 {@code of(String)} 与 {@code from(Mobile)} 是同一派生，各自直达私有构造器。
  *
  * @see AuthAccountId
  */
@@ -29,18 +30,14 @@ public final class SmsAuthAccountId extends AuthAccountId implements Comparable<
         this.mobile = mobile;
     }
 
-    /**
-     * 反序列化入口 — 格式 {@code "S:{mobile}"}。
-     */
+    /** 反序列化入口 — 格式 {@code "S:{mobile}"}。 */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static SmsAuthAccountId of(String value) {
         var suffix = ParseUtils.cutPrefix(value, prefix(AuthAccountType.S));
         return new SmsAuthAccountId(Mobile.of(suffix));
     }
 
-    /**
-     * 从 {@link Mobile} 构造。
-     */
+    /** 从 {@link Mobile} 构造。 */
     public static SmsAuthAccountId from(Mobile mobile) {
         ValidateUtils.notNull(mobile);
         return new SmsAuthAccountId(mobile);

@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,25 +15,31 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("Ciphertext —— JWE 信封自验证")
 class CiphertextTest extends DomainPrimitiveContractTest<Ciphertext> {
 
-    private static final String VALID_JWE = jwe("{\"alg\":\"dir\",\"enc\":\"A256GCM\",\"kid\":\"phone-2024\"}");
+    private static final String VALID_JWE =
+            jwe("{\"alg\":\"dir\",\"enc\":\"A256GCM\",\"kid\":\"phone-2024\"}");
 
     private static String jwe(String headerJson) {
-        String header = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
+        String header =
+                Base64.getUrlEncoder()
+                        .withoutPadding()
+                        .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
         return String.join(".", header, "cek", "iv", "ct", "tag");
     }
 
     @Override
     protected Contract<Ciphertext> contract() {
-        return new Contract<>(Ciphertext.class, () -> new Ciphertext(VALID_JWE), "\"" + VALID_JWE + "\"",
-                "Ciphertext[value=" + VALID_JWE + "]", "\"a.b.c.d\"",
-                () -> new Ciphertext(jwe("{\"alg\":\"dir\",\"enc\":\"A256GCM\",\"kid\":\"other\"}")));
+        return new Contract<>(
+                Ciphertext.class,
+                () -> new Ciphertext(VALID_JWE),
+                "\"" + VALID_JWE + "\"",
+                "Ciphertext[value=" + VALID_JWE + "]",
+                "\"a.b.c.d\"",
+                () ->
+                        new Ciphertext(
+                                jwe("{\"alg\":\"dir\",\"enc\":\"A256GCM\",\"kid\":\"other\"}")));
     }
 
     @Nested

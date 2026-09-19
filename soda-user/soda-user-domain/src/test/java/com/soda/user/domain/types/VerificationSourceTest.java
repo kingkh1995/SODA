@@ -1,21 +1,26 @@
 package com.soda.user.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("VerificationSource 请求源")
 class VerificationSourceTest extends DomainPrimitiveContractTest<VerificationSource> {
 
     @Override
     protected Contract<VerificationSource> contract() {
-        return new Contract<>(VerificationSource.class, () -> new VerificationSource("UCC", "42"),
-                "{\"scene\":\"UCC\",\"subject\":\"42\"}", "VerificationSource[scene=UCC, subject=42]",
-                "{}", () -> new VerificationSource("UPR", "42"));
+        return new Contract<>(
+                VerificationSource.class,
+                () -> new VerificationSource("UCC", "42"),
+                "{\"scene\":\"UCC\",\"subject\":\"42\"}",
+                "VerificationSource[scene=UCC, subject=42]",
+                "{}",
+                () -> new VerificationSource("UPR", "42"));
     }
 
     @Nested

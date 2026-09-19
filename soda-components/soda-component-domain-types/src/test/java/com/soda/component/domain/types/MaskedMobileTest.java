@@ -1,15 +1,16 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("已脱敏手机号值对象")
 class MaskedMobileTest extends DomainPrimitiveContractTest<MaskedMobile> {
@@ -18,9 +19,13 @@ class MaskedMobileTest extends DomainPrimitiveContractTest<MaskedMobile> {
 
     @Override
     protected Contract<MaskedMobile> contract() {
-        return new Contract<>(MaskedMobile.class, () -> new MaskedMobile(VALID_MASKED),
-                "\"" + VALID_MASKED + "\"", "MaskedMobile[value=" + VALID_MASKED + "]",
-                "\"13800138000\"", () -> new MaskedMobile("139****1234"));
+        return new Contract<>(
+                MaskedMobile.class,
+                () -> new MaskedMobile(VALID_MASKED),
+                "\"" + VALID_MASKED + "\"",
+                "MaskedMobile[value=" + VALID_MASKED + "]",
+                "\"13800138000\"",
+                () -> new MaskedMobile("139****1234"));
     }
 
     @Nested
@@ -39,7 +44,15 @@ class MaskedMobileTest extends DomainPrimitiveContractTest<MaskedMobile> {
     class Validation {
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {" ", "13800138000", "138***8000", "138*******8000", "abc****1234", "138****800"})
+        @ValueSource(
+                strings = {
+                    " ",
+                    "13800138000",
+                    "138***8000",
+                    "138*******8000",
+                    "abc****1234",
+                    "138****800"
+                })
         @DisplayName("非法脱敏格式抛出异常")
         void should_throw_when_invalidFormat(String input) {
             assertThatThrownBy(() -> new MaskedMobile(input))

@@ -10,21 +10,19 @@ import com.soda.component.domain.types.SecretValue;
 import com.soda.component.domain.util.ValidateUtils;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.PasswordAuthAccountId;
+
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
  * 密码认证账户 — 用户的口令凭证载体（持有 {@link PasswordHash}）。
- * <p>
- * 每个 User 恰一个 PasswordAuthAccount（构造期必填独立字段，见 ADR-0004）；
- * 恒启用——无解绑流程，不支持停用。
+ *
+ * <p>每个 User 恰一个 PasswordAuthAccount（构造期必填独立字段，见 ADR-0004）； 恒启用——无解绑流程，不支持停用。
  *
  * @see AuthAccount
  */
 @Getter
 @JsonTypeName("P")
-@EqualsAndHashCode(callSuper = true)
 public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId> {
 
     private PasswordHash passwordHash;
@@ -33,10 +31,9 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     /**
      * 全参数恢复构造器 — 持久化恢复与 JSON 反序列化唯一入口（{@link JsonCreator}）。
-     * <p>
-     * 委托无 id 创建构造器完成字段初始化后补充 id（构造器参数校验见该构造器）。
-     * 恢复路径非空字段（id、active、passwordHash）由 JSON schema 声明（{@code required = true}），
-     * 缺字段由 Jackson 在协议边界拒绝（框架能力，非领域守卫）。
+     *
+     * <p>委托无 id 创建构造器完成字段初始化后补充 id（构造器参数校验见该构造器）。 恢复路径非空字段（id、active、passwordHash）由 JSON schema
+     * 声明（{@code required = true}）， 缺字段由 Jackson 在协议边界拒绝（框架能力，非领域守卫）。
      */
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     @Builder
@@ -50,8 +47,8 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     /**
      * 无 id 创建构造器 — 仅创建路径使用，active 由调用方传入，id 由 Gateway 在持久化后通过 {@link #assignId} 填补。
-     * <p>
-     * 字段初始化唯一存在处，全参数恢复构造器委托本构造器。
+     *
+     * <p>字段初始化唯一存在处，全参数恢复构造器委托本构造器。
      */
     private PasswordAuthAccount(Active active, PasswordHash passwordHash) {
         super(active);
@@ -63,9 +60,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     // ─── factories ───
 
-    /**
-     * 创建新密码账户 — active 默认 TRUE，ID 由 Gateway 在持久化后通过 {@link #assignId} 补充。
-     */
+    /** 创建新密码账户 — active 默认 TRUE，ID 由 Gateway 在持久化后通过 {@link #assignId} 补充。 */
     @Builder(builderClassName = "CreateBuilder", builderMethodName = "createBuilder")
     private static PasswordAuthAccount create(PasswordHash passwordHash) {
         return new PasswordAuthAccount(Active.TRUE, passwordHash);
@@ -73,9 +68,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
 
     // ─── accessors ───
 
-    /**
-     * 认证类型 — 与 ID 解耦（创建瞬态无 ID 亦可派发），类型信息即本类自身。
-     */
+    /** 认证类型 — 与 ID 解耦（创建瞬态无 ID 亦可派发），类型信息即本类自身。 */
     @Override
     public AuthAccountType getAccountType() {
         return AuthAccountType.P;
@@ -87,7 +80,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * 校验原始凭证是否匹配当前哈希。
      *
      * @param credential 原始凭证
-     * @param hasher     凭证哈希器
+     * @param hasher 凭证哈希器
      * @return true 若匹配
      */
     public boolean verify(SecretValue credential, PasswordHasher hasher) {
@@ -100,19 +93,17 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
      * 修改密码。
      *
      * @param credential 新原始凭证
-     * @param hasher     凭证哈希器
-     * @implNote 不在此处注册 PasswordChangedEvent（泛型 ID 不匹配，事件需 {@code UserId}）；
-     * 事件由 {@code User.changePassword} 在调用本方法后注册。
+     * @param hasher 凭证哈希器
+     * @implNote 不在此处注册 PasswordChangedEvent（泛型 ID 不匹配，事件需 {@code UserId}）； 事件由 {@code
+     *     User.changePassword} 在调用本方法后注册。
      */
     public void changePassword(SecretValue credential, PasswordHasher hasher) {
         this.passwordHash = hasher.hash(credential);
     }
 
     /**
-     * 登录透明升级 —— 验证候选凭证，通过且存储哈希低于当前配置时以候选凭证重哈希
-     * （见 ADR-0033；ULG 登录路径落点）。
-     * 错误候选返回 false 且不动 {@code passwordHash}（安全不变量：绝不用未经
-     * 验证的凭证覆盖哈希）；调用方负责持久化以使新哈希落库（与 changePassword 同约定）。
+     * 登录透明升级 —— 验证候选凭证，通过且存储哈希低于当前配置时以候选凭证重哈希 （见 ADR-0033；ULG 登录路径落点）。 错误候选返回 false 且不动 {@code
+     * passwordHash}（安全不变量：绝不用未经 验证的凭证覆盖哈希）；调用方负责持久化以使新哈希落库（与 changePassword 同约定）。
      *
      * @return 候选凭证是否匹配
      */
@@ -127,8 +118,7 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     }
 
     /**
-     * 停用账户 — 拒绝：密码账户<b>恒启用</b>（设计不变量，ADR-0004——无解绑流程，
-     * 持久化无 active 列，恢复恒 {@code Active.TRUE}）。
+     * 停用账户 — 拒绝：密码账户<b>恒启用</b>（设计不变量，ADR-0004——无解绑流程， 持久化无 active 列，恢复恒 {@code Active.TRUE}）。
      * 防御编程：调用方按契约不得调用，异常类型 + 栈帧即语义，不携消息。
      *
      * @throws UnsupportedOperationException 恒抛（该操作对密码账户不支持）
@@ -137,5 +127,4 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     public void deactivate() {
         throw new UnsupportedOperationException();
     }
-
 }

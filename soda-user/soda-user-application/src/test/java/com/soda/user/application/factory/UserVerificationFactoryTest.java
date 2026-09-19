@@ -1,5 +1,11 @@
 package com.soda.user.application.factory;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.soda.component.domain.gateway.RandomStringGenerator;
 import com.soda.component.domain.types.Alphabet;
 import com.soda.component.domain.types.Email;
@@ -11,25 +17,19 @@ import com.soda.user.domain.types.SmsRecipient;
 import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * {@link UserVerificationFactory} 单元测试（见 ADR-0026）。
- * <p>
- * 验证：source 构造（scene→助记码串、userId→裸键串——槽位预检与构造共用同一映射点）、
- * 按场景构造方法（方法名即场景——scene=UCC 方法内写死）、UCC 专属策略
- * （<b>双通道统一纯数字/短时效</b>，不引用通道默认 DEFAULT_SMS/DEFAULT_EMAIL）、
- * 返回完整 INITIALIZED 验证聚合（码生成 + 事件注册，经领域静态工厂单构造路径）。
+ *
+ * <p>验证：source 构造（scene→助记码串、userId→裸键串——槽位预检与构造共用同一映射点）、 按场景构造方法（方法名即场景——scene=UCC 方法内写死）、UCC 专属策略
+ * （<b>双通道统一纯数字/短时效</b>，不引用通道默认 DEFAULT_SMS/DEFAULT_EMAIL）、 返回完整 INITIALIZED 验证聚合（码生成 +
+ * 事件注册，经领域静态工厂单构造路径）。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserVerificationFactory")
@@ -40,8 +40,7 @@ class UserVerificationFactoryTest {
     private static final Email EMAIL = Email.of("user@test.com");
     private static final String VALID_CODE = "123456";
 
-    @Mock
-    private RandomStringGenerator randomStringGenerator;
+    @Mock private RandomStringGenerator randomStringGenerator;
 
     private UserVerificationFactory factory() {
         return new UserVerificationFactory(randomStringGenerator);
@@ -62,7 +61,8 @@ class UserVerificationFactoryTest {
         when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                 .thenReturn(new RandomString(VALID_CODE));
 
-        var verification = factory().newCredentialChangeVerification(USER_ID, new SmsRecipient(MOBILE));
+        var verification =
+                factory().newCredentialChangeVerification(USER_ID, new SmsRecipient(MOBILE));
 
         verify(randomStringGenerator).generate(eq(PositiveInt.of(6)), eq(Alphabet.DIGITS));
         assertThat(verification.getState()).isEqualTo(VerificationState.I);
@@ -78,7 +78,8 @@ class UserVerificationFactoryTest {
         when(randomStringGenerator.generate(any(PositiveInt.class), any(Alphabet.class)))
                 .thenReturn(new RandomString(VALID_CODE));
 
-        var verification = factory().newCredentialChangeVerification(USER_ID, new EmailRecipient(EMAIL));
+        var verification =
+                factory().newCredentialChangeVerification(USER_ID, new EmailRecipient(EMAIL));
 
         verify(randomStringGenerator).generate(eq(PositiveInt.of(6)), eq(Alphabet.DIGITS));
         assertThat(verification.getState()).isEqualTo(VerificationState.I);

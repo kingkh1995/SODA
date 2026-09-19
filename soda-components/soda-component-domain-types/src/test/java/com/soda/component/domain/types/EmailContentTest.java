@@ -1,6 +1,11 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
 import com.soda.component.domain.testutil.DomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,18 +15,18 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-
 @DisplayName("EmailContent 值对象")
 class EmailContentTest extends DomainPrimitiveContractTest<EmailContent> {
 
     @Override
     protected Contract<EmailContent> contract() {
-        return new Contract<>(EmailContent.class, () -> new EmailContent("a", "b"),
-                "{\"subject\":\"a\",\"body\":\"b\"}", "EmailContent[subject=a, body=b]",
-                "{}", () -> new EmailContent("c", "b"));
+        return new Contract<>(
+                EmailContent.class,
+                () -> new EmailContent("a", "b"),
+                "{\"subject\":\"a\",\"body\":\"b\"}",
+                "EmailContent[subject=a, body=b]",
+                "{}",
+                () -> new EmailContent("c", "b"));
     }
 
     @Nested
@@ -69,7 +74,11 @@ class EmailContentTest extends DomainPrimitiveContractTest<EmailContent> {
         @Test
         @DisplayName("主题超过最大长度拒绝")
         void should_throw_when_subjectTooLong() {
-            assertThatThrownBy(() -> new EmailContent("a".repeat(EmailContent.SUBJECT_MAX_LENGTH + 1), "body"))
+            assertThatThrownBy(
+                            () ->
+                                    new EmailContent(
+                                            "a".repeat(EmailContent.SUBJECT_MAX_LENGTH + 1),
+                                            "body"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }

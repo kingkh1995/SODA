@@ -1,5 +1,8 @@
 package com.soda.user.infrastructure.gateway.persistence;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
@@ -13,6 +16,7 @@ import com.soda.user.domain.types.Username;
 import com.soda.user.infrastructure.persistence.UserPO;
 import com.soda.user.infrastructure.repository.UserArchiveRepository;
 import com.soda.user.infrastructure.repository.UserRepository;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,14 +26,10 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
- * {@link UserGatewayImpl} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）——
- * 创建路径 id 回填与审计列、更新乐观锁递增、D→R 注销迁移（归档快照 + 键释放）、
- * 终态行兜底守卫、登录开关列 → 账户 active 派生映射（ADR-0004/0023/0024）。
- * 边际用途：save 路由守卫与归档/键释放的真库行为——User 写路径行为矩阵单源。
+ * {@link UserGatewayImpl} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）—— 创建路径 id 回填与审计列、更新乐观锁递增、D→R
+ * 注销迁移（归档快照 + 键释放）、 终态行兜底守卫、登录开关列 → 账户 active 派生映射（ADR-0004/0023/0024）。 边际用途：save
+ * 路由守卫与归档/键释放的真库行为——User 写路径行为矩阵单源。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -37,23 +37,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("UserGatewayImpl 真库行为")
 class UserGatewayImplPersistenceTest {
 
-    private static final String HASH = "$2a$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRST";
+    private static final String HASH =
+            "$2a$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRST";
 
-    @Autowired
-    private UserGatewayImpl gateway;
+    @Autowired private UserGatewayImpl gateway;
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository userRepository;
 
-    @Autowired
-    private UserArchiveRepository userArchiveRepository;
+    @Autowired private UserArchiveRepository userArchiveRepository;
 
-    @Autowired
-    private TestEntityManager em;
+    @Autowired private TestEntityManager em;
 
-    /**
-     * 领域聚合内联 fixture：全字段创建态（E），mobile/email 均绑定。
-     */
+    /** 领域聚合内联 fixture：全字段创建态（E），mobile/email 均绑定。 */
     private static User newUser() {
         return User.createBuilder()
                 .username(new Username("alice"))
@@ -194,8 +189,7 @@ class UserGatewayImplPersistenceTest {
             em.flush();
             em.clear();
 
-            assertThatThrownBy(() -> gateway.save(stale))
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> gateway.save(stale)).isInstanceOf(IllegalStateException.class);
 
             var row = userRepository.findById(id.value()).orElseThrow();
             assertThat(row.getState()).isEqualTo("R");

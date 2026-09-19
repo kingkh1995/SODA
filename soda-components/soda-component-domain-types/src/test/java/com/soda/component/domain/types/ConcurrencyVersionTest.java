@@ -1,22 +1,29 @@
 package com.soda.component.domain.types;
 
+import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.util.TypeConfig;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static com.soda.component.domain.testutil.JacksonTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("ConcurrencyVersion 值对象")
 class ConcurrencyVersionTest extends ComparableDomainPrimitiveContractTest<ConcurrencyVersion> {
 
     @Override
     protected Contract<ConcurrencyVersion> contract() {
-        return new Contract<>(ConcurrencyVersion.class, () -> ConcurrencyVersion.of(42), "42",
-                "ConcurrencyVersion[value=42]", "\"not-a-number\"", () -> ConcurrencyVersion.of(43));
+        return new Contract<>(
+                ConcurrencyVersion.class,
+                () -> ConcurrencyVersion.of(42),
+                "42",
+                "ConcurrencyVersion[value=42]",
+                "\"not-a-number\"",
+                () -> ConcurrencyVersion.of(43));
     }
 
     @Nested
@@ -123,7 +130,8 @@ class ConcurrencyVersionTest extends ComparableDomainPrimitiveContractTest<Concu
             var right = ConcurrencyVersion.of(value);
             assertThat(left).isEqualTo(right);
             assertThat(left).hasSameHashCodeAs(right);
-            assertThat(MAPPER.readValue(MAPPER.writeValueAsString(left), ConcurrencyVersion.class)).isEqualTo(left);
+            assertThat(MAPPER.readValue(MAPPER.writeValueAsString(left), ConcurrencyVersion.class))
+                    .isEqualTo(left);
         }
     }
 

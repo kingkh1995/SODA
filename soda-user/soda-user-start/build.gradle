@@ -5,8 +5,7 @@ apply plugin: 'org.springframework.boot'
 // (query-server may have its own DAO layer in future).
 dependencies {
     implementation project(':soda-components:soda-component-start-starter')
-    // JPA 扫描注解（@EntityScan/@EnableJpaRepositories）编译期需要；运行期实现来自 infra 模块
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // 启动类只剩 @SpringBootApplication：JPA 扫描根由 infra 自持，本模块不再需要任何 JPA 编译期依赖
     runtimeOnly project(':soda-user:soda-user-adapter')
     runtimeOnly project(':soda-user:soda-user-infrastructure')
     // H2 内存库 MODE=MySQL（主 application.yml 数据源，ADR-0022）：运行时类路径必需
@@ -14,7 +13,11 @@ dependencies {
     runtimeOnly 'com.h2database:h2'
     // 集成测试编译期引用 api（UserService/UserAuthService）与 domain（gateway/聚合）
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    // 集成测试直接用 JdbcTemplate 断言落库状态、断言乐观锁异常类型；
+    // 原先由 starter-data-jpa 的传递依赖带入，现按需最小声明（版本由 Boot BOM 管理）
+    testImplementation 'org.springframework:spring-jdbc'
+    testImplementation 'org.springframework:spring-orm'
     testImplementation project(':soda-user:soda-user-api')
     testImplementation project(':soda-user:soda-user-domain')
-    testImplementation project(':soda-supports:soda-support-modulith')
+    testImplementation(testFixtures(project(':soda-supports:soda-support-modulith')))
 }

@@ -1,18 +1,20 @@
 package com.soda.user.domain;
 
+import static com.soda.user.domain.DomainTestUtil.MAPPER;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.component.domain.types.Mobile;
 import com.soda.user.domain.types.AuthAccountType;
 import com.soda.user.domain.types.SmsAuthAccountId;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static com.soda.user.domain.DomainTestUtil.MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("SmsAuthAccountId 值对象")
 class SmsAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SmsAuthAccountId> {
@@ -21,8 +23,12 @@ class SmsAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SmsAuth
 
     @Override
     protected Contract<SmsAuthAccountId> contract() {
-        return new Contract<>(SmsAuthAccountId.class, () -> SmsAuthAccountId.of("S:13800138000"),
-                "\"S:13800138000\"", "SmsAuthAccountId[value=S:13800138000]", "\"invalid\"",
+        return new Contract<>(
+                SmsAuthAccountId.class,
+                () -> SmsAuthAccountId.of("S:13800138000"),
+                "\"S:13800138000\"",
+                "SmsAuthAccountId[value=S:13800138000]",
+                "\"invalid\"",
                 () -> SmsAuthAccountId.of("S:13900139000"));
     }
 
@@ -53,7 +59,8 @@ class SmsAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SmsAuth
         @Test
         @DisplayName("authAccountType 返回 S")
         void should_returnS_when_authAccountType() {
-            assertThat(SmsAuthAccountId.of("S:13800138000").accountType()).isEqualTo(AuthAccountType.S);
+            assertThat(SmsAuthAccountId.of("S:13800138000").accountType())
+                    .isEqualTo(AuthAccountType.S);
         }
     }
 
@@ -100,7 +107,8 @@ class SmsAuthAccountIdTest extends ComparableDomainPrimitiveContractTest<SmsAuth
         @Test
         @DisplayName("identifier 返回规范化编码值")
         void should_returnCanonicalValue_when_identifier() {
-            assertThat(SmsAuthAccountId.of("S:13800138000").identifier()).isEqualTo("S:13800138000");
+            assertThat(SmsAuthAccountId.of("S:13800138000").identifier())
+                    .isEqualTo("S:13800138000");
         }
     }
 }

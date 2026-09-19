@@ -6,13 +6,11 @@ import com.soda.component.domain.types.LongId;
 import com.soda.component.domain.util.ParseUtils;
 import com.soda.component.domain.util.ValidateUtils;
 
-
 /**
  * 用户标识符 DP — 服务端生成（DB 自增），不可变、自校验、可比较。
- * <p>
- * 作为 {@link com.soda.component.domain.Entity Entity&lt;UserId&gt;} 的标识符。
- * 值对应 {@code system_user.id} 主键。
- * 值域 value ≥ 1：0 与负数非法（与 {@link LongId} 同一校验器语义）。
+ *
+ * <p>作为 {@link com.soda.component.domain.Entity Entity&lt;UserId&gt;} 的标识符。 值对应 {@code
+ * system_user.id} 主键。 值域 value ≥ 1：0 与负数非法（与 {@link LongId} 同一校验器语义）。
  *
  * @see Identifier
  */
@@ -36,9 +34,7 @@ public record UserId(long value) implements Identifier<Long>, LongLiteralType, C
         return Long.compare(value, other.value);
     }
 
-    /**
-     * 转换为通用 {@link LongId}。
-     */
+    /** 转换为通用 {@link LongId}。 */
     public LongId toLongId() {
         return new LongId(value);
     }

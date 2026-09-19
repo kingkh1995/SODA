@@ -1,15 +1,16 @@
 package com.soda.user.domain;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
 import com.soda.user.domain.types.Nickname;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Nickname 值对象")
 class NicknameTest extends ComparableDomainPrimitiveContractTest<Nickname> {
@@ -18,8 +19,13 @@ class NicknameTest extends ComparableDomainPrimitiveContractTest<Nickname> {
 
     @Override
     protected Contract<Nickname> contract() {
-        return new Contract<>(Nickname.class, () -> new Nickname("nick"), "\"nick\"",
-                "Nickname[value=nick]", "{}", () -> new Nickname("zack"));
+        return new Contract<>(
+                Nickname.class,
+                () -> new Nickname("nick"),
+                "\"nick\"",
+                "Nickname[value=nick]",
+                "{}",
+                () -> new Nickname("zack"));
     }
 
     @Nested
@@ -55,14 +61,22 @@ class NicknameTest extends ComparableDomainPrimitiveContractTest<Nickname> {
         void should_throw_when_nullOrEmpty() {
             assertThatThrownBy(() -> new Nickname(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new Nickname(""))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new Nickname("")).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new Nickname("  "))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"hello world", "sp ace", "tab\t", "new\nline", "line\rbreak", "lead ", " trail"})
+        @ValueSource(
+                strings = {
+                    "hello world",
+                    "sp ace",
+                    "tab\t",
+                    "new\nline",
+                    "line\rbreak",
+                    "lead ",
+                    " trail"
+                })
         @DisplayName("含空白字符拒绝")
         void should_throw_when_whitespace(String whitespace) {
             assertThatThrownBy(() -> new Nickname(whitespace))

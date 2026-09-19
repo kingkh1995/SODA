@@ -2,15 +2,16 @@ package com.soda.component.domain.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.soda.component.domain.util.ValidateUtils;
+
 import lombok.EqualsAndHashCode;
 
 import java.util.regex.Pattern;
 
 /**
  * 手机号 DP —— 中国手机号格式校验，不可变、自校验。
- * <p>
- * {@code maskedValue()} 由 {@link MaskedMobile} 的掩码算法即时生成；{@code toString()} 输出脱敏值；
- * JSON 序列化（{@link #value()}）保持明文。
+ *
+ * <p>{@code maskedValue()} 由 {@link MaskedMobile} 的掩码算法即时生成；{@code toString()} 输出脱敏值； JSON
+ * 序列化（{@link #value()}）保持明文。
  *
  * @see SensitiveValue
  * @see MaskedMobile 掩码权威实现
@@ -26,9 +27,7 @@ public final class Mobile extends SensitiveValue {
         ValidateUtils.matches(value, PATTERN);
     }
 
-    /**
-     * 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。
-     */
+    /** 工厂 —— 校验统一在 {@code SensitiveValue} 构造器与 {@code matches}（单一入口点）。 */
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static Mobile of(String raw) {
         return new Mobile(raw);

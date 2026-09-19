@@ -1,5 +1,8 @@
 package com.soda.user.infrastructure.gateway.persistence;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.Uuid;
 import com.soda.user.domain.Verification;
@@ -9,6 +12,7 @@ import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
 import com.soda.user.infrastructure.persistence.VerificationPO;
 import com.soda.user.infrastructure.repository.VerificationRepository;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,15 +27,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 /**
- * {@link VerificationGatewayImpl} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）——
- * save 路由（首存 INSERT / P 态更新 / U 终态清 active_key）、INSERT 前惰性腾槽真删行、
- * 终态行兜底守卫、槽位预检与消费反查的领域侧派发（ADR-0023/0026）。DATETIME 列秒级
- * 精度（对齐真 MySQL 默认），时刻 fixture 一律截断到秒。
- * 边际用途：VerificationGatewayImpl 的 save 行为矩阵单源（路由/守卫/腾槽机制在此一层钉死）。
+ * {@link VerificationGatewayImpl} 真库行为（H2 MODE=MySQL + Flyway V1，ADR-0022）—— save 路由（首存 INSERT / P
+ * 态更新 / U 终态清 active_key）、INSERT 前惰性腾槽真删行、 终态行兜底守卫、槽位预检与消费反查的领域侧派发（ADR-0023/0026）。DATETIME 列秒级
+ * 精度（对齐真 MySQL 默认），时刻 fixture 一律截断到秒。 边际用途：VerificationGatewayImpl 的 save 行为矩阵单源（路由/守卫/腾槽机制在此一层钉死）。
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -42,22 +41,20 @@ class VerificationGatewayImplPersistenceTest {
     private static final VerificationSource SOURCE = new VerificationSource("UCC", "42");
     private static final VerificationSource OTHER_SOURCE = new VerificationSource("UCC", "43");
     private static final String MOBILE = "13800138000";
-    private static final Instant FUTURE = Instant.now().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
-    private static final Instant PAST = Instant.now().minusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
+    private static final Instant FUTURE =
+            Instant.now().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
+    private static final Instant PAST =
+            Instant.now().minusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
 
-    @Autowired
-    private VerificationGatewayImpl gateway;
+    @Autowired private VerificationGatewayImpl gateway;
 
-    @Autowired
-    private VerificationRepository verificationRepository;
+    @Autowired private VerificationRepository verificationRepository;
 
-    @Autowired
-    private TestEntityManager em;
+    @Autowired private TestEntityManager em;
 
-    /**
-     * 领域聚合内联 fixture：短信通道、固定码与未过期时刻。
-     */
-    private static Verification verification(String id, VerificationSource source, VerificationState state) {
+    /** 领域聚合内联 fixture：短信通道、固定码与未过期时刻。 */
+    private static Verification verification(
+            String id, VerificationSource source, VerificationState state) {
         return Verification.builder()
                 .id(new Uuid(id))
                 .source(source)
@@ -67,12 +64,9 @@ class VerificationGatewayImplPersistenceTest {
                 .build();
     }
 
-    /**
-     * 持久化行内联 fixture（直接以行状态铺底，模拟既有数据）；终态 U 行清 NULL 活跃键
-     * （终态不占槽，ADR-0026）。
-     */
-    private static VerificationPO seedRow(String id, VerificationSource source, VerificationState state,
-                                          Instant expireAt) {
+    /** 持久化行内联 fixture（直接以行状态铺底，模拟既有数据）；终态 U 行清 NULL 活跃键 （终态不占槽，ADR-0026）。 */
+    private static VerificationPO seedRow(
+            String id, VerificationSource source, VerificationState state, Instant expireAt) {
         var e = new VerificationPO();
         e.setId(id);
         e.setScene(source.scene());
@@ -173,7 +167,10 @@ class VerificationGatewayImplPersistenceTest {
                     seedRow(terminalId, SOURCE, VerificationState.U, FUTURE));
             em.clear();
 
-            assertThatThrownBy(() -> gateway.save(verification(terminalId, SOURCE, VerificationState.P)))
+            assertThatThrownBy(
+                            () ->
+                                    gateway.save(
+                                            verification(terminalId, SOURCE, VerificationState.P)))
                     .isInstanceOf(IllegalStateException.class);
 
             var row = verificationRepository.findById(terminalId).orElseThrow();
@@ -189,7 +186,8 @@ class VerificationGatewayImplPersistenceTest {
         @Test
         @DisplayName("存在未过期活跃行时槽位被占用")
         void should_reportOccupied_when_liveRowExists() {
-            verificationRepository.saveAndFlush(seedRow(uuid(), SOURCE, VerificationState.P, FUTURE));
+            verificationRepository.saveAndFlush(
+                    seedRow(uuid(), SOURCE, VerificationState.P, FUTURE));
 
             assertThat(gateway.existsBySource(SOURCE)).isTrue();
         }
@@ -202,10 +200,7 @@ class VerificationGatewayImplPersistenceTest {
             assertThat(gateway.existsBySource(SOURCE)).isFalse();
         }
 
-        /**
-         * 同一 source 下非空活跃键至多一行（uk_active_key），候选集内合法共存的更晚行
-         * 只能是终态 U（NULL 键）或其他主体。
-         */
+        /** 同一 source 下非空活跃键至多一行（uk_active_key），候选集内合法共存的更晚行 只能是终态 U（NULL 键）或其他主体。 */
         @Test
         @DisplayName("消费反查命中未过期 P 行并还原领域聚合——更晚的 U 行与其他主体不干扰")
         void should_loadLatestPendingMapped_ignoringLaterTerminal_andOtherSubjects() {
@@ -221,12 +216,15 @@ class VerificationGatewayImplPersistenceTest {
 
             var loaded = gateway.findLatestBySourceAndStateIn(SOURCE, List.of(VerificationState.P));
 
-            assertThat(loaded).hasValueSatisfying(v -> {
-                assertThat(v.getId()).isEqualTo(new Uuid(livePending.getId()));
-                assertThat(v.getSource()).isEqualTo(SOURCE);
-                assertThat(v.getState()).isEqualTo(VerificationState.P);
-                assertThat(v.getRecipient()).isEqualTo(new SmsRecipient(Mobile.of(MOBILE)));
-            });
+            assertThat(loaded)
+                    .hasValueSatisfying(
+                            v -> {
+                                assertThat(v.getId()).isEqualTo(new Uuid(livePending.getId()));
+                                assertThat(v.getSource()).isEqualTo(SOURCE);
+                                assertThat(v.getState()).isEqualTo(VerificationState.P);
+                                assertThat(v.getRecipient())
+                                        .isEqualTo(new SmsRecipient(Mobile.of(MOBILE)));
+                            });
         }
     }
 }

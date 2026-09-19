@@ -1,5 +1,12 @@
 package com.soda.user.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.soda.component.api.error.ConflictException;
 import com.soda.component.api.error.NotFoundException;
 import com.soda.component.domain.DomainEvent;
@@ -40,6 +47,7 @@ import com.soda.user.domain.types.Username;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -56,21 +64,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * {@link UserAuthServiceImpl} 单元测试（发码用例见 ADR-0026）。
- * <p>
- * 发码用例（requestChangeMobile / requestChangeEmail）：前置（加载用户启用态 + 非终态
- * + target ≠ 当前值 + 目标全局唯一 + 无活跃验证）→ {@link UserVerificationFactory} 构造
- * INITIALIZED 验证聚合 → save → 发布 {@link VerificationCreatedEvent}。
- * <p>
- * 消费用例（changePassword / changeMobile / changeEmail）：加载 User + 按 source 键控加载
+ *
+ * <p>发码用例（requestChangeMobile / requestChangeEmail）：前置（加载用户启用态 + 非终态 + target ≠ 当前值 + 目标全局唯一 +
+ * 无活跃验证）→ {@link UserVerificationFactory} 构造 INITIALIZED 验证聚合 → save → 发布 {@link
+ * VerificationCreatedEvent}。
+ *
+ * <p>消费用例（changePassword / changeMobile / changeEmail）：加载 User + 按 source 键控加载
  * 待验证聚合（findLatestBySourceAndStateIn）→ verify → change → use（{@link CredentialChangeDomainService}）
  * → 同事务双 save；失败路径（错码/过期）不落库（实体无变更）。
  */
@@ -83,19 +84,14 @@ class UserAuthServiceImplTest {
     private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
     private static final Email NEW_EMAIL = Email.of("new@test.com");
     private static final String VALID_CODE = "123456";
-    private static final PasswordHash STUB_HASH = PasswordHash.of(
-            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+    private static final PasswordHash STUB_HASH =
+            PasswordHash.of("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
 
-    @Mock
-    private UserGateway userGateway;
-    @Mock
-    private VerificationGateway verificationGateway;
-    @Mock
-    private DomainEventBus domainEventBus;
-    @Mock
-    private PasswordHasher passwordHasher;
-    @Mock
-    private RandomStringGenerator randomStringGenerator;
+    @Mock private UserGateway userGateway;
+    @Mock private VerificationGateway verificationGateway;
+    @Mock private DomainEventBus domainEventBus;
+    @Mock private PasswordHasher passwordHasher;
+    @Mock private RandomStringGenerator randomStringGenerator;
 
     private UserAuthServiceImpl service;
 
@@ -112,11 +108,12 @@ class UserAuthServiceImplTest {
                 .state(UserState.E)
                 .mobile(mobile)
                 .email(email)
-                .passwordAccount(PasswordAuthAccount.builder()
-                        .id(PasswordAuthAccountId.from(USER_ID))
-                        .active(Active.TRUE)
-                        .passwordHash(STUB_HASH)
-                        .build())
+                .passwordAccount(
+                        PasswordAuthAccount.builder()
+                                .id(PasswordAuthAccountId.from(USER_ID))
+                                .active(Active.TRUE)
+                                .passwordHash(STUB_HASH)
+                                .build())
                 .accounts(List.of())
                 .build();
     }
@@ -161,13 +158,11 @@ class UserAuthServiceImplTest {
 
     private void stubPendingVerification(Verification pending) {
         when(verificationGateway.findLatestBySourceAndStateIn(
-                UCC_SOURCE, List.of(VerificationState.P)))
+                        UCC_SOURCE, List.of(VerificationState.P)))
                 .thenReturn(pending == null ? Optional.empty() : Optional.of(pending));
     }
 
-    /**
-     * 断言最近一次发布的事件恰为单个 {@link VerificationCreatedEvent}。
-     */
+    /** 断言最近一次发布的事件恰为单个 {@link VerificationCreatedEvent}。 */
     @SuppressWarnings("unchecked")
     private void assertPublishedVerificationCreatedEvent() {
         ArgumentCaptor<Iterable<DomainEvent<?>>> captor = ArgumentCaptor.forClass(Iterable.class);
@@ -180,10 +175,14 @@ class UserAuthServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserAuthServiceImpl(userGateway, verificationGateway,
-                new CredentialChangeDomainService(),
-                domainEventBus, passwordHasher,
-                new UserVerificationFactory(randomStringGenerator));
+        service =
+                new UserAuthServiceImpl(
+                        userGateway,
+                        verificationGateway,
+                        new CredentialChangeDomainService(),
+                        domainEventBus,
+                        passwordHasher,
+                        new UserVerificationFactory(randomStringGenerator));
     }
 
     @Nested
@@ -213,15 +212,22 @@ class UserAuthServiceImplTest {
         @DisplayName("用户处于禁用态（D）：拒绝发码（启用态前置，ADR-0021），不落库不发布")
         void should_throw_when_userDisabled() {
             when(userGateway.findById(USER_ID))
-                    .thenReturn(Optional.of(User.builder()
-                            .id(USER_ID).version(ConcurrencyVersion.of(1))
-                            .username(new Username("testuser")).nickname(new Nickname("Test_User"))
-                            .state(UserState.D)
-                            .passwordAccount(stubPasswordAccount())
-                            .accounts(List.of()).build()));
+                    .thenReturn(
+                            Optional.of(
+                                    User.builder()
+                                            .id(USER_ID)
+                                            .version(ConcurrencyVersion.of(1))
+                                            .username(new Username("testuser"))
+                                            .nickname(new Nickname("Test_User"))
+                                            .state(UserState.D)
+                                            .passwordAccount(stubPasswordAccount())
+                                            .accounts(List.of())
+                                            .build()));
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("user must be enabled");
             verify(verificationGateway, never()).save(any());
@@ -232,15 +238,22 @@ class UserAuthServiceImplTest {
         @DisplayName("用户处于注销终态（R）：拒绝发码（终态禁写），不落库不发布")
         void should_throw_when_userDeregistered() {
             when(userGateway.findById(USER_ID))
-                    .thenReturn(Optional.of(User.builder()
-                            .id(USER_ID).version(ConcurrencyVersion.of(1))
-                            .username(new Username("testuser")).nickname(new Nickname("Test_User"))
-                            .state(UserState.R)
-                            .passwordAccount(stubPasswordAccount())
-                            .accounts(List.of()).build()));
+                    .thenReturn(
+                            Optional.of(
+                                    User.builder()
+                                            .id(USER_ID)
+                                            .version(ConcurrencyVersion.of(1))
+                                            .username(new Username("testuser"))
+                                            .nickname(new Nickname("Test_User"))
+                                            .state(UserState.R)
+                                            .passwordAccount(stubPasswordAccount())
+                                            .accounts(List.of())
+                                            .build()));
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("terminal state");
             verify(verificationGateway, never()).save(any());
@@ -249,10 +262,13 @@ class UserAuthServiceImplTest {
         @Test
         @DisplayName("目标与原手机号相同：抛异常，不落库不发布")
         void should_throw_when_sameMobile() {
-            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWith(NEW_MOBILE, null)));
+            when(userGateway.findById(USER_ID))
+                    .thenReturn(Optional.of(createUserWith(NEW_MOBILE, null)));
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Cannot change to the same mobile");
             verify(verificationGateway, never()).save(any());
@@ -265,8 +281,10 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(userGateway.existsByMobile(NEW_MOBILE)).thenReturn(true);
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(ConflictException.class)
                     .hasMessage("Mobile already exists: " + NEW_MOBILE.value());
             verify(verificationGateway, never()).save(any());
@@ -278,8 +296,10 @@ class UserAuthServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
             verify(verificationGateway, never()).save(any());
@@ -293,8 +313,10 @@ class UserAuthServiceImplTest {
                     .thenReturn(new RandomString(VALID_CODE));
             when(verificationGateway.existsBySource(UCC_SOURCE)).thenReturn(true);
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("active verification already exists");
 
@@ -324,8 +346,10 @@ class UserAuthServiceImplTest {
             when(verificationGateway.save(any(Verification.class)))
                     .thenThrow(new DataIntegrityViolationException("uk_active_key"));
 
-            assertThatThrownBy(() -> service.requestChangeMobile(
-                    new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeMobile(
+                                            new RequestChangeMobileCommand(1L, NEW_MOBILE.value())))
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("uk_active_key");
             verify(domainEventBus, never()).publishAll(any());
@@ -357,10 +381,13 @@ class UserAuthServiceImplTest {
         @Test
         @DisplayName("目标与原邮箱相同：抛异常，不落库不发布")
         void should_throw_when_sameEmail() {
-            when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUserWith(null, NEW_EMAIL)));
+            when(userGateway.findById(USER_ID))
+                    .thenReturn(Optional.of(createUserWith(null, NEW_EMAIL)));
 
-            assertThatThrownBy(() -> service.requestChangeEmail(
-                    new RequestChangeEmailCommand(1L, NEW_EMAIL.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeEmail(
+                                            new RequestChangeEmailCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Cannot change to the same email");
             verify(verificationGateway, never()).save(any());
@@ -373,8 +400,10 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             when(userGateway.existsByEmail(NEW_EMAIL)).thenReturn(true);
 
-            assertThatThrownBy(() -> service.requestChangeEmail(
-                    new RequestChangeEmailCommand(1L, NEW_EMAIL.value())))
+            assertThatThrownBy(
+                            () ->
+                                    service.requestChangeEmail(
+                                            new RequestChangeEmailCommand(1L, NEW_EMAIL.value())))
                     .isInstanceOf(ConflictException.class)
                     .hasMessage("Email already exists: " + NEW_EMAIL.value());
             verify(verificationGateway, never()).save(any());
@@ -391,10 +420,12 @@ class UserAuthServiceImplTest {
         void should_changePasswordAndPublishEvents_when_userExists() {
             var user = createUser();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class))).thenReturn(true);
+            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class)))
+                    .thenReturn(true);
             when(passwordHasher.hash(any(SecretValue.class))).thenReturn(STUB_HASH);
 
-            service.changePassword(new ChangePasswordCommand(1L, "oldPassword123", "newPassword123"));
+            service.changePassword(
+                    new ChangePasswordCommand(1L, "oldPassword123", "newPassword123"));
 
             verify(userGateway).save(user);
             verify(domainEventBus).publishAll(any());
@@ -405,10 +436,14 @@ class UserAuthServiceImplTest {
         void should_throw_when_oldPasswordMismatch() {
             var user = createUser();
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
-            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class))).thenReturn(false);
+            when(passwordHasher.verify(any(PasswordHash.class), any(SecretValue.class)))
+                    .thenReturn(false);
 
-            assertThatThrownBy(() ->
-                    service.changePassword(new ChangePasswordCommand(1L, "wrongPassword", "newPassword123")))
+            assertThatThrownBy(
+                            () ->
+                                    service.changePassword(
+                                            new ChangePasswordCommand(
+                                                    1L, "wrongPassword", "newPassword123")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Invalid old password");
             verify(userGateway, never()).save(any());
@@ -420,8 +455,11 @@ class UserAuthServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    service.changePassword(new ChangePasswordCommand(1L, "oldPassword123", "newPassword123")))
+            assertThatThrownBy(
+                            () ->
+                                    service.changePassword(
+                                            new ChangePasswordCommand(
+                                                    1L, "oldPassword123", "newPassword123")))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
         }
@@ -456,8 +494,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
             stubPendingVerification(pending);
 
-            assertThatThrownBy(() ->
-                    service.changeMobile(new ChangeMobileCommand(1L, "000000")))
+            assertThatThrownBy(() -> service.changeMobile(new ChangeMobileCommand(1L, "000000")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Invalid verification code");
 
@@ -473,8 +510,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
             stubPendingVerification(expired);
 
-            assertThatThrownBy(() ->
-                    service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
+            assertThatThrownBy(() -> service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class);
 
             verify(verificationGateway, never()).save(any());
@@ -486,8 +522,7 @@ class UserAuthServiceImplTest {
         void should_throw_when_userNotFound() {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
+            assertThatThrownBy(() -> service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessageContaining("User not found");
             verify(verificationGateway, never()).save(any());
@@ -499,8 +534,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             stubPendingVerification(null);
 
-            assertThatThrownBy(() ->
-                    service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
+            assertThatThrownBy(() -> service.changeMobile(new ChangeMobileCommand(1L, VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("No pending verification");
             verify(userGateway, never()).save(any());
@@ -536,8 +570,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(user));
             stubPendingVerification(pending);
 
-            assertThatThrownBy(() ->
-                    service.changeEmail(new ChangeEmailCommand(1L, "000000")))
+            assertThatThrownBy(() -> service.changeEmail(new ChangeEmailCommand(1L, "000000")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Invalid verification code");
 
@@ -551,8 +584,7 @@ class UserAuthServiceImplTest {
             when(userGateway.findById(USER_ID)).thenReturn(Optional.of(createUser()));
             stubPendingVerification(null);
 
-            assertThatThrownBy(() ->
-                    service.changeEmail(new ChangeEmailCommand(1L, VALID_CODE)))
+            assertThatThrownBy(() -> service.changeEmail(new ChangeEmailCommand(1L, VALID_CODE)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("No pending verification");
             verify(userGateway, never()).save(any());

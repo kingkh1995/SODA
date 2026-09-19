@@ -1,6 +1,10 @@
 package com.soda.component.domain.types;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.soda.component.domain.testutil.ComparableDomainPrimitiveContractTest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,16 +14,18 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @DisplayName("WanYuan 值对象")
 class WanYuanTest extends ComparableDomainPrimitiveContractTest<WanYuan> {
 
     @Override
     protected Contract<WanYuan> contract() {
-        return new Contract<>(WanYuan.class, () -> WanYuan.of("1.5"), "\"1.50\"",
-                "WanYuan[value=1.50]", "{}", () -> WanYuan.of("9.99"));
+        return new Contract<>(
+                WanYuan.class,
+                () -> WanYuan.of("1.5"),
+                "\"1.50\"",
+                "WanYuan[value=1.50]",
+                "{}",
+                () -> WanYuan.of("9.99"));
     }
 
     @Nested
@@ -46,15 +52,13 @@ class WanYuanTest extends ComparableDomainPrimitiveContractTest<WanYuan> {
         @Test
         @DisplayName("null 拒绝")
         void should_throw_when_valueIsNull() {
-            assertThatThrownBy(() -> WanYuan.of(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> WanYuan.of(null)).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("空字符串拒绝")
         void should_throw_when_valueIsEmpty() {
-            assertThatThrownBy(() -> WanYuan.of(""))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> WanYuan.of("")).isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
@@ -89,11 +93,11 @@ class WanYuanTest extends ComparableDomainPrimitiveContractTest<WanYuan> {
 
         @ParameterizedTest(name = "{0} -> {1}")
         @CsvSource({
-                "15000, 15000.00",
-                "15000.0, 15000.00",
-                "15000.00, 15000.00",
-                "0, 0.00",
-                "-5.0, -5.00"
+            "15000, 15000.00",
+            "15000.0, 15000.00",
+            "15000.00, 15000.00",
+            "0, 0.00",
+            "-5.0, -5.00"
         })
         @DisplayName("同构值归一化幂等：规范串唯一，重复解析等值")
         void should_beIdempotent_when_isomorphicValues(String raw, String canonical) {
@@ -101,7 +105,6 @@ class WanYuanTest extends ComparableDomainPrimitiveContractTest<WanYuan> {
             assertThat(normalized.value()).isEqualTo(canonical);
             assertThat(WanYuan.of(normalized.value())).isEqualTo(normalized);
         }
-
     }
 
     @Nested
