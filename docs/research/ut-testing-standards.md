@@ -167,7 +167,8 @@ sources:
 
 **覆盖率数字**：无。
 
-**适用性**：**低**。其「入口冒烟测试」形态 SODA 已有更完整的对应物（start 层 ModulithTest + E2E）；support 模块纯单测风格与 SODA 组件测试（`soda-component-domain-types` 的 DP 测试）同构但更简陋。无可借鉴的新规则。
+**适用性**： **低**。其「入口冒烟测试」形态在 SODA 由全仓 Modulith 架构门禁与 E2E 共同覆盖；support 模块纯单测风格与 SODA
+组件测试（`soda-component-domain-types` 的 DP 测试）同构但更简陋。无可借鉴的新规则。
 
 ### 1.8 COLA（仓库只读调查）
 
@@ -205,10 +206,10 @@ sources:
 
 理由（对应本节约束）：
 
-1. **与现状一致**：SODA 现有 63 个测试文件已天然呈现该组合——domain 层按 `dp-test-conventions.md` 测 DP；application 层（
-   `UserServiceImplTest` 等）为 `@ExtendWith(MockitoExtension.class)` + `@Mock` 边界的纯 Mockito 单测；adapter 层（
-   `UserControllerTest`）直接 new 控制器 + mock 服务 + MapStruct `Mappers.getMapper`；infrastructure 层 mock repository 测
-   gateway 逻辑；start 层为 ModulithTest + 少量 @SpringBootTest E2E。推荐基准 = **把既有好实践显式化**，而非引入新范式。
+1. **与现状一致**：SODA 现有测试文件已天然呈现该组合——domain 层按 `dp-test-conventions.md` 测 DP；application 层为
+   `@ExtendWith(MockitoExtension.class)` + `@Mock` 边界的纯 Mockito 单测；adapter 层直接 new 控制器 + mock 服务 +
+   MapStruct `Mappers.getMapper`；infrastructure 层 mock repository 测 gateway 逻辑；全仓 Modulith 门禁归
+   `soda-support-modulith`，start 层保留少量 @SpringBootTest E2E。推荐基准 = **把既有好实践显式化**，而非引入新范式。
 2. **覆盖率为发现工具而非门禁**（Google SWE 书 / TotT / Fowler / Khorikov 四方一致）：V1 无 CI、无 JaCoCo，设数字门既无执行载体，又会诱发「凑覆盖率」行为（80% 天花板效应）。这与 `dp-test-conventions.md` 现状一致——该文档通篇无覆盖率要求。
 3. **Khorikov 第 7 章分类解决「各层测什么」**：这正是 `dp-test-conventions.md` 要推广到其他层时最缺的一环。
 
@@ -222,7 +223,7 @@ sources:
 | adapter（web/job/consumer） | Controllers（薄）                                         | 请求→命令映射、DTO 组装、状态码/响应结构                                                                | **Mockito 单测**：直接实例化 controller/assembler（`UserControllerTest` 为模板）；仅当需验证 MVC 映射/参数校验/序列化时用 `@WebMvcTest` + `@MockitoBean`（多切片不叠加）                                                                         | Mockito, MapStruct `Mappers`, 可选 @WebMvcTest |
 | infrastructure              | 混合：convertor/gateway 逻辑=domain-like；repository=边界 | convertor 双向映射 round-trip；gateway 状态机/守卫逻辑（mock repository）；repository 真库行为          | convertor 用 Mockito 单测（`UserConvertorTest` 为模板）；gateway/repository 真库行为矩阵用 `@DataJpaTest` 切片（`VerificationGatewayImplPersistenceTest` 为模板——内嵌 H2，默认事务回滚，SODA 主数据源即 H2，见 ADR-0022 开发阶段数据库管理约定） | Mockito, @DataJpaTest, TestEntityManager       |
 | query-server                | Controllers（读侧编排）                                   | 读模型 DTO 映射、投影/查询组装逻辑                                                                      | **当前 `src/test` 为空——新增范围**：读侧查询组装用 Mockito 单测；读模型序列化用 `@JsonTest`                                                                                                                                                      | Mockito, @JsonTest                             |
-| start                       | —（组装）                                                 | 模块依赖（ModulithTest）、上下文可启动、关键端到端路径                                                  | 保留现有 3 个测试；**数量受控**——E2E 是第二道防线（Fowler），新行为先在低层补单测再考虑 E2E                                                                                                                                                      | spring-modulith-starter-test, @SpringBootTest  |
+| start                       | —（组装）                                                 | 上下文可启动、符合 §2.2 准入的关键端到端路径                                                            | 保留现有 2 个测试；**数量受控**——E2E 是第二道防线（Fowler），新行为先在低层补单测再考虑 E2E                                                                                                                                                      | @SpringBootTest                                |
 
 **通用规则（从 `dp-test-conventions.md` 直接推广，全层适用）**：AssertJ-only 断言；`@DisplayName` + `@Nested`（方法数 ≤6 平铺）；`should_expectedBehavior_when_condition` 命名；测试数据内联、不建 fixture 层；不为 DRY 写测试基类；`@ParameterizedTest` 仅 ≥4 组数据时用；每个方法一个逻辑断言；黑盒优先（只走公开 API，不测私有/实现细节——Google ch12）；状态断言优先于交互断言（Google ch12）；修 bug 先写复现单测再改码（Fowler）。
 
@@ -255,7 +256,7 @@ sources:
 
 ### 2.5 权衡（tradeoffs）
 
-1. **数字门禁 vs 覆盖率为发现工具**：门禁（Sonar way 80%）给出明确契约、可自动化执行，但三方一致警告天花板效应与凑数字行为；发现工具（报告 + 人工判断）质量更高但依赖纪律，无 CI 时形同虚设。**选择：V1 发现工具，门禁留给 CI 时代，且门禁只卡 new code。**
+1. **数字门禁 vs 覆盖率为发现工具**：门禁（Sonar way 80%）给出明确契约、可自动化执行，但三方一致警告天花板效应与凑数字行为；发现工具（报告 + 人工判断）质量更高但依赖纪律，无 CI 时形同虚设。**结论归属：覆盖率政策不在本研究——当前项目政策单源见 [test-conventions](../test-conventions.md) §4（V1 无 CI，不设覆盖率门禁）。**
 2. **纯 Mockito 单测 vs H2 集成式「单测」（yudao 范式）**：前者快、稳、无方言问题，但验证不到真实 SQL/映射；后者覆盖真实持久化路径，但慢、需清理、H2 与生产方言有漂移风险。**选择：单测为主（现有风格），H2 只在 repository 层（`@DataJpaTest`）——SODA 生产即 H2，风险最小化。**
 3. **直测控制器 vs `@WebMvcTest` 切片**：直测快且不受 Spring MVC 内部变化影响，但覆盖不到 MVC 绑定/校验/序列化；切片覆盖更全但每次改动上下文更重。**选择：默认直测，切片按需。**
 4. **E2E 数量**：E2E 价值高但脆、慢、非确定（Google/Fowler 共识）；start 层测试是「守门员」不是「主力」。**选择：严格控制增长，新行为先在低层补单测（Fowler 流程）。**
@@ -323,13 +324,13 @@ sources:
 
 ### 3.7 本仓库现状（核实基准）
 
-| 引用         | 路径                                                                    | 内容                                                                                                                                                      |
-|--------------|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| DP 测试规范  | `docs/conventions/dp-test-conventions.md`                               | AssertJ-only、@DisplayName/@Nested、should_*_when_*、无覆盖率要求、仅覆盖领域层 DP                                                                        |
-| 现有测试分布 | `soda-user/**/src/test`、`soda-components/**/src/test` 共 63 个测试文件 | domain 29（DP）、application 5（Mockito）、adapter 2（直测）、infrastructure 4、start 3（Modulith/E2E）、components 20                                    |
-| 测试依赖     | 根 `build.gradle`（已核实事实，未重查）                                 | JUnit 5（junit-platform-launcher）、spring-boot-starter-test、spring-modulith-starter-test、mapstruct test、Lombok testAnnotationProcessor；**无 JaCoCo** |
-| 数据层       | `soda-user/soda-user-infrastructure/build.gradle`                       | Spring Data JPA（Auditable 基类）+ Flyway + **H2 为主数据源（ADR-0022，MODE=MySQL），运行时含 h2 驱动**                                                   |
-| 参考风格文档 | `docs/research/okf-code-repo-adaptation.md`                             | 本文档风格参照（研究日期/来源/用途头注 + 表格 + 逐条归因）                                                                                                |
+| 引用         | 路径                                                                                                                                             | 内容                                                                                                                                                              |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DP 测试规范  | `docs/conventions/dp-test-conventions.md`                                                                                                        | AssertJ-only、@DisplayName/@Nested、should_*_when_*、无覆盖率要求、仅覆盖领域层 DP                                                                                |
+| 现有测试分布 | `soda-user/**/src/test`、`soda-components/**/src/test`、`soda-supports/**/src/test` 共 91 个 `*Test.java`（不含 testFixtures 与 5 个测试辅助类） | domain 26（DP）、application 5（Mockito）、adapter 3（直测）、infrastructure 9、query-server 1、start 2（E2E）、components 44（domain-types 37 为 DP）、support 1 |
+| 测试依赖     | 根 `build.gradle`（已核实事实，未重查）                                                                                                          | JUnit 5（junit-platform-launcher）、spring-boot-starter-test、spring-modulith-starter-test、mapstruct test、Lombok testAnnotationProcessor；**无 JaCoCo**         |
+| 数据层       | `soda-user/soda-user-infrastructure/build.gradle`                                                                                                | Spring Data JPA（Auditable 基类）+ Flyway + **H2 为主数据源（ADR-0022，MODE=MySQL），运行时含 h2 驱动**                                                           |
+| 参考风格文档 | `docs/research/okf-code-repo-adaptation.md`                                                                                                      | 本文档风格参照（研究日期/来源/用途头注 + 表格 + 逐条归因）                                                                                                        |
 
 ### 3.8 未验证缺口（明确声明）
 

@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: JSpecify 使用规范
-description: 写/评审空性标注（`@NullMarked` 基线、`@Nullable` 位置契约、泛型与覆写、外部库边界）时读——P3C 三级 + ❌/✅ + 双清单；版本基线与禁用清单见 §1。
+description: 写/评审空性标注（`@NullMarked` 基线、`@Nullable` 位置契约、泛型与覆写、外部库边界）时读——四列规则表 + ❌/✅ + 双清单（doc-conventions §4.3）；版本基线与禁用清单见 §1。
 tags: [ jspecify, convention ]
 status: stable
 ---
@@ -10,14 +10,25 @@ status: stable
 
 > **本篇**＝空性标注的定案与落地：§1 版本基线 → §2–§5 规则章 → §6 偏离表。 **官方事实全量与版本锚点溯源**归
 > [research/foundation-deps-official-practices.md § JSpecify](../research/foundation-deps-official-practices.md#jspecify)
-> ——本篇不设来源章，来源列只写
-> 一级链接。
-> **关联规范**：[framework-crosscutting](framework-crosscutting.md) §5「参数契约」（AppService
+> ——本篇不设来源章，规则表「来源」列只写下面来源登记的来源 ID。
+> **格式**：【强制 / 推荐 / 参考】三档＋❌/✅ 反例正例＋四列规则表（[doc-conventions §4.3](../doc-conventions.md#43-规则表与示例的表达约定)），形式采纳＝[ADR-0036](../adr/0036-p3c-surface-format-retrofit.md)；
+>   §1.2 禁用清单的依据列保留逐条链接（纯清单，不在列固定内）。
+> **关联规范**：[framework-crosscutting](framework-crosscutting.md) §1「参数契约」（AppService
 > 入参契约，本篇只指不述）与「Exception（异常类约定）」表的
 > 「方法参数 null 契约违反」行；[framework-type-contracts](framework-type-contracts.md)「Entity / Identifiable /
 > AbstractPersistable」（`getId()` /
 > `assignId` / 持久化载体的类型契约）；[dp-json-conventions](dp-json-conventions.md)（DP 属性与序列化链路）；根
 > [STYLEGUIDE](../../STYLEGUIDE.md#23-空值校验角色)（判空角色：`ValidateUtils` / `Assert` 分工的单源）。
+
+**来源登记**（登记结构与封闭 ID 语义见 [doc-conventions §4.2](../doc-conventions.md#42-来源登记)；本库版本锚点集中本表）：
+
+| 来源 ID         | 含义                                                              | 钉住版本与链接入口                                                                                                                          |
+|-----------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `JSPECIFY-DOC`  | JSpecify 官方规范文本、Javadoc、user guide、设计 FAQ 与迁移指南    | 项目钉住规范文本 **1.0.0**、构件 **1.0.1**（§1.1）；逐条一级链接在 [研究篇 § JSpecify](../research/foundation-deps-official-practices.md#jspecify) |
+| `SPRING-DOC`    | Spring Framework 官方 null-safety 文档                             | Spring Framework 7.0.9（§1.1）；链接在 [研究篇 § JSpecify](../research/foundation-deps-official-practices.md#jspecify) 一级来源清单             |
+| `JDK-DOC`       | Oracle JDK API Note（`Optional` 的用途界定）                       | Java 25（§1.1）；链接在 [研究篇 § JSpecify](../research/foundation-deps-official-practices.md#jspecify) 一级来源清单                          |
+| `SODA-POLICY`   | 项目硬门与项目扩展（官方无对应强制条款，或比官方更严）            | 本篇（封闭来源列见 [doc-conventions §4.2](../doc-conventions.md#42-来源登记)）                                                               |
+| `SODA-DECISION` | 已裁定的项目取舍                                                  | 行内 `ADR-NNNN`（落在 `SODA 落地` 单元格）；理由见 §6 偏离表与对应 ADR 正文                                                                  |
 
 ## 适用范围与管辖面
 
@@ -25,9 +36,8 @@ status: stable
 
 何时 **不**读：
 
-- 写 `src/test` / `src/testFixtures` —— 测试侧空性用法归 [test-conventions](../test-conventions.md)，本篇不描述（实测测试侧
-  `@NullMarked` /
-  `@Nullable` / `@NonNull` 命中各 0、`package-info.java` 0 份，测试整体处于 null-unmarked）
+- 写 `src/test` / `src/testFixtures` —— 测试侧空性用法归 [test-conventions](../test-conventions.md)，本篇不描述（测试侧整体处于
+  null-unmarked）
 - 判「AppService 入参要不要校验」「Command 属性默认是否非空」 —— [framework-crosscutting](framework-crosscutting.md)
   §5「参数契约」（应用层契约）
 - 选判空工具与消息策略 —— 根 [STYLEGUIDE](../../STYLEGUIDE.md#23-空值校验角色)
@@ -52,8 +62,6 @@ status: stable
 | 9  | 非空保证由 `Objects.requireNonNull` / `Assert` / `ValidateUtils` 承担，注解不替代运行时校验（§4.3）                         |
 | 10 | nullness 注解只 import `org.jspecify.annotations.*`；其它注解族零出现（§1.2/§5）                                            |
 | 11 | 持久化 PO 的字段与 `getId()` 不标 nullness（§3.4/§6）                                                                       |
-| 12 | §1：BOM / 直接依赖升级时逐项复核版本表与 1.2 清单，并确认 `spring-core` 仍传递 `org.jspecify:jspecify`                      |
-| 13 | 完成判据：按文末检视清单逐条自检通过，本篇零跨文档重复，来源列均为一级 markdown 链接                                        |
 
 ## 1. 版本基线
 
@@ -63,12 +71,12 @@ status: stable
 |---------------------------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | JSpecify 构件 `org.jspecify:jspecify` | **1.0.1**                   | Spring Boot 4.1.1 BOM 钉 `jspecify.version=1.0.1`；上游 `spring-core-7.0.9.pom` 以 `compile` scope 声明 1.0.0                                              |
 | JSpecify 规范文本                     | **1.0.0**                   | 规范页头部 `version 1.0.0`；1.0.1 release notes 仅文档与构建调整、**无语义变更**——两者并存不是版本冲突                                                     |
-| 依赖解析路径                          | 传递（BOM → `spring-core`） | 21 个 `build.gradle`（18 个模块 + 3 聚合）的 `jspecify` 字面量命中 0；`org.jspecify` 被全部 18 个模块的 `src/main` 引用；构件进 fat jar 的 `BOOT-INF/lib/` |
+| 依赖解析路径                          | 传递（BOM → `spring-core`） | 无模块直接声明 `jspecify` 字面量；`org.jspecify` 由各模块 `src/main` 引用；构件进 fat jar 的 `BOOT-INF/lib/`    |
 | Spring Framework                      | **7.0.9**                   | Boot 4.1.1 解析的 `spring-framework.version`；框架自身已 `@NullMarked`，契约位字节码带 `org.jspecify.annotations.Nullable`                                 |
 | Spring Data Commons                   | **4.1.1**                   | `Persistable.getId()` 字节码为 `METHOD_RETURN org.jspecify.annotations.Nullable`（见 §6 E3）                                                               |
 | Jakarta Annotations                   | **3.0.0**                   | Boot 4.1.1 BOM；仅作 §1.2 禁用行的依据                                                                                                                     |
 | Java                                  | **25**                      | 根 `build.gradle` toolchain `JavaLanguageVersion.of(25)`——type-use 注解字节码完整保留                                                                      |
-| nullness 检查器                       | **未启用**                  | 21 个 `build.gradle` 的 `NullAway` / `errorprone` / `-XepOpt` 命中 0——本仓规则的强制力全落在人工检视                                                       |
+| nullness 检查器                       | **未启用**                  | 构建未配置 `NullAway` / `errorprone` / `-XepOpt`——本仓规则的强制力全落在人工检视                                        |
 
 ### 1.2 禁用清单
 
@@ -80,42 +88,37 @@ status: stable
 | `org.jetbrains.annotations.Nullable` / `NotNull`                              | 同上                                | [JSpecify 成员组织](https://jspecify.dev/about/)、[IDEA 默认可空性注解清单](https://www.jetbrains.com/help/idea/annotating-source-code.html)（JetBrains 无官方迁移指南）               | 潜在                              |
 | Spring `org.springframework.lang.Nullable` / `@NonNullApi` / `@NonNullFields` | JSpecify 四注解                     | [Spring Framework · Null-safety](https://docs.spring.io/spring-framework/reference/core/null-safety.html)（7 起 deprecated，让位于 JSpecify；声明式 → type-use，数组与泛型语义需改写） | 潜在                              |
 
-维护：BOM / 直接依赖升级时逐项复核本表与 1.2 清单（依据＝官方 release notes / 迁移指南），改动就地更新；并额外确认
-`spring-core` 仍传递
+维护（通用复核流程见 [doc-conventions §5.1](../doc-conventions.md#51-convention规范文档)）：**本库额外确认** `spring-core` 仍传递
 `org.jspecify:jspecify`（§5 的传递边即本仓唯一依赖来源）。
 
 ## 2. 空性基线
 
 `@NullMarked` 是全部规则的地基：作用域内未标注的类型 usage 一律读作 **非空**，`@Nullable` 是唯一的例外出口。
 
-| 规则                                                                                                                                                   | 级别     | 官方来源                                                                                         | SODA 落地                                                                                      | 关联 ADR |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|----------|
-| `@NullMarked` 语义：被标注元素的传递包含范围内，未标注的类型 usage 默认非空                                                                            | 【强制】 | [NullMarked Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/NullMarked.html)     | 51 份 `package-info.java` 全量 `@NullMarked`，覆盖 51 个含 `.java` 的包（§2.1 的不变式已成立） | —        |
-| `@NullMarked` 可标注位置：module / package / class（含 interface、enum、record）/ 方法 / 构造器；字段、形参、局部变量、类型参数、record 组件**不可**标 | 【强制】 | [spec · 识别声明](https://jspecify.dev/docs/spec/#recognized-declaration)                        | 全仓仅用于 `package` 级；非 `package-info.java` 文件命中 0                                     | —        |
-| 包级作用域写在 `package-info.java` 的 `package` 声明上；**包不继承**——`com.foo` 的标注不覆盖 `com.foo.bar`                                             | 【强制】 | [spec · null-marked 作用域](https://jspecify.dev/docs/spec/#null-marked-scope)                   | 每包一份 `package-info.java`（不变式见 §2.1）；子包漏建是本规则的高发失误                      | —        |
-| 非 module path（classpath）下包级标注可能被多份 `package-info` 解释——官方要求「非常小心」                                                              | 【参考】 | [NullMarked Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/NullMarked.html)     | 51 个包名跨模块零重复、无 `module-info.java` ⇒ 保持「一包一模块」即可                          | —        |
-| `@NullUnmarked` 仅用于渐进迁移；全量迁移完成后禁用是合理的                                                                                             | 【强制】 | [NullUnmarked Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/NullUnmarked.html) | 全仓 0 处；本仓明文禁用（§2.2）                                                                | —        |
-| `@NonNull` 语义（排除 null）；null-marked 作用域内很少需要                                                                                             | 【强制】 | [NonNull Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/NonNull.html)           | 代码标注 0 处（仅 Javadoc 文本提及）⇒ 本仓不使用（§2.2）                                       | —        |
+| 规则                                                                                                                                                   | 级别     | 来源            | SODA 落地                                                                                                                                     |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `@NullMarked` 语义：被标注元素的传递包含范围内，未标注的类型 usage 默认非空                                                                            | 【强制】 | `JSPECIFY-DOC`  | 全部含 `.java` 的 `src/main` 包各有 `package-info.java` 且标 `@NullMarked`（不变式见 §2.1）                                                   |
+| `@NullMarked` 可标注位置：module / package / class（含 interface、enum、record）/ 方法 / 构造器；字段、形参、局部变量、类型参数、record 组件**不可**标 | 【强制】 | `JSPECIFY-DOC`  | 全仓仅用于 `package` 级；非 `package-info.java` 文件零出现                                                                                   |
+| 包级作用域写在 `package-info.java` 的 `package` 声明上；**包不继承**——`com.foo` 的标注不覆盖 `com.foo.bar`                                             | 【强制】 | `JSPECIFY-DOC`  | 每包一份 `package-info.java`（不变式见 §2.1）；子包漏建是本规则的高发失误                                                                     |
+| 非 module path（classpath）下包级标注可能被多份 `package-info` 解释——官方要求「非常小心」                                                              | 【参考】 | `JSPECIFY-DOC`  | 包名跨模块零重复、无 `module-info.java` ⇒ 保持「一包一模块」即可                                                                              |
+| `@NullUnmarked` 仅用于渐进迁移；全量迁移完成后禁用是合理的                                                                                             | 【强制】 | `JSPECIFY-DOC`  | 全仓零出现；本仓明文禁用（§2.2）                                                                                                             |
+| `@NonNull` 语义（排除 null）；null-marked 作用域内很少需要                                                                                             | 【强制】 | `JSPECIFY-DOC`  | 代码标注零出现（仅 Javadoc 文本提及）⇒ 本仓不使用（§2.2）                                                                                     |
 
 ### 2.1 包不继承：每包一份 `package-info.java`
 
 包级标注 **不**向下继承，是本节最容易误判的一条：父包 `@NullMarked` 不会让子包进入 null-marked 作用域。 **不变式**：任一含
-`.java` 的 `src/main`
-包都必须有 `package-info.java`，注解与 `package` 声明同段（`@NullMarked` 可与其后的 `@ApplicationModule` 并列，也可单独出现）。判定式——
-**含 `.java` 的包数
-== `package-info.java` 份数**（当前 51 == 51）；两个数字不等即说明有包整体落入 unspecified。
+`.java` 的 `src/main` 包都必须有 `package-info.java`，注解与 `package` 声明同段（`@NullMarked` 可与其后的
+`@ApplicationModule` 并列，也可单独出现）。判定式—— **含 `.java` 的包数 == `package-info.java` 份数**
+；数字不作为规范事实固定，结构变化后以当前源码重新核对。
 
 失效面恰在最需要空性信息的地方： **HTTP 入参 record 包**与 **JPA 载体包**。误判形态是把「写了 `@Nullable`」当成「包已在
 null-marked 作用域内」——`@Nullable` 自身携带语义、
 在哪个包都成立，但同包内 **其余**未标注 usage 会在缺 `package-info.java` 时整体降级为
 unspecified，「默认非空」的保证静默消失（工具无检查器时完全无声）。
 
-本规则的高发场景是 **既有模块根的子包首次新增时漏建** `package-info.java`。校准集（全为模块根的子包）：
-`component/api/command`（2 类）、
-`component/infrastructure/eventbus`（2）、`component/infrastructure/persistence`（4）、`user/consumer/message`（1）、
-`user/job/param`（1）、`user/web/assembler`（1）、
-`user/web/request`（8）、`user/web/response`（1）——这 8 包 20 类共同说明误判的样子：包内写着 14 处 `@Nullable`，注解可见，包本身却不在
-null-marked 作用域里。子包补建的
+本规则的高发场景是 **既有模块根的子包首次新增时漏建** `package-info.java`——典型误判的样子是子包里写着 `@Nullable`、注解清晰可见，
+包本身却不在
+null-marked 作用域里（当期包数与标注处数以源码为准，不在本篇固化）。子包补建的
 形态固定为「 **只**加 `@NullMarked` + 中文包 Javadoc， **不带** `@ApplicationModule`」：`@ApplicationModule`
 只属模块根包，子包带了会造出并不存在的模块边界；同类形态见
 `user/domain/types/package-info.java`。
@@ -133,7 +136,7 @@ package com.soda.user.web.request;
 ### 2.2 `@NonNull` 与 `@NullUnmarked` 不进入本仓
 
 两条各自对应一个可判定的禁令： **不写 `@NonNull`**（含 non-null projection——本仓需要「可空的值」时一律用 `@Nullable X` 参数或
-`@Nullable E` projection，不用「非空上界 + `@NonNull` 投影」的另一套写法）； **不写 `@NullUnmarked`**（51 个包已全量
+`@Nullable E` projection，不用「非空上界 + `@NonNull` 投影」的另一套写法）； **不写 `@NullUnmarked`**（`src/main` 包已全量
 `@NullMarked`，渐进迁移阶段已结束）。
 作用域内确实要表达「排除 null」时，答案是 **什么都不写**——`@NullMarked` 已经给了它。
 
@@ -141,16 +144,16 @@ package com.soda.user.web.request;
 
 `@Nullable` 是本仓唯一的可空表达。它标的是 **类型 usage**（不是「字段」「参数」这类声明），因此位置与写法都有清单。
 
-| 规则                                                                                                                              | 级别     | 官方来源                                                                                                                                                                                           | SODA 落地                                                                           | 关联 ADR |
-|-----------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|----------|
-| `@Nullable` 语义：该类型 usage 把 `null` 视为合法取值（`@Target(TYPE_USE)`、`RUNTIME` retention）                                 | 【强制】 | [Nullable Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/Nullable.html)                                                                                                           | 86 处加权（去重 78 行）：record 组件 26 / 形参 44 / 字段 13 / 返回 3                | —        |
-| 可标注位置清单：方法返回类型、方法 / 构造器形参、lambda 形参、字段、record 组件、类型参数上界、非通配类型实参、通配上界、数组组件 | 【强制】 | [spec · 识别 type-use](https://jspecify.dev/docs/spec/#recognized-type-use)                                                                                                                        | 86 处逐处落在清单内；清单外位置 0 处                                                | —        |
-| 局部变量**根类型**不可标注（可空性由流分析推断）；类型实参与数组组件照常可标                                                      | 【强制】 | [Nullable Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/Nullable.html)                                                                                                           | 局部变量标注 0 处                                                                   | —        |
-| 强转根类型、`instanceof` 各部分、primitive、`throws`、receiver 不可标注；需要「断言非空」时用 `Objects.requireNonNull`            | 【强制】 | [设计 FAQ · casts](https://jspecify.dev/docs/nullness-design-faq/#casts)                                                                                                                           | 上述位置 0 处；`Objects.requireNonNull` 落在 `Entity.getId()` 与 `Entity.assignId`  | —        |
-| record 组件上的 type-use 注解向生成的字段 / 访问器 / 构造参数传播；显式重写这些成员时须再标注                                     | 【强制】 | [Nullable Javadoc](https://jspecify.dev/docs/api/org/jspecify/annotations/Nullable.html)                                                                                                           | 字节码实证传播成立；带 `@Nullable` 组件的 record 无一显式重写访问器                 | —        |
-| record 的 `equals(Object)` 参数语义恒 nullable（`UNION_NULL`），null-marked 下**预期**显式标 `@Nullable`                          | 【强制】 | [spec · record equals](https://jspecify.dev/docs/spec/#expected-annotations-on-record-classes-equals-methods)                                                                                      | javac 生成成员无源码落点 ⇒ 偏离登记（§6 E1）                                        | —        |
-| 可空返回按**角色二分**：数据载体用 `@Nullable T`，领域 / 网关的「查询无结果」用 `Optional<T>`                                     | 【强制】 | [JDK `Optional` API Note](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html)、[设计 FAQ](https://jspecify.dev/docs/nullness-design-faq/#billion-dollar-mistake) | 数据载体 `Optional` 返回 0 处；20 处 `Optional` 返回声明全为领域 / 网关语义（§3.2） | ADR-0041 |
-| 书写风格：注解紧贴类型、与类型同行（`private @Nullable String f`）                                                                | 【参考】 | [Spring · Null-safety](https://docs.spring.io/spring-framework/reference/core/null-safety.html)                                                                                                    | 声明位写法 0 处；注解串末位是本仓唯一形态（§3.1）                                   | —        |
+| 规则                                                                                                                              | 级别     | 来源            | SODA 落地                                                                                                                        |
+|-----------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `@Nullable` 语义：该类型 usage 把 `null` 视为合法取值（`@Target(TYPE_USE)`、`RUNTIME` retention）                                 | 【强制】 | `JSPECIFY-DOC`  | record 组件 / 形参 / 字段 / 返回位均有落点，逐处为 type-use 形态（位置清单见 §3.1）                                              |
+| 可标注位置清单：方法返回类型、方法 / 构造器形参、lambda 形参、字段、record 组件、类型参数上界、非通配类型实参、通配上界、数组组件 | 【强制】 | `JSPECIFY-DOC`  | 逐处落在清单内；清单外位置零出现                                                                                                 |
+| 局部变量**根类型**不可标注（可空性由流分析推断）；类型实参与数组组件照常可标                                                      | 【强制】 | `JSPECIFY-DOC`  | 局部变量根类型零标注                                                                                                             |
+| 强转根类型、`instanceof` 各部分、primitive、`throws`、receiver 不可标注；需要「断言非空」时用 `Objects.requireNonNull`            | 【强制】 | `JSPECIFY-DOC`  | 上述位置零标注；`Objects.requireNonNull` 落在 `Entity.getId()` 与 `Entity.assignId`                                             |
+| record 组件上的 type-use 注解向生成的字段 / 访问器 / 构造参数传播；显式重写这些成员时须再标注                                     | 【强制】 | `JSPECIFY-DOC`  | 字节码实证传播成立；带 `@Nullable` 组件的 record 无一显式重写访问器                                                             |
+| record 的 `equals(Object)` 参数语义恒 nullable（`UNION_NULL`），null-marked 下**预期**显式标 `@Nullable`                          | 【强制】 | `JSPECIFY-DOC`  | javac 生成成员无源码落点 ⇒ 偏离登记（§6 E1）                                                                                     |
+| 可空返回按**角色二分**：数据载体用 `@Nullable T`，领域 / 网关的「查询无结果」用 `Optional<T>`                                     | 【强制】 | `JDK-DOC`、`JSPECIFY-DOC` | 数据载体 `Optional` 返回零出现；`Optional` 返回声明全为领域 / 网关语义（§3.2）（ADR-0041）                            |
+| 书写风格：注解紧贴类型、与类型同行（`private @Nullable String f`）                                                                | 【参考】 | `SPRING-DOC`    | 声明位写法零出现；注解串末位是本仓唯一形态（§3.1）                                                                               |
 
 ### 3.1 位置白名单与书写形态
 
@@ -188,9 +191,8 @@ String mobile;
 附带两条硬约束： **不返回 `Optional<@Nullable T>`**（`Optional` 自身即表达可空返回，双层可空无消费者）；`Optional` 变量本身不得为
 `null`。
 
-现状实测：数据载体 `Optional` 返回 0 处；20 处 `Optional` 返回声明全在领域 / 网关——`User` 的属性访问器组与 `findAccount`
-（5）、`EntityGateway` / `UserGateway` /
-`VerificationGateway` 的查询端口（5）、6 处 gateway 实现、4 处 Spring Data repository 查询；无一处落在 Command / Request /
+现状：数据载体 `Optional` 返回零出现；`Optional` 返回声明全在领域 / 网关——属性访问器组、查询端口、gateway 实现与 Spring Data
+repository 查询；无一处落在 Command / Request /
 Response / DTO。
 
 ```java
@@ -226,14 +228,14 @@ PO 是 JPA 反射载体：构造器可绕过、字段可被审计与 `@Version` 
 
 ## 4. 泛型 · 覆写 · 外部库
 
-| 规则                                                                                                                        | 级别     | 官方来源                                                                                           | SODA 落地                                                                                                                                           | 关联 ADR |
-|-----------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| 覆写**不继承** nullness：覆写方法须在父声明可空的位置自行重复标注                                                           | 【强制】 | [spec · augmented type of usage](https://jspecify.dev/docs/spec/#augmented-type-of-usage)          | 两处 Spring 契约覆写已按位标注：`IfMatchResolver.resolveArgument` 返回位、`HttpValidatorHeadersAdvice.beforeBodyWrite` 返回位 + `body` 形参（§4.2） | ADR-0039 |
-| 泛型上界默认非空：`<E>` 即非空上界，接受可空类型实参必须写 `<E extends @Nullable Object>`                                   | 【推荐】 | [user guide · 声明泛型](https://jspecify.dev/docs/user-guide/#declaring-generics)                  | 需可空**值**处一律用 projection（`JobContext`、`ValidateUtils`）；可空上界 0 处且无受阻点（§4.1）                                                   | —        |
-| 未标注类型变量具 parametric nullness（跟随实参）；`@Nullable E` 是 nullable projection，「`E` 本身非空也可能为 null」时使用 | 【推荐】 | [spec](https://jspecify.dev/docs/spec/)                                                            | 同上行；用法均为显式 projection                                                                                                                     | —        |
-| 通配符与类型参数差异：`List<?>` 的隐含上界是 `@Nullable Object`，而 `List<? extends Object>` 元素非空                       | 【参考】 | [spec · 无界通配](https://jspecify.dev/docs/spec/#unbounded-wildcard)                              | 30 处 `<?>` 全为约束位 / 标记位通配（`Identifier<?>`、`AuthAccount<?>` 等）；容器型无界通配 0 处                                                    | —        |
-| 外部库互操作：null-unmarked 的类型 usage 为 unspecified nullness                                                            | 【推荐】 | [spec · 多世界](https://jspecify.dev/docs/spec/#multiple-worlds)                                   | 外部栈已迁移（Spring Framework / Spring Data 的契约位字节码带 JSpecify 注解）；调用点显式检查齐备（§4.3）                                           | —        |
-| 注解不产生运行时强制——不替代显式参数校验                                                                                    | 【强制】 | [JSpecify 注解包说明](https://jspecify.dev/docs/api/org/jspecify/annotations/package-summary.html) | 运行时校验齐备：`ValidateUtils` / `Assert` / `@Valid` 与注解并行（分工见 §4.3）                                                                     | ADR-0015 |
+| 规则                                                                                                                        | 级别     | 来源            | SODA 落地                                                                                                                                                   |
+|-----------------------------------------------------------------------------------------------------------------------------|----------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 覆写**不继承** nullness：覆写方法须在父声明可空的位置自行重复标注                                                           | 【强制】 | `JSPECIFY-DOC`  | Spring 契约覆写已按位标注：`IfMatchResolver.resolveArgument` 返回位、`HttpValidatorHeadersAdvice.beforeBodyWrite` 返回位 + `body` 形参（§4.2）（ADR-0039）   |
+| 泛型上界默认非空：`<E>` 即非空上界，接受可空类型实参必须写 `<E extends @Nullable Object>`                                   | 【推荐】 | `JSPECIFY-DOC`  | 需可空**值**处一律用 projection（`JobContext`、`ValidateUtils`）；可空上界零出现且无受阻点（§4.1）                                                          |
+| 未标注类型变量具 parametric nullness（跟随实参）；`@Nullable E` 是 nullable projection，「`E` 本身非空也可能为 null」时使用 | 【推荐】 | `JSPECIFY-DOC`  | 同上行；用法均为显式 projection                                                                                                                             |
+| 通配符与类型参数差异：`List<?>` 的隐含上界是 `@Nullable Object`，而 `List<? extends Object>` 元素非空                       | 【参考】 | `JSPECIFY-DOC`  | `<?>` 全为约束位 / 标记位通配（`Identifier<?>`、`AuthAccount<?>` 等）；容器型无界通配零出现                                                                 |
+| 外部库互操作：null-unmarked 的类型 usage 为 unspecified nullness                                                            | 【推荐】 | `JSPECIFY-DOC`  | 外部栈已迁移（Spring Framework / Spring Data 的契约位字节码带 JSpecify 注解）；调用点显式检查齐备（§4.3）                                                   |
+| 注解不产生运行时强制——不替代显式参数校验                                                                                    | 【强制】 | `JSPECIFY-DOC`  | 运行时校验齐备：`ValidateUtils` / `Assert` / `@Valid` 与注解并行（分工见 §4.3）（ADR-0015）                                                                  |
 
 ### 4.1 泛型签名
 
@@ -276,15 +278,15 @@ type-use 注解）返回值是 unspecified—— **在调用点**显式检查或
 注解与运行时校验各司其职：注解说明 **契约**（工具读，不是运行时行为），越界仍是 NPE 或 `NullPointerException` 语义；参数合法性该拦的拦——
 构造器校验走 `ValidateUtils`（判空角色见 [STYLEGUIDE](../../STYLEGUIDE.md#23-空值校验角色)），方法级业务断言走 `Assert`
 （异常类型与消息策略见
-[framework-crosscutting](framework-crosscutting.md) §5「Exception」），协议边界走 `@Valid`。AppService 入参 **不做**防御性
+[framework-crosscutting](framework-crosscutting.md) §1「Exception」），协议边界走 `@Valid`。AppService 入参 **不做**防御性
 null 检查（契约由调用方保证，见
-[framework-crosscutting](framework-crosscutting.md) §5「参数契约」）。
+[framework-crosscutting](framework-crosscutting.md) §1「参数契约」）。
 
 ## 5. 禁用与迁移
 
-| 规则                                                                       | 级别     | 官方来源                                           | SODA 落地                                                                                                                       | 关联 ADR |
-|----------------------------------------------------------------------------|----------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|----------|
-| 依赖声明：**不**用 `provided` / `optional` 隐藏 JSpecify，随运行时一起提供 | 【推荐】 | [JSpecify using](https://jspecify.dev/docs/using/) | 经 Boot BOM → `spring-core` 传递（非 `provided` / `optional`，fat jar 内含该构件）⇒ 不违反规则原文；不直接声明，升级复核句见 §1 | —        |
+| 规则                                                                       | 级别     | 来源            | SODA 落地                                                                                                                      |
+|----------------------------------------------------------------------------|----------|-----------------|--------------------------------------------------------------------------------------------------------------------------------|
+| 依赖声明：**不**用 `provided` / `optional` 隐藏 JSpecify，随运行时一起提供 | 【推荐】 | `JSPECIFY-DOC`  | 经 Boot BOM → `spring-core` 传递（非 `provided` / `optional`，fat jar 内含该构件）⇒ 不违反规则原文；不直接声明，升级复核句见 §1 |
 
 迁移动作（禁用族清单见 §1.2）：换 import 到 `org.jspecify.annotations.Nullable`，并按 type-use 语义 **重判**
 原文位置——声明注解 → type-use 的映射不是等价替换：
@@ -292,7 +294,7 @@ null 检查（契约由调用方保证，见
 JSR-305 默认注解更完整的语义、覆写父类
 `@Nullable` 时 **留空**即可（JSpecify 语义不继承，`@NonNull` 也不再需要用来撤销父类可空）。本仓把 `org.jspecify.annotations`
 作为 **唯一** nullness 注解族：`jakarta.annotation.*`
-在 `src/main` 零命中。遇到 `jakarta.annotation.Nullable` 时的改法固定为 **只换 import、使用端不动**——换完使注解与所在方法的
+在 `src/main` 零出现。遇到 `jakarta.annotation.Nullable` 时的改法固定为 **只换 import、使用端不动**——换完使注解与所在方法的
 javadoc、`null` 分支、上游可空 accessor 三方一致
 （这类 import 能编过通常是 `jakarta.annotation-api` 传递依赖的巧合；换掉后该隐性依赖即解除，而 `jakarta.annotation-api` 作为
 Spring 的传递依赖本身仍在，属正常）。
@@ -318,11 +320,11 @@ protected final T requireIfMatch(ID id, @Nullable IntLiteralType expectedVersion
 | **E2** PO（持久化载体）主键字段的空性          | `@NullMarked` 下未标注 usage 视为非空                              | 主键 `id` 字段不标；可空 DB 列**标** `@Nullable`（§3.4）；`getId()` 不适用「未标识抛 NPE」条款   | PO 是 JPA 反射载体——构造器可绕过、字段可被审计 / `@Version` 后置填充，瞬态期确为 null。主键由 `@GeneratedValue` 生成故瞬态必 null，属框架载体与空性声明体系的已知缝隙（`AbstractPersistable.isNew()` 正依赖 `getId() == null`），靠基类 javadoc 记录 | ADR-0024 |
 | **E3** PO 的 `getId()` 收窄覆写                | 覆写须重复父声明的 `@Nullable`（`Persistable.getId()` 父声明可空） | 覆写返回非空（Lombok 直通字段访问器）                                                            | 返回型协变收窄合法：持久化行的主键恒存在，收窄表达「已持久化」这一更强契约。与 E2 合看，问题只在瞬态路径                                                                                                                                             | ADR-0024 |
 | **E4** 可空返回的载体形态                      | 官方不规定；JDK API Note 主张 `Optional` 仅用于「明确表示无结果」  | 按角色二分：数据载体用 `@Nullable T`（禁 `Optional`），领域 / 网关「查询无结果」用 `Optional<T>` | 记录型数据载体的属性访问器不应用 `Optional` 包装：属 JDK API Note 警示的误用，且会破坏 Jackson / MapStruct 直通链路、使「未携带」与「显式空」丧失区分（§3.2）                                                                                        | ADR-0041 |
-| **E5** JSpecify 依赖声明                       | 官方推荐**不要**用 `provided` / `optional` 隐藏，随运行时提供      | 不直接声明，经 Boot BOM → `spring-core` 传递获得                                                 | 现状不是 `provided` / `optional`，运行时在 fat jar 内 ⇒ 不违反规则原文。风险：Spring 侧移除该传递边即 18 个模块的 `org.jspecify` import 断链——已登记，按 §1 维护句复核                                                                               | —        |
+| **E5** JSpecify 依赖声明                       | 官方推荐**不要**用 `provided` / `optional` 隐藏，随运行时提供      | 不直接声明，经 Boot BOM → `spring-core` 传递获得                                                 | 现状不是 `provided` / `optional`，运行时在 fat jar 内 ⇒ 不违反规则原文。风险：Spring 侧移除该传递边即全仓 `org.jspecify` import 断链——已登记，按 §1 维护句复核                                                | —        |
 
 ## 检视清单
 
-code-review 标准轴按本清单逐条核对（每组逐条可判定，括号内为落点）：
+每条可判定，括号为规则落点（处置词表与逐项回放见 [doc-conventions §7.2](../doc-conventions.md#72-检视清单服务迁移审计)）：
 
 ### 代码
 

@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: MapStruct 使用规范
-description: 写/评审 MapStruct 映射（`@Mapper` 与注入、映射语义、构建接线、Null 与 JSpecify 缺口）时读——P3C 三级 + ❌/✅ + 双清单；转换器契约语义在 adapter.md；版本基线与禁用清单见 §1。
+description: 写/评审 MapStruct 映射（`@Mapper` 与注入、映射语义、构建接线、Null 与 JSpecify 缺口）时读——四列规则表 + ❌/✅ + 双清单（doc-conventions §4.3）；转换器契约语义在 adapter.md；版本基线与禁用清单见 §1。
 tags: [ mapstruct, convention ]
 status: stable
 ---
@@ -22,7 +22,16 @@ MapStruct 在本仓只有一个落点： **adapter 层的协议转换器**（`Re
 >   [lombok.md](lombok.md)（处理器共存的 Lombok 侧，binding 单源在本篇 §4）、
 >   [framework-type-contracts.md](framework-type-contracts.md)「Convertor（基础设施）」（手写侧边界）、
 >   [test-conventions.md](../test-conventions.md)（测试侧 `Mappers.getMapper` 用法与映射测试）。
-> - **格式**：P3C【强制 / 推荐 / 参考】三级 + ❌/✅ 反例正例；规则表列固定 `规则 | 级别 | 官方来源 | SODA 落地 | 关联 ADR`。
+> - **格式**：【强制 / 推荐 / 参考】三档＋❌/✅ 反例正例＋四列规则表（[doc-conventions §4.3](../doc-conventions.md#43-规则表与示例的表达约定)），形式采纳＝[ADR-0036](../adr/0036-p3c-surface-format-retrofit.md)。
+
+**来源登记**（登记结构与封闭 ID 语义见 [doc-conventions §4.2](../doc-conventions.md#42-来源登记)；本库版本锚点集中本表）：
+
+| 来源 ID         | 含义                                                              | 钉住版本与链接入口                                                                                                                                |
+|-----------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `MAPSTRUCT-DOC` | MapStruct 官方参考指南、API Javadoc、FAQ、安装与 Release Notes     | 项目锁定 **1.6.3**（§1.1）；逐条一级链接在 [研究篇 § MapStruct](../research/foundation-deps-official-practices.md#mapstruct)                       |
+| `JDK-DOC`       | Oracle `javac` 手册（形参名两通道的官方依据）                      | Java 25（§1.1）；链接在 [研究篇 § MapStruct](../research/foundation-deps-official-practices.md#mapstruct) 一级来源清单                              |
+| `SODA-POLICY`   | 项目硬门与项目扩展（官方无对应强制条款，或比官方更严）            | 本篇（封闭来源列见 [doc-conventions §4.2](../doc-conventions.md#42-来源登记)）                                                                     |
+| `SODA-DECISION` | 已裁定的项目取舍                                                  | 行内 `ADR-NNNN`（落在 `来源` 或 `SODA 落地` 单元格）；理由见 §6 偏离表与对应 ADR 正文                                                         |
 
 ## 适用范围与管辖面
 
@@ -56,7 +65,7 @@ MapStruct 在本仓只有一个落点： **adapter 层的协议转换器**（`Re
 | 10 | 不关闭编译调试信息，且 `-parameters` 与调试信息不同时关断（§4）                                               |
 | 11 | 生成实现（`*Impl.java`）不手改、不入库；改映射改接口（§4）                                                    |
 | 12 | null 行为按默认策略显式约定；不指望 `@Nullable` 影响 mapper 生成（§5）                                        |
-| 13 | 完成判据：`build` 绿 + 本清单逐条 + 文末检视清单无未决项（assembler 命名完成判据在 adapter.md §1）            |
+| 13 | 完成判据：`build` 绿；assembler 命名完成判据在 adapter.md §1                                                               |
 
 ## 1. 版本基线
 
@@ -64,11 +73,11 @@ MapStruct 在本仓只有一个落点： **adapter 层的协议转换器**（`Re
 
 | 项                         | 值                            | 依据                                                                                                 |
 |----------------------------|-------------------------------|------------------------------------------------------------------------------------------------------|
-| MapStruct                  | **1.6.3**                     | `build.gradle:31` `mapstructVersion`；与官方 stable 一致                                             |
-| `lombok-mapstruct-binding` | **0.2.0**                     | 本仓构建接线（`build.gradle:41` / `:50`）；官方仅 0.1.0 / 0.2.0 两版                                 |
-| Lombok                     | 1.18.46                       | Spring Boot 4.1.1 BOM 管理；落入「≥ 1.18.16 需 binding」区间，见 1.2                                 |
-| Spring Boot                | 4.1.1                         | `build.gradle:2` 插件版本（BOM 来源）                                                                |
-| Java                       | 25                            | `build.gradle:20` toolchain                                                                          |
+| MapStruct                  | **1.6.3**                     | 根 `build.gradle` 的 `mapstructVersion`；与官方 stable 一致                                       |
+| `lombok-mapstruct-binding` | **0.2.0**                     | 本仓构建接线（根 `build.gradle` 的 main / test `annotationProcessor` 声明）；官方仅 0.1.0 / 0.2.0 两版 |
+| Lombok                     | 1.18.46                       | Spring Boot 4.1.1 BOM 管理；落入「≥ 1.18.16 需 binding」区间，见 1.2                             |
+| Spring Boot                | 4.1.1                         | 根 `build.gradle` 的 Boot 插件版本（BOM 来源）                                                    |
+| Java                       | 25                            | 根 `build.gradle` 的 toolchain 声明                                                               |
 | Gradle                     | 9.5.1                         | wrapper `distributionUrl`                                                                            |
 | 上游版本线（挂账）         | 1.7.0.Beta1 / Beta2（预发布） | 1.7.0.Beta2 起识别 JSpecify：源 `@NonNull` 跳过 null 检查、目标 `@NonNull` 强制检查——升级时须重跑 §5 |
 
@@ -76,22 +85,20 @@ MapStruct 在本仓只有一个落点： **adapter 层的协议转换器**（`Re
 
 | 本仓禁用项                                                          | 替代                                                                  | 依据                                                                                   | 影响面                                           |
 |---------------------------------------------------------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------|--------------------------------------------------|
-| 关闭编译调试信息（`options.debug = false`）**且**移除 `-parameters` | 保持 javac 默认 `-g`（现行）；`-parameters` 保持（`build.gradle:61`） | 两通道同时关断 → 跨模块 record 目标编译失败 `Unmapped target properties: "arg0, arg1"` | 潜在                                             |
-| `@Accessors(fluent = true)` 类型作 mapper **源**                    | 以 record 或 `@Getter` 形态类型作源                                   | fluent 生成无 `get` / `is` 前缀的访问器，不被认作 JavaBean getter ⇒ 源属性零可见       | 潜在（main 15 处 fluent 值对象，零 mapper 落点） |
-| 生产代码 `Mappers.getMapper(...)`                                   | Spring 注入生成 Bean                                                  | 有 DI 时官方要求注入取用；`src/main` 零命中                                            | 潜在                                             |
+| 关闭编译调试信息（`options.debug = false`）**且**移除 `-parameters` | 保持 javac 默认 `-g`（现行）；`-parameters` 保持（根 `build.gradle` 全局开启） | 两通道同时关断 → 跨模块 record 目标编译失败 `Unmapped target properties: "arg0, arg1"` | 潜在                                             |
+| `@Accessors(fluent = true)` 类型作 mapper **源**                    | 以 record 或 `@Getter` 形态类型作源                                   | fluent 生成无 `get` / `is` 前缀的访问器，不被认作 JavaBean getter ⇒ 源属性零可见       | 潜在（main 存在 fluent 值对象，当期无 mapper 源落点） |
+| 生产代码 `Mappers.getMapper(...)`                                   | Spring 注入生成 Bean                                                  | 有 DI 时官方要求注入取用；`src/main` 无此用法                                        | 潜在                                             |
 | 手改 / 入库生成实现（`*Impl.java`）                                 | 处理器生成（`build/`、`bin/` 已 gitignore）                           | 生成物随接口重生成，手改静默丢失                                                       | 潜在                                             |
-| `mapstruct-jdk8` 及包装坐标                                         | `org.mapstruct:mapstruct`                                             | 依赖树实测仅 `1.6.3`，无旧版混入                                                       | 不适用                                           |
-
-维护：BOM / 直接依赖升级时逐项复核本表与 1.2 清单（依据＝官方 release notes / 迁移指南），改动就地更新。
+| `mapstruct-jdk8` 及包装坐标                                         | `org.mapstruct:mapstruct`                                             | 依赖树为单一 `1.6.3`，无旧版混入                                                      | 不适用                                           |
 
 ## 2. Mapper 定义与注入
 
-| 规则                                                                                                                                                                            | 级别     | 官方来源                                                                                                                                                                                                                                                                    | SODA 落地                                                                                                                                        | 关联 ADR             |
-|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
-| **适用边界**：MapStruct 只承载 adapter 协议转换（`Request → Command` / `DTO → Response`）；infrastructure 的 PO ↔ 领域聚合 convertor **手写**（final 类 + 全量构造含显式 null） | 【强制】 | —（项目自定义）                                                                                                                                                                                                                                                             | `UserWebAssembler.java:40` 是 main 唯一 mapper；手写侧规则见 [framework-type-contracts.md](framework-type-contracts.md)「Convertor（基础设施）」 | ADR-0009<br>ADR-0024 |
-| `@Mapper` 标在**接口**上，实现由注解处理器在编译期生成（纯方法调用、无反射、无运行时依赖）                                                                                      | 【强制】 | [参考指南 #defining-mapper](https://mapstruct.org/documentation/stable/reference/html/#defining-mapper)                                                                                                                                                                     | `UserWebAssembler.java:40`                                                                                                                       | ADR-0009             |
-| `componentModel` 固定 `MappingConstants.ComponentModel.SPRING`——**用官方常量，不写字面量**；生成实现为 Spring Bean、由容器装配                                                  | 【强制】 | [API `MappingConstants.ComponentModel`](https://mapstruct.org/documentation/stable/api/org/mapstruct/MappingConstants.ComponentModel.html)<br>[参考指南 #using-dependency-injection](https://mapstruct.org/documentation/stable/reference/html/#using-dependency-injection) | `UserWebAssembler.java:40`（`:27` import）                                                                                                       | —                    |
-| 有 DI 框架时一律**依赖注入**取用 mapper（本仓：Controller 构造器注入），生产代码不用 `Mappers.getMapper(...)` 工厂                                                              | 【强制】 | [参考指南 #using-dependency-injection](https://mapstruct.org/documentation/stable/reference/html/#using-dependency-injection)                                                                                                                                               | `UserController.java:51`；`src/main` 零 `Mappers`                                                                                                | ADR-0009             |
+| 规则                                                                                                                                                                            | 级别     | 来源            | SODA 落地                                                                                                                                              |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **适用边界**：MapStruct 只承载 adapter 协议转换（`Request → Command` / `DTO → Response`）；infrastructure 的 PO ↔ 领域聚合 convertor **手写**（final 类 + 全量构造含显式 null） | 【强制】 | `SODA-DECISION`（ADR-0009 / ADR-0024） | `UserWebAssembler.java` 是 main 唯一 mapper；手写侧规则见 [framework-type-contracts.md](framework-type-contracts.md)「Convertor（基础设施）」 |
+| `@Mapper` 标在**接口**上，实现由注解处理器在编译期生成（纯方法调用、无反射、无运行时依赖）                                                                                      | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java`（ADR-0009）                                                                                                                   |
+| `componentModel` 固定 `MappingConstants.ComponentModel.SPRING`——**用官方常量，不写字面量**；生成实现为 Spring Bean、由容器装配                                                  | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java` 的 `@Mapper` 声明与 import                                                                                                    |
+| 有 DI 框架时一律**依赖注入**取用 mapper（本仓：Controller 构造器注入），生产代码不用 `Mappers.getMapper(...)` 工厂                                                              | 【强制】 | `MAPSTRUCT-DOC` | `UserController.java` 构造器注入；`src/main` 零 `Mappers`（ADR-0009）                                                                                 |
 
 ❌ 手写 `componentModel` 字面量——拼写错误无编译期保护，且与官方常量脱钩：
 
@@ -121,16 +128,16 @@ public UserController(UserWebAssembler assembler) {
 
 ## 3. 映射语义
 
-| 规则                                                                                                                                             | 级别     | 官方来源                                                                                                                                                | SODA 落地                                                                              | 关联 ADR             |
-|--------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|----------------------|
-| **默认 by-name 隐式映射**（含父类属性）：属性名相同即自动映射；仅名称不一致 / 嵌套路径 / 忽略 / 常量 / 表达式 / 歧义消解才写 `@Mapping`          | 【强制】 | [参考指南 #basic-mappings](https://mapstruct.org/documentation/stable/reference/html/#basic-mappings)                                                   | `UserWebAssembler.java:45-88` 13 个方法零 `@Mapping`                                   | —                    |
-| 多源参数方法按属性名映射；**同名属性歧义必须**用 `source = "param.prop"` 消歧；全部源参数为 `null` 时返回 `null`                                 | 【强制】 | [参考指南 #mappings-with-several-source-parameters](https://mapstruct.org/documentation/stable/reference/html/#mappings-with-several-source-parameters) | 7 个多参方法的参数名与目标组件一一对应，无同名歧义（如 `toUpdateCommand` 的 `userId`） | ADR-0009<br>ADR-0021 |
-| 目标构造选择顺序：builder → 标 `@Default` 的构造器 → 单一 public 构造器 → 无参构造器；多候选无 `@Default` → **编译错误**                         | 【强制】 | [参考指南 #mapping-with-constructors](https://mapstruct.org/documentation/stable/reference/html/#mapping-with-constructors)                             | 目标全为 record，唯一 canonical 构造器                                                 | —                    |
-| `record` 目标走**构造器映射**路径；跨模块 record 的组件名经 class 文件元数据读取                                                                 | 【强制】 | [参考指南 #mapping-with-constructors](https://mapstruct.org/documentation/stable/reference/html/#mapping-with-constructors)                             | `soda-user-api` 的 Command / Response 为跨模块 record 目标（13 方法全命中）            | —                    |
-| 集合映射：元素类型不同则逐元素调用元素映射方法；返回接口类型时实例化固定实现（`List`→`ArrayList`、`Set`→`LinkedHashSet`、`Map`→`LinkedHashMap`） | 【强制】 | [参考指南 #mapping-collections](https://mapstruct.org/documentation/stable/reference/html/#mapping-collections)                                         | `UserWebAssembler.java:88` `toResponseList`                                            | —                    |
-| `unmappedTargetPolicy` 默认 `WARN`；本仓取 `ReportingPolicy.ERROR`——漏映射在编译期拦截                                                           | 【强制】 | [API `Mapper#unmappedTargetPolicy`](https://mapstruct.org/documentation/stable/api/org/mapstruct/Mapper.html#unmappedTargetPolicy())                    | `UserWebAssembler.java:40`                                                             | —                    |
-| 有意不映射的目标属性**必须**写 `@Mapping(target = "…", ignore = true)` 自证；靠 `ERROR` 沉默通过不可接受                                         | 【强制】 | [参考指南 #configuration-options](https://mapstruct.org/documentation/stable/reference/html/#configuration-options)                                     | 当前零缺口（13 方法目标组件全部 by-name 覆盖），无 `ignore` 需求                       | —                    |
-| 源类型**不得**为 `@Accessors(fluent = true)` 值对象——其访问器 `name()` 不是 JavaBean getter，源属性零可见；作 mapper **目标**不设限              | 【强制】 | —（项目自定义）                                                                                                                                         | main 15 处 fluent 值对象（`domain.types`），当期零 mapper 落点                         | —                    |
+| 规则                                                                                                                                             | 级别     | 来源            | SODA 落地                                                                                                                                              |
+|--------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **默认 by-name 隐式映射**（含父类属性）：属性名相同即自动映射；仅名称不一致 / 嵌套路径 / 忽略 / 常量 / 表达式 / 歧义消解才写 `@Mapping`          | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java` 全部映射方法零 `@Mapping`                                                                                                      |
+| 多源参数方法按属性名映射；**同名属性歧义必须**用 `source = "param.prop"` 消歧；全部源参数为 `null` 时返回 `null`                                 | 【强制】 | `MAPSTRUCT-DOC` | 多参方法的参数名与目标组件一一对应，无同名歧义（如 `toUpdateCommand` 的 `userId`）（ADR-0009 / ADR-0021）                                               |
+| 目标构造选择顺序：builder → 标 `@Default` 的构造器 → 单一 public 构造器 → 无参构造器；多候选无 `@Default` → **编译错误**                         | 【强制】 | `MAPSTRUCT-DOC` | 目标全为 record，唯一 canonical 构造器                                                                                                                 |
+| `record` 目标走**构造器映射**路径；跨模块 record 的组件名经 class 文件元数据读取                                                                 | 【强制】 | `MAPSTRUCT-DOC` | `soda-user-api` 的 Command / Response 为跨模块 record 目标                                                                                            |
+| 集合映射：元素类型不同则逐元素调用元素映射方法；返回接口类型时实例化固定实现（`List`→`ArrayList`、`Set`→`LinkedHashSet`、`Map`→`LinkedHashMap`） | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java` 的 `toResponseList`                                                                                                           |
+| `unmappedTargetPolicy` 默认 `WARN`；本仓取 `ReportingPolicy.ERROR`——漏映射在编译期拦截                                                           | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java` 的 `@Mapper` 声明                                                                                                              |
+| 有意不映射的目标属性**必须**写 `@Mapping(target = "…", ignore = true)` 自证；靠 `ERROR` 沉默通过不可接受                                         | 【强制】 | `MAPSTRUCT-DOC` | 当前零缺口（目标组件全部 by-name 覆盖），无 `ignore` 需求                                                                                              |
+| 源类型**不得**为 `@Accessors(fluent = true)` 值对象——其访问器 `name()` 不是 JavaBean getter，源属性零可见；作 mapper **目标**不设限              | 【强制】 | `SODA-POLICY`   | main 存在 fluent 值对象（`domain.types`），当期无 mapper 源落点                                                                                        |
 
 ❌ 多源参数方法里只写属性名，而该属性在多个源参数上可见——MapStruct 无法选择，编译期报「Several possible source properties」：
 
@@ -159,12 +166,12 @@ interface SomeAssembler {
 
 ## 4. 构建接线
 
-| 规则                                                                                                                                                                | 级别     | 官方来源                                                                                                                                                                                                                         | SODA 落地                                                                       | 关联 ADR |
-|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|----------|
-| `mapstruct` 走**编译期**依赖（`compileOnly`）；`mapstruct-processor` 走 `annotationProcessor`，测试代码走 `testAnnotationProcessor`——处理器不得放 compile classpath | 【强制】 | [安装与接线](https://mapstruct.org/documentation/installation/)                                                                                                                                                                  | `build.gradle:38` / `:40`（main）、`:46` / `:49`（test）                        | —        |
-| `lombok-mapstruct-binding` **必须**与 Lombok 同链在位：`annotationProcessor` + `testAnnotationProcessor` 各一行                                                     | 【强制】 | [FAQ 「Can I use MapStruct together with Project Lombok」](https://mapstruct.org/faq/#Can-I-use-MapStruct-together-with-Project-Lombok)<br>[参考指南 #lombok](https://mapstruct.org/documentation/stable/reference/html/#lombok) | `build.gradle:41` / `:50`（`org.projectlombok:lombok-mapstruct-binding:0.2.0`） | —        |
-| 形参名通道**不同时关断**：`LocalVariableTable`（javac 默认 `-g`）或 `MethodParameters`（`-parameters`）任一在位即可；两者同关断则跨模块 record 目标编译失败         | 【强制】 | [javac 手册](https://docs.oracle.com/en/java/javase/25/docs/specs/man/javac.html)<br>[参考指南 #mapping-with-constructors](https://mapstruct.org/documentation/stable/reference/html/#mapping-with-constructors)                 | `build.gradle:61` `-parameters` 保留；`options.debug` 未关闭                    | —        |
-| 生成实现（`*Impl.java`）不手改、不入库；映射变更只改 mapper 接口                                                                                                    | 【强制】 | —（项目自定义）                                                                                                                                                                                                                  | `.gitignore:50`（`build/`）、`:38`（`bin/`）已覆盖                              | —        |
+| 规则                                                                                                                                                                | 级别     | 来源            | SODA 落地                                                                                                                                             |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `mapstruct` 走**编译期**依赖（`compileOnly`）；`mapstruct-processor` 走 `annotationProcessor`，测试代码走 `testAnnotationProcessor`——处理器不得放 compile classpath | 【强制】 | `MAPSTRUCT-DOC` | 根 `build.gradle` 的 main 与 test 接线声明齐备                                                                                                        |
+| `lombok-mapstruct-binding` **必须**与 Lombok 同链在位：`annotationProcessor` + `testAnnotationProcessor` 各一行                                                     | 【强制】 | `MAPSTRUCT-DOC` | 根 `build.gradle` 的 `annotationProcessor` 与 `testAnnotationProcessor` 各一行（`org.projectlombok:lombok-mapstruct-binding:0.2.0`）                  |
+| 形参名通道**不同时关断**：`LocalVariableTable`（javac 默认 `-g`）或 `MethodParameters`（`-parameters`）任一在位即可；两者同关断则跨模块 record 目标编译失败         | 【强制】 | `JDK-DOC`、`MAPSTRUCT-DOC` | 根 `build.gradle` 的 `-parameters` 保留；`options.debug` 未关闭                                                   |
+| 生成实现（`*Impl.java`）不手改、不入库；映射变更只改 mapper 接口                                                                                                    | 【强制】 | `SODA-POLICY`   | `.gitignore` 已覆盖 `build/` 与 `bin/` 生成物                                                                                                          |
 
 **`lombok-mapstruct-binding`（单源）**：本仓 Lombok 1.18.46 与 MapStruct 1.6.3 同链编译，binding 必须在位。它的价值是
 **顺序保险**
@@ -209,11 +216,11 @@ tasks.withType(JavaCompile).configureEach {
 
 ## 5. Null 策略与 JSpecify 缺口
 
-| 规则                                                                                                                                                                                | 级别     | 官方来源                                                                                                                                                                                                                            | SODA 落地                                                                                                                  | 关联 ADR |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|----------|
-| **1.6.3 不识别 `@Nullable` / `@NonNull` / `@NullMarked`**：这些注解对本版 mapper 生成**零影响**，null 行为完全由本节下表的默认策略决定——不得据 `@Nullable` 推断 mapper 的 null 检查 | 【强制】 | [参考指南 #checking-source-property-for-null-arguments](https://mapstruct.org/documentation/stable/reference/html/#checking-source-property-for-null-arguments)<br>[Release Notes](https://github.com/mapstruct/mapstruct/releases) | `UserWebAssembler.java:51` `@Nullable Integer expectedVersion`、`UserDTO.java:17-20` 的 `@Nullable` 组件对本版 mapper 惰性 | —        |
-| null 策略保持默认：`NullValueMappingStrategy.RETURN_NULL`、`NullValueCheckStrategy.ON_IMPLICIT_CONVERSION`；`NullValuePropertyMappingStrategy` 只作用于 update 方法（本仓无）       | 【参考】 | [FAQ null 策略](https://mapstruct.org/faq/#How-do-I-handle-null-properties-in-the-source-bean)                                                                                                                                      | 零策略配置                                                                                                                 | —        |
-| 跨模块 record 目标一旦出现「可空源 → 非空构造参数」的组合，**必须**用策略（`defaultValue` / 显式 `@Mapping`）表达，不能寄望注解驱动                                                 | 【参考】 | [参考指南 #mapping-result-for-null-arguments](https://mapstruct.org/documentation/stable/reference/html/#mapping-result-for-null-arguments)                                                                                         | 当期零命中（目标组件均可空或由策略覆盖）                                                                                   | —        |
+| 规则                                                                                                                                                                                | 级别     | 来源            | SODA 落地                                                                                                                                              |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1.6.3 不识别 `@Nullable` / `@NonNull` / `@NullMarked`**：这些注解对本版 mapper 生成**零影响**，null 行为完全由本节下表的默认策略决定——不得据 `@Nullable` 推断 mapper 的 null 检查 | 【强制】 | `MAPSTRUCT-DOC` | `UserWebAssembler.java` 的 `@Nullable Integer expectedVersion`、`UserDTO.java` 的 `@Nullable` 组件对本版 mapper 惰性                                                                 |
+| null 策略保持默认：`NullValueMappingStrategy.RETURN_NULL`、`NullValueCheckStrategy.ON_IMPLICIT_CONVERSION`；`NullValuePropertyMappingStrategy` 只作用于 update 方法（本仓无）       | 【参考】 | `MAPSTRUCT-DOC` | 零策略配置                                                                                                                                              |
+| 跨模块 record 目标一旦出现「可空源 → 非空构造参数」的组合，**必须**用策略（`defaultValue` / 显式 `@Mapping`）表达，不能寄望注解驱动                                                 | 【参考】 | `MAPSTRUCT-DOC` | 当期无该组合（目标组件均可空或由策略覆盖）                                                                                                              |
 
 ❌ 指望 `@Nullable` 改变 mapper 的 null 检查——1.6.3 不识别这类注解，写了没有效果：
 
@@ -231,7 +238,7 @@ UserResponse toSummary(UserDTO dto, @Nullable Integer revision);
 
 ## 检视清单
 
-code-review 标准轴按本清单逐条核对（每条可判定；对应规则见括号内落点）：
+每条可判定，括号为规则落点（处置词表与逐项回放见 [doc-conventions §7.2](../doc-conventions.md#72-检视清单服务迁移审计)）：
 
 ### 代码
 

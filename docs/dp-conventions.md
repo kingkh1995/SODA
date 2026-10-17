@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: Domain Primitive 设计规范
-description: 新增或修改 Domain Primitive（DP）时读——形态选择（归族/形态/继承判据）、行为契约、工厂命名、富血/缓存/SPI 与枚举 DP；含写·检视双清单。P3C【强制/推荐/参考】三级标定 + ❌/✅ 反例正例。校验与归一化单源在 conventions/dp-validation-conventions.md。
+description: 新增或修改 Domain Primitive（DP）时读——形态选择（归族/形态/继承判据）、行为契约、工厂命名、富血/缓存/SPI 与枚举 DP；含写·检视双清单。三级【强制/推荐/参考】标定 + ❌/✅ 反例正例。校验与归一化单源在 conventions/dp-validation-conventions.md。
 tags: [ convention, dp ]
 status: stable
 ---
@@ -9,7 +9,12 @@ status: stable
 # Domain Primitive 设计规范
 
 目标读者：coding agent。本规范覆盖 DP 的完整决策路径： **语义归族 → 实现形态 → 行为契约 → 工厂命名 → 校验（指针）→
-JSON（指针）→ 富血 / 缓存 / SPI → 枚举 → 新建流程**。级别标定用 P3C 三级【强制】/【推荐】/【参考】。
+JSON（指针）→ 富血 / 缓存 / SPI → 枚举 → 新建流程**。
+
+**级别与来源**：三级【强制】/【推荐】/【参考】按 [doc-conventions §4.1 级别](doc-conventions.md#41-级别) 标定；本篇规则来源为
+`SODA-POLICY`，行内「见 ADR-NNNN」锚点为 `SODA-DECISION` 关联决策（现存 ADR 见 [adr/](adr/)）。三级标定与 ❌/✅ 形式的采纳依据
+[ADR-0036](adr/0036-p3c-surface-format-retrofit.md)——只作形式先例、不作外部权威（封闭来源列见
+[doc-conventions §4.2 来源登记](doc-conventions.md#42-来源登记)）。
 
 > **单源指针**：[dp-validation-conventions](conventions/dp-validation-conventions.md)（校验与归一化）、
 > [dp-json-conventions](conventions/dp-json-conventions.md)（Jackson 模式总表与序列化）、
@@ -353,19 +358,17 @@ public final class Xxx implements IntLiteralType {
 
 ### 2.1 DP 不变式
 
-下表各行均为【强制】：
-
-| 维度                   | 规则                                   | 说明                                                                |
-|------------------------|----------------------------------------|---------------------------------------------------------------------|
-| 不可变                 | 所有字段 `final`                       | record 隐式保证；class 显式 `private final`；禁止包裹可变类型（§4） |
-| 自校验                 | 构造时验证业务约束                     | 无效值不可表示；非法输入抛 `IllegalArgumentException`               |
-| value-based identity   | `equals`/`hashCode` 只看规范值         | 不依赖对象身份；有派生字段时不纳入相等性（§2.2）                    |
-| class-aware identity   | `equals`/`hashCode` 包含运行时类型检查 | 不同 DP 类型之间永不相等（§2.2）                                    |
-| 非空类型               | DP 实例代表有效值                      | 可选场景用 `Optional<DP>`；工厂对 `null` 零容忍                     |
-| 不修理输入             | 只归一化格式，不修复非法值             | 不自动 trim、不舍入、不把非法值改成合法值（§4）                     |
-| 可读 toString          | `toString()` 输出调试字符串            | record 风格 `ClassName[field=value]`；敏感族按 §2.4 脱敏            |
-| 单一构造路径           | 业务校验只落构造器                     | 工厂只做类型转换与预处理后委托构造器（§3.1）                        |
-| 缓存不可观测（条件式） | 做缓存的 DP 只承诺值语义               | 调用方用 `equals`/`hashCode`/`compareTo`，禁止依赖 `==`（§7）       |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| 不可变：所有字段 `final` | 【强制】 | `SODA-POLICY` | record 隐式保证；class 显式 `private final`；禁止包裹可变类型（§4） |
+| 自校验：构造时验证业务约束 | 【强制】 | `SODA-POLICY` | 无效值不可表示；非法输入抛 `IllegalArgumentException` |
+| value-based identity：`equals`/`hashCode` 只看规范值 | 【强制】 | `SODA-POLICY` | 不依赖对象身份；有派生字段时不纳入相等性（§2.2） |
+| class-aware identity：`equals`/`hashCode` 包含运行时类型检查 | 【强制】 | `SODA-POLICY` | 不同 DP 类型之间永不相等（§2.2） |
+| 非空类型：DP 实例代表有效值 | 【强制】 | `SODA-POLICY` | 可选场景用 `Optional<DP>`；工厂对 `null` 零容忍 |
+| 不修理输入：只归一化格式，不修复非法值 | 【强制】 | `SODA-POLICY` | 不自动 trim、不舍入、不把非法值改成合法值（§4） |
+| 可读 toString：`toString()` 输出调试字符串 | 【强制】 | `SODA-POLICY` | record 风格 `ClassName[field=value]`；敏感族按 §2.4 脱敏 |
+| 单一构造路径：业务校验只落构造器 | 【强制】 | `SODA-POLICY` | 工厂只做类型转换与预处理后委托构造器（§3.1） |
+| 缓存不可观测（条件式）：做缓存的 DP 只承诺值语义 | 【强制】 | `SODA-POLICY` | 调用方用 `equals`/`hashCode`/`compareTo`，禁止依赖 `==`（§7） |
 
 `Type` 是 DP 的根标记接口， **不继承 `Serializable`**。`Identifier<T>` 继承 `Type`，保留 `T extends Comparable<T>`
 约束（标识符底层值
@@ -381,17 +384,15 @@ public final class Xxx implements IntLiteralType {
 
 ### 2.2 equals/hashCode
 
-下表各行均为【强制】：
-
-| 实现形态                            | 策略                                                                                                                                                                                                                    | 说明                                                                                                                        |
-|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| Record（单/多字段）                 | record 自动生成，所有 components 参与                                                                                                                                                                                   | 不需要手工编写；class 检查通过 `getClass()` 保证                                                                            |
-| Class 单字段、无派生值              | `@EqualsAndHashCode`                                                                                                                                                                                                    | 隐式纳入唯一字段（即规范值）                                                                                                |
-| Class 含派生/缓存字段               | `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` + `@EqualsAndHashCode.Include` 在规范值上                                                                                                                           | 派生/缓存字段被排除                                                                                                         |
-| 密封继承                            | 基类 `@EqualsAndHashCode`（比较 `value`），子类 `@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)` 且不标注任何 `@Include`                                                                           | 仅比较基类 value + class 类型（`instanceof`），子类自身字段全部排除                                                         |
-| 字面量敏感基类（SensitiveValue 族） | 基类 `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` + `@Include` 在规范值上；具体子类**强制** `@EqualsAndHashCode(callSuper = true)`，canEqual 链逐层收窄即 class-aware；`SensitiveValueContractTest` 拦截子类漏标 | 子类漏标不报编译错，而是静默继承基类相等语义（跨类误等）——契约测试兜底；`toString`/`value()` 仍为手写 final（脱敏不可绕过） |
-| Secret 子类                         | 引用相等（`Object.equals`/`Object.hashCode`），不暴露敏感值                                                                                                                                                             | 安全脱敏要求；不使用 Lombok 注解                                                                                            |
-| Enum                                | JVM 枚举单例身份相等（`==` 等价）                                                                                                                                                                                       | 无需处理                                                                                                                    |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| Record（单/多字段）：record 自动生成，所有 components 参与 | 【强制】 | `SODA-POLICY` | 不需要手工编写；class 检查通过 `getClass()` 保证 |
+| Class 单字段、无派生值：`@EqualsAndHashCode` | 【强制】 | `SODA-POLICY` | 隐式纳入唯一字段（即规范值） |
+| Class 含派生/缓存字段：`@EqualsAndHashCode(onlyExplicitlyIncluded = true)` + `@EqualsAndHashCode.Include` 在规范值上 | 【强制】 | `SODA-POLICY` | 派生/缓存字段被排除 |
+| 密封继承：基类 `@EqualsAndHashCode`（比较 `value`），子类 `@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)` 且不标注任何 `@Include` | 【强制】 | `SODA-POLICY` | 仅比较基类 value + class 类型（`instanceof`），子类自身字段全部排除 |
+| 字面量敏感基类（SensitiveValue 族）：基类 `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` + `@Include` 在规范值上；具体子类**强制** `@EqualsAndHashCode(callSuper = true)`，canEqual 链逐层收窄即 class-aware；`SensitiveValueContractTest` 拦截子类漏标 | 【强制】 | `SODA-POLICY` | 子类漏标不报编译错，而是静默继承基类相等语义（跨类误等）——契约测试兜底；`toString`/`value()` 仍为手写 final（脱敏不可绕过） |
+| Secret 子类：引用相等（`Object.equals`/`Object.hashCode`），不暴露敏感值 | 【强制】 | `SODA-POLICY` | 安全脱敏要求；不使用 Lombok 注解 |
+| Enum：JVM 枚举单例身份相等（`==` 等价） | 【强制】 | `SODA-POLICY` | 无需处理 |
 
 - 【强制】禁止手写 `equals`/`hashCode`——一律由 record 生成或 Lombok 注解生成；
   `CrossTypeEqualityTest` 充当「自定义 equals 漏 class 检查」的回归拦网。
@@ -432,15 +433,13 @@ private final BigDecimal decimalValue;
 
 ### 2.3 toString
 
-下表各行均为【强制】：
-
-| 实现形态                     | 规则                                                             | 示例                                      |
-|------------------------------|------------------------------------------------------------------|-------------------------------------------|
-| Record（所有字段）           | 不重写，使用 JDK 自动生成                                        | `LongId[value=42]`                        |
-| Class 单字段                 | 手动：`"ClassName[value=" + value + "]"`                         | `ConcurrencyVersion[value=42]`            |
-| Class 多字段                 | 手动：`"ClassName[field1=" + f1 + ", field2=" + f2 + "]"`        | `EmailContent[subject=Hello, body=World]` |
-| 密封继承                     | 基类模板：`getClass().getSimpleName() + "[value=" + value + "]"` | `PasswordAuthAccountId[value=P:42]`       |
-| SecretValue（独立 final 类） | 脱敏：`"SecretValue[***]"`，不得暴露内部值                       | `SecretValue[***]`                        |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| Record（所有字段）：不重写，使用 JDK 自动生成 | 【强制】 | `SODA-POLICY` | `LongId[value=42]` |
+| Class 单字段：手动 `"ClassName[value=" + value + "]"` | 【强制】 | `SODA-POLICY` | `ConcurrencyVersion[value=42]` |
+| Class 多字段：手动 `"ClassName[field1=" + f1 + ", field2=" + f2 + "]"` | 【强制】 | `SODA-POLICY` | `EmailContent[subject=Hello, body=World]` |
+| 密封继承：基类模板 `getClass().getSimpleName() + "[value=" + value + "]"` | 【强制】 | `SODA-POLICY` | `PasswordAuthAccountId[value=P:42]` |
+| SecretValue（独立 final 类）：脱敏 `"SecretValue[***]"`，不得暴露内部值 | 【强制】 | `SODA-POLICY` | `SecretValue[***]` |
 
 - 【强制】 **class 形态格式锁死**：`ClassName[value=...]`（单字段）或 `ClassName[field1=..., field2=...]`（多字段），与 record
   自动生成严格
@@ -558,8 +557,8 @@ public SecretValue(String value) { /* … */ }
 
 约束：
 
-- 【强制】 **构造器＝唯一校验点**：所有业务校验只落构造器（record 紧凑构造器 / class private 构造器）；判据—— **去掉该检查，非法值
-  还能不能构造出来？** 能 → 必须在构造器；不能（只是转换表达式会以错误类型爆炸）→ 允许留在转换入口。
+- 【强制】 **构造器＝唯一校验点**：所有业务校验只落构造器（record 紧凑构造器 / class private 构造器）；判据句与转换入口边界
+  单源见 [dp-validation-conventions §1 职责分层](conventions/dp-validation-conventions.md#1-职责分层)。
 - 【强制】`of(T)` **直达私有构造器**（缓存 / 单例分派是允许的中介）， **不得委托任何其他工厂**：反序列化行为不随转换层变更而漂移。
   `from` / `parse` 允许委托 `of` 或直达构造器（包装适配如 `from(Integer)` 优先委托 `of`，共享缓存分派；跨类型转换直达亦可）。
   `parse(Object)` 等上层入口委托 `of` 不在禁令内（它是「不可靠输入」的单一收敛点）。
@@ -626,20 +625,18 @@ Optional<Username> username;
 
 ## 4. 校验与归一化
 
--
-
 【强制】业务校验全部落构造器（唯一校验点），单源见 [dp-validation-conventions §1 职责分层](conventions/dp-validation-conventions.md#1-职责分层)。
 
 - 【强制】DP 内单值校验禁止内联 `if/throw`，一律经 `ValidateUtils`；完整禁令与边界（含 DP 语义不变量）单源见
   [dp-validation-conventions §3 编排规则](conventions/dp-validation-conventions.md#3-编排规则)。
-- 【强制】DP 字段必须不可变——下表各行均为【强制】：
+- 【强制】DP 字段必须不可变，下表逐行列出禁止项与替代：
 
-| 禁止                                | 替代                                                   |
-|-------------------------------------|--------------------------------------------------------|
-| `byte[]`                            | 十六进制字符串 / Base64 `String` / 不可变 `ByteString` |
-| `Date` / `Calendar`                 | `Instant` / `LocalDate` / `ZonedDateTime`              |
-| `ArrayList` / `HashSet` / `HashMap` | `List.of` / `Set.copyOf` / `Map.copyOf`                |
-| 可变领域对象                        | 提取为 DP 字段或设计成不可变                           |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| DP 字段禁用 `byte[]` | 【强制】 | `SODA-POLICY` | 十六进制字符串 / Base64 `String` / 不可变 `ByteString` |
+| DP 字段禁用 `Date` / `Calendar` | 【强制】 | `SODA-POLICY` | `Instant` / `LocalDate` / `ZonedDateTime` |
+| DP 字段禁用 `ArrayList` / `HashSet` / `HashMap` | 【强制】 | `SODA-POLICY` | `List.of` / `Set.copyOf` / `Map.copyOf` |
+| DP 字段禁用可变领域对象 | 【强制】 | `SODA-POLICY` | 提取为 DP 字段或设计成不可变 |
 
 ❌ 字段用 `byte[]` / `Date` / 可变集合（外部可改内部状态，实例不再不可变）：
 
@@ -655,26 +652,24 @@ public record Digest(String hex) implements StringLiteralType {
 
 ## 5. JSON 与序列化
 
-- 取值原则：`value()` 即线上值（字面量家族继承 `@JsonValue`）、反序列化输入与规范值同型——round-trip 成立。
-- 【强制】序列化 / 反序列化入口按 [dp-json-conventions §1 模式总表](conventions/dp-json-conventions.md#1-模式总表)
-  取值（行键＝构造器可见性）；
-  不可反序列化类型姿态见 §1.4 / §2.4。
+- 取值原则与序列化 / 反序列化入口的规则正文单源在 [dp-json-conventions](conventions/dp-json-conventions.md)（篇首取值原则、
+  §1 模式总表，行键＝构造器可见性）；不可反序列化类型姿态见 §1.4 / §2.4。
 - 【强制】DP 禁止实现 `java.io.Serializable`
   ——口径与理由单源见 [dp-json-conventions §5 JDK 序列化](conventions/dp-json-conventions.md#5-jdk-序列化)。
 
 ## 6. 富血方法命名
 
-命名口径均为【强制】；方法是否存在按需（§3.2）：
+方法是否存在按需（§3.2）；级别与来源见各列：
 
-| 语义                  | 命名                    | 示例                                   |
-|-----------------------|-------------------------|----------------------------------------|
-| 修改字段返回新实例    | `withXxx(...)`          | `withYear(int)`                        |
-| 加减 / 偏移           | `plusXxx` / `minusXxx`  | `plus(Duration)`、`minusDays(long)`    |
-| 布尔查询              | `isXxx` / `hasXxx`      | `isAfter(EpochMilli)`、`isBefore(...)` |
-| 转换（值 → JDK 类型） | `toXxx()`               | `toInstant()`、`toLongId()`            |
-| 序列步进              | `next()` / `previous()` | `version.next()`                       |
-| 派生键串              | `xxxKey()`              | `compositeKey()`                       |
-| 展示串                | `toDisplayString()`     | `WanYuan.toDisplayString()`            |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| 修改字段返回新实例 → `withXxx(...)` | 【强制】 | `SODA-POLICY` | `withYear(int)` |
+| 加减 / 偏移 → `plusXxx` / `minusXxx` | 【强制】 | `SODA-POLICY` | `plus(Duration)`、`minusDays(long)` |
+| 布尔查询 → `isXxx` / `hasXxx` | 【强制】 | `SODA-POLICY` | `isAfter(EpochMilli)`、`isBefore(...)` |
+| 转换（值 → JDK 类型）→ `toXxx()` | 【强制】 | `SODA-POLICY` | `toInstant()`、`toLongId()` |
+| 序列步进 → `next()` / `previous()` | 【强制】 | `SODA-POLICY` | `version.next()` |
+| 派生键串 → `xxxKey()` | 【强制】 | `SODA-POLICY` | `compositeKey()` |
+| 展示串 → `toDisplayString()` | 【强制】 | `SODA-POLICY` | `WanYuan.toDisplayString()` |
 
 - 【强制】值 → JDK 类型的转换一律 `toXxx()`，不得混用裸名词（先例 `EpochMilli.toInstant()`）。
 - 【强制】单向派生的键串用名词性访问器 `xxxKey()`——非转换语义、 **禁止反解析**（先例 `VerificationSource.compositeKey()`，见
@@ -685,9 +680,9 @@ public record Digest(String hex) implements StringLiteralType {
 
 ## 7. 缓存
 
-- 【强制】缓存不可观测：做缓存的 DP 只承诺 `equals` / `hashCode` / `compareTo`；调用方禁止依赖 `==`；
-  **测试不得断言缓存单例身份**
-  （`==` / `isSameAs`）。
+- 【强制】缓存不可观测：做缓存的 DP 只承诺 `equals` / `hashCode` / `compareTo`；调用方禁止依赖 `==`。
+  测试侧不得断言缓存单例身份（`==` / `isSameAs`）——测试规则与反例单源见
+  [dp-test-conventions §1.2 Record / Class DP（含缓存）](conventions/dp-test-conventions.md#12-record--class-dp含缓存)。
 - 【强制】仅 class DP 可做缓存——record 典范构造器 public，无法强制走缓存入口。
 - 【强制】缓存上界经 SPI 暴露（§8），带下限保护。
 - 【推荐】值域小且可预测、有明确性能收益时才做缓存。
@@ -702,16 +697,6 @@ static {
     CACHE[i] = new ConcurrencyVersion(i);
   }
 }
-```
-
-❌ 测试断言缓存单例身份（把实现细节钉成契约，与「缓存不可观测」冲突）：
-
-```java
-// ❌ 钉死单例身份：缓存范围一改即测试碎
-assertThat(ConcurrencyVersion.of(1)).isSameAs(ConcurrencyVersion.of(1));
-
-// ✅ 只断言值语义
-assertThat(ConcurrencyVersion.of(1)).isEqualTo(ConcurrencyVersion.of(1));
 ```
 
 ## 8. SPI 配置化常量
@@ -862,7 +847,7 @@ public int compareTo(Xxx other) {
 ### 测试
 
 16. 必测分组按 [dp-test-conventions](conventions/dp-test-conventions.md)「必测分组」全覆盖（名 + 内容），组名取该篇单表（无自造、无适用形态外多建）
-17. 无身份断言（`isSameAs` / `isNotSameAs`）；缓存组为边界三元组值等价
+17. 无身份断言（`isSameAs` / `isNotSameAs`）；缓存组为边界三元组值等价（[dp-test-conventions §1.2](conventions/dp-test-conventions.md#12-record--class-dp含缓存)）
 18. `Serialization` 三断言齐（形状 / round-trip / 非法拒绝）；共享 `MAPPER`，无 `new ObjectMapper()`
 19. 无零断言 / 恒真 / STUB 回声；异常断言用 `hasMessageContaining`
 20. 新增 DP 已登记 `CrossTypeEqualityTest` 清单 + 敏感契约套件同步

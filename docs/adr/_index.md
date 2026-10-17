@@ -1,17 +1,15 @@
 ---
-type: Convention
+type: Navigation
 title: ADR 主题聚类索引
 description: 按主题分类浏览 ADR——写新 ADR / 跨 ADR 决策溯源时读。每个 ADR 的一句话范围 + 入口；不复制 ADR 正文。
-tags: [adr, navigation, index]
-status: stable
 ---
 
 # ADR 主题聚类索引
 
 按主题分组浏览 ADR；同一主题下 ADR 是「同一概念的不同面」——按入口先读粗体。完整决策与理由以各 ADR 正文为单源，本文件只承担导航。
 
-> 命名约定：本文件以 `_` 前缀命名，进 `docs/adr/` 目录但不属于 ADR 本身；不参与 ADR
-> 顺序编号，不进合规审计（详见 [doc-conventions §2](../doc-conventions.md)）。
+> 命名约定：本文件以 `_` 前缀命名，进 `docs/adr/` 目录但不属于 ADR 本身；导航文件不参加
+> ADR 顺序编号与正文合规，但仍有链接可达与注册要求（详见 [doc-conventions](../doc-conventions.md) §2、§5.4）。
 
 ## 架构与模块
 
@@ -19,6 +17,7 @@ status: stable
 - **[0008](0008-layered-component-starters.md)** — 分层 starter 一架构层一组件模块
 - **[0019](0019-adapter-starter-channel-split.md)** — Adapter starter 按入站通道拆分
 - **[0042](0042-dual-root-package-model.md)** — 双根包建模：两个应用根 + 单向跨根校验
+- **[0045](0045-modulith-gate-minimal-backstop.md)** — Modulith 门禁只做最小兜底（单一测试类，无夹具源集）
 
 ## DDD 概念边界
 
@@ -46,6 +45,10 @@ status: stable
 3. **[0025](0025-verification-active-key-uniqueness.md)** — 活跃验证唯一性：active_key 数据库硬保证
 4. **[0026](0026-verification-source-recipient.md)** — Verification 双概念模型：source 与 recipient
 5. **[0029](0029-verification-domain-split.md)** — Verification 类型的模块位置
+
+## 事件与事务
+
+- **[0044](0044-local-domain-event-transaction.md)** — 本地领域事件同事务处理与聚合引用载荷
 
 ## DP 谱系
 

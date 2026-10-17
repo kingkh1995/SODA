@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: Domain Primitive 测试规范
-description: 写 DP 测试时按形态取必测分组（§1）、@Nested 分组名（§2）与模板（§4），并按 §5 检视清单核对覆盖。通用写法与分层映射单源在 test-conventions。P3C【强制/推荐/参考】三级标定 + ❌/✅ 反例正例。
+description: 写 DP 测试时按形态取必测分组（§1）、@Nested 分组名（§2）与模板（§4），先过写清单、再按 §5 检视清单核对覆盖。通用写法与分层映射单源在 test-conventions。三级【强制/推荐/参考】标定 + ❌/✅ 反例正例。
 tags: [ convention, testing, dp ]
 status: stable
 ---
@@ -16,6 +16,21 @@ status: stable
 **管辖面**（【强制】）：实现 `com.soda.component.domain.Type` 的 DP。Entity / Aggregate（`AuthAccount` 族、`User`、`Verification`
 ）不在本文管辖
 ——按 [test-conventions](../test-conventions.md) 分层映射「聚合 / 领域服务按行为」分组，其组名不判过标。
+
+**级别与来源**：本篇三级级别按 [doc-conventions §4.1 级别](../doc-conventions.md#41-级别) 标定，规则来源 `SODA-POLICY`
+（封闭来源列见 [§4.2 来源登记](../doc-conventions.md#42-来源登记)）。
+
+## 写清单
+
+建 / 改 DP 测试时按序执行（括号内为落点）：
+
+1. 判 DP 形态，按 §1 取必测分组（record / class §1.1、含缓存 §1.2、密封族 §1.3、SecretValue §1.4、枚举 §1.5）；「名 + 内容」双强制（§1.0）
+2. 分组名只取 §2 单表，不自造；「适用形态」满足才建组，形态外多建 ＝ 形式过标（§2 表规则）
+3. 标准形态 DP 的 `Equality` / `Debug` / `Serialization`（及 `ComparableTest`）由契约基类承载——测试类只声明 `Contract` 样例、不重复声明折叠组；类型专属分组（`Constructor` / `Validation` / `Conversion` / `Masking` / `RichMethods` …）手写（§1.1）
+4. `from` 按建值 / 转换落 `Constructor` / `Conversion`（§1.1 落组判据）
+5. 用共享 `MAPPER`、不 `new ObjectMapper()`；断言深度与命名按 §3（每方法一场景、`Serialization` 三断言分方法、`Debug` 精确全串、组规模 ≤6、`should_<行为>` 命名）
+6. 新增 DP 登记 `CrossTypeEqualityTest` 清单一行（§1.6）
+7. **完成判据**：§1 逐行覆盖齐（名 + 内容）、组名全在 §2 表内、无身份断言；文末 §5 检视清单无未决项
 
 ## 1. 必测分组：按 DP 形态
 
@@ -71,7 +86,7 @@ status: stable
 
 | 分组    | 必须覆盖                                                                                                                                                                                                                                                                                 |
 |---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Cache` | 缓存透明性：边界三元组（下界 / 上限 / 上限+1）值等价（`equals` / `hashCode` / 序列化一致）；上限仅对声明实例缓存的 DP 适用，经 `TypeConfig.PROVIDER.<类型>CacheHigh()` 读取（当前仅 `ConcurrencyVersion` / `versionCacheHigh()`）；**禁止**身份断言（`==` / `isSameAs` / `isNotSameAs`） 
+| `Cache` | 缓存透明性：边界三元组（下界 / 上限 / 上限+1）值等价（`equals` / `hashCode` / 序列化一致）；上限仅对声明实例缓存的 DP 适用，经 `TypeConfig.PROVIDER.<类型>CacheHigh()` 读取（当前仅 `ConcurrencyVersion` / `versionCacheHigh()`）；**禁止**身份断言（`==` / `isSameAs` / `isNotSameAs`） |
 
 【参考】无边界常量的 DP（如 `Active` 的 TRUE/FALSE）不建 `Cache` 组。
 

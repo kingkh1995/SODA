@@ -3,8 +3,8 @@
  *
  * <p>核心业务不变量（状态机、唯一性、凭证变更）在此定义；不依赖其他业务模块（见 ADR-0017、ADR-0026）。
  *
- * <p>模块面收窄为 CLOSED：仅 {@code types} / {@code gateway} / {@code service} / {@code event} 四个
- * {@code @NamedInterface} 子包可被其他模块引用，基包与其余子包属内部实现。
+ * <p>模块类型刻意保持 OPEN：这是 User 侧共享领域 module，application 与 infrastructure 直接使用其 {@code types} / {@code
+ * gateway} / {@code service} / {@code event} 子包；这是对通用 CLOSED 判据的明确例外，不引入 named interface。
  */
 @NullMarked
 @ApplicationModule(

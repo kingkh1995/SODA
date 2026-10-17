@@ -11,13 +11,9 @@ dependencies {
     // H2 内存库 MODE=MySQL（主 application.yml 数据源，ADR-0022）：运行时类路径必需
     // （bootRun/打包启动；测试类路径继承 runtimeClasspath）
     runtimeOnly 'com.h2database:h2'
-    // 集成测试编译期引用 api（UserService/UserAuthService）与 domain（gateway/聚合）
+    // E2E 断言面：MockMvc 走公开 HTTP 合同；无 HTTP 观察点的状态（验证码码值、回滚零行）用 JdbcTemplate 直查
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-    // 集成测试直接用 JdbcTemplate 断言落库状态、断言乐观锁异常类型；
-    // 原先由 starter-data-jpa 的传递依赖带入，现按需最小声明（版本由 Boot BOM 管理）
     testImplementation 'org.springframework:spring-jdbc'
-    testImplementation 'org.springframework:spring-orm'
-    testImplementation project(':soda-user:soda-user-api')
+    // SmsSender（soda-component-domain-types，api 传递）：投递失败用例编译期引用
     testImplementation project(':soda-user:soda-user-domain')
-    testImplementation(testFixtures(project(':soda-supports:soda-support-modulith')))
 }

@@ -5,4 +5,7 @@ dependencies {
     api 'org.springframework:spring-webmvc'
     api 'org.springframework:spring-tx'
     // ProblemDetailAdvice 翻译 OptimisticLockingFailureException(org.springframework.dao) -> 409
+    // standalone MockMvc 断言响应体（andReturn/getResponse）编译期需 servlet API——
+    // webmvc 的 provided 依赖不向消费方传递；版本由 Boot BOM 管理
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
 }

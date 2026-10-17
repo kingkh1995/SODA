@@ -37,7 +37,7 @@ public record Alphabet(String value) implements StringLiteralType {
     }
 
     /**
-     * 严格索引取字符 — 0 ≤ {@code index} < {@link #size()}，越界抛 IAE（业务参数校验， ADR-0015：索引值不合法即失败，暴露调用方取模/越界
+     * 严格索引取字符 — 0 ≤ {@code index} &lt; {@link #size()}，越界抛 IAE（业务参数校验， ADR-0015：索引值不合法即失败，暴露调用方取模/越界
      * bug）。
      *
      * <p>生成器侧应使用无偏的 {@code SecureRandom.nextInt(size())} 产生索引后调用本方法。

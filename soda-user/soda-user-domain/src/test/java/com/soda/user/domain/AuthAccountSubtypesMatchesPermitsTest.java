@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * 验证 {@link AuthAccount} 的 {@code permits} 子句与各子类上的 {@link JsonTypeName} 一致。 新增 {@link AuthAccount}
  * 子类时，Java 编译器强制 {@code permits} 完备性， 但不会检查每个子类是否都有唯一的 {@code @JsonTypeName}。此测试确保这一点。
  *
- * @see docs/doc-conventions.md §7（合规基准）
+ * @see docs/doc-conventions.md §8.1（合规基准）
  */
 @DisplayName("AuthAccount 密封子类与 @JsonTypeName 一致性")
 class AuthAccountSubtypesMatchesPermitsTest {

@@ -26,21 +26,24 @@ sources:
 ---
 # 多态实体 type-vs-class 设计结论审视（对照主流 Java/DDD 实践）
 
-> **定案状态（2026-08-05）**：审查结论已由团队采纳并收敛为 ADR——见 [docs/adr/0016-type-class-mapping-ownership.md](../adr/0016-type-class-mapping-ownership.md)。过渡态违例的处置：`VerificationChannel` 去 `Class` 引用与 `of(Class)`、gateway 收敛为 `Class<T>` 单轨、`VerificationQuery` 去 `channel`、反查归基础设施；争议点 2 的取舍已拍板（以类型安全换查询对象可读性，纯数据统计需求走基础设施查询模型）。
+> **定案状态（2026-08-05）**：审查结论已由团队采纳并收敛为 ADR——见 [docs/adr/0016-type-class-mapping-ownership.md](../adr/0016-type-class-mapping-ownership.md)。过渡态违例的处置：`VerificationChannel` 去 `Class` 引用与 `of(Class)`、反查归基础设施、`VerificationQuery` 去 `channel`（后续按 ADR-0026 双概念模型进一步收敛为按 `source` 键控的查询契约）；争议点 2 的取舍已拍板（以类型安全换查询对象可读性，纯数据统计需求走基础设施查询模型）。
 
 > **结论摘要**
 > - 整体判定：7 条结论方向**全部符合**主流 Java/DDD 实践，无一条偏离；其中铁律 2（查询对象不含判别枚举）与 DDD"仓储查询用领域语言"存在张力，标注为**有争议点**（非偏离，属取舍）。
 > - 最强支撑：JEP 409 官方明确区分"枚举 = 固定实例集 / sealed = 固定种类集"（判据 1 的语言级依据）；JEP 441 官方以模式匹配取代 instanceof+cast 链（铁律 1）；JLS §9.7.1 证明注解 String 元素值必须是编译期常量表达式，`Enum.name()` 无法进注解（铁律 5 的事实前提）。
-> - 需注意：Jackson 3 并未"移除 @JsonSubTypes"（3.x 分支仍存在且未弃用），实际变化是 sealed 自动发现使其对 sealed 层次不再必要；当前代码 `VerificationChannel` 仍持 `Class` 引用 + `of(Class)` 反查（违反铁律 2/4），处于过渡态，需按结论收敛。
+> - 需注意：Jackson 3 并未"移除 @JsonSubTypes"（3.x 分支仍存在且未弃用），实际变化是 sealed 自动发现使其对 sealed 层次不再必要；审查时记录的过渡态（`VerificationChannel` 持 `Class` 引用 + `of(Class)` 反查）已在观察时点前收敛——`VerificationChannel` 现为普通枚举、不挂 Class 引用（映射归基础设施，见 ADR-0016）。
 > - 方法说明：primary sources 优先（OpenJDK JEP/JLS、Fowler 官方站点、FasterXML 官方仓库源码与发布说明、Evans DDD Reference 官方 CC-BY 文档、Jakarta/Spring 官方文档）；无法直接核验的 claim 标注 [secondary] 或 [inference]。
+
+> **代码现状观察时点**：2026-09-26，commit `05f5a4f`——下文「当前代码 / 过渡态 / 现状对照」类陈述按该时点复核；
+> 本篇是稳定研究笔记，不追踪其后演进，代码事实以代码为准（`git log` 可回溯）。
 
 ---
 
 ## 评估对象与依据说明
 
-- **项目现状**：`AuthAccount`（permits Password/Sms/Email/Social）与 `Verification`（permits Sms/Email）为 sealed 实体层次，`@JsonTypeInfo(use = Id.NAME)` + 子类 `@JsonTypeName` 短名（"P"/"S"/"E"/"O"），判别短名与枚举 `name()` 一致（`AuthAccountType` / `VerificationChannel`，均 `implements EnumType extends Type`）。gateway 为 domain 层防腐接口，infrastructure 尚为空壳。被审视的结论来自设计讨论（B 方案与决策矩阵），非当前代码全量现状。
+- **项目现状（观察时点 2026-09-26，commit `05f5a4f`）**：`AuthAccount`（permits Password/Sms/Email/Social）为 sealed 实体层次，`@JsonTypeInfo(use = Id.NAME)` + 子类 `@JsonTypeName` 短名（"P"/"S"/"E"/"O"），判别短名与枚举 `name()` 一致（`AuthAccountType` P/S/E/O）；`Verification` 聚合已非 sealed 子类层次——通道判别收进 `VerificationRecipient` 密封接口（ADR-0026），其 `channel` 裸串（"S"/"E"）经 `VerificationChannel.of` 解析，`AuthAccountType` / `VerificationChannel` 均 `implements EnumType extends Type`。gateway 为 domain 层防腐接口，实现落在 `soda-user-infrastructure`。被审视的结论来自设计讨论（B 方案与决策矩阵），非当前代码全量现状。
 - **Jackson 2/3 差异说明**：本项目用 Jackson 3（`tools.jackson`）。databind/core 包名 `com.fasterxml.*` → `tools.jackson.*`；**注解包未迁移**（3.x 仍为 `com.fasterxml.jackson.annotation`）；`TypeIdResolver` 接口方法签名在 3.x 增加 `DatabindContext` 参数；3.0.0-rc2 起支持从 Java 17 sealed 类型自动发现子类。下文对存在 2/3 差异处均标注。
-- **引用规范**：正文用 `[来源: X](URL)`；书籍（Effective Java、Evans《Domain-Driven Design》原书）以"书名 + Item/章节"为 primary，网页核对链接一并给出；`martinfowler.com/bliki/TypeObject.html` 经核实当前返回 HTTP 404（2026-08-04），改引原始论文（Johnson & Woolf, PLoP 1997）。
+- **引用规范**：正文在引用处用 `来源: X` 加链接的行内标注；书籍（Effective Java、Evans《Domain-Driven Design》原书）以"书名 + Item/章节"为 primary，网页核对链接一并给出；`martinfowler.com/bliki/TypeObject.html` 经核实当前返回 HTTP 404（2026-08-04），改引原始论文（Johnson & Woolf, PLoP 1997）。
 
 ---
 
@@ -116,7 +119,7 @@ sources:
 **判定**：**符合**（附争议点）。"按 Class<T> 收参 + Optional<T>/T 返回"有 Spring Data、JPA、官方教程三重佐证，属主流；"判别值推导在基础设施"符合 Hexagonal adapter 职责划分。争议点：
 - "查询对象不含判别枚举"是强约束。`VerificationChannel` 本身是**领域枚举**（领域概念，非纯技术值），DDD Reference 要求查询条件"meaningful to domain experts"；从 gateway 查询对象剔除 `channel` 后，领域层只能靠 `Class<T>` 表达"通道"——这是类型安全等价物，但损失了查询对象的可读性/自描述性。若未来出现"按通道统计"等纯数据需求，应在基础设施侧建查询模型，而非在 gateway 接口放回判别枚举。
 - `Class<T>` 参数经泛型擦除后是裸 `Class`，gateway 实现须校验调用方传入的是 permits 子类（否则运行时才出错）——JPA `find` 同样在运行时解析，这是该模式的固有代价。
-- **现状对照**：`VerificationGateway` 当前同时存在 `VerificationQuery(channel)` 与 `Class<T>` 变体，双轨并存，收敛前存在语义重复（见文末附录）。
+- **现状对照（观察时点 2026-09-26 @ `05f5a4f`）**：`VerificationGateway` 已无 `VerificationQuery(channel)` 与 `Class<T>` 变体——按 `source` 键控收参（`findLatestBySourceAndStateIn`），判别值推导归基础设施；原双轨语义重复已消除（见文末附录）。
 
 ---
 
@@ -145,7 +148,7 @@ sources:
 2. **行为与类型关联的主流形态是"接口 + 枚举实现"而非"枚举持有 Class 引用"**：Effective Java Item 38「Emulate extensible enums with interfaces」——定义行为接口（如 `Operation`），枚举实现之，行为放枚举常量专用实现；类型关联靠接口多态而非 Class 引用。[来源: 《Effective Java》第 3 版 Item 38](https://www.informit.com/store/effective-java-9780134685991)（[secondary] 内容核对见搜索引擎快照：`interface Operation { double apply(double x, double y); }` + `enum BasicOperation implements Operation`）
 3. **Type Object 论文对"对象持 type 引用"的警告**：type→class 反向注册表属于该模式的设计复杂度来源；类型集固定时无必要。[来源: http://www.cs.ox.ac.uk/jeremy.gibbons/dpa/typeobject.pdf](http://www.cs.ox.ac.uk/jeremy.gibbons/dpa/typeobject.pdf)
 
-**判定**：**符合**（作为项目规范）。方向与主流一致（依赖单向无环、关联靠接口多态）。**但需如实标注**：没有任何 primary source 直接规定"枚举不得持有 Class 引用"——它是"依赖单向 + 单一职责 + 单一事实源"原则的**派生规范** [inference]；社区中 enum 常量持 Class 引用的注册表式写法并非罕见。**现状对照**：`VerificationChannel` 当前仍持 `Class<? extends Verification<?>> type` 字段并提供 `of(Class<T>)` 反查（违反铁律 2/4 与结论 5 的"实例侧编码"路线），`AuthAccountType` 已无 class 引用——代码处于过渡态，需把该映射下沉到 gateway 实现或基础设施映射器（与结论 4 一致）。
+**判定**：**符合**（作为项目规范）。方向与主流一致（依赖单向无环、关联靠接口多态）。**但需如实标注**：没有任何 primary source 直接规定"枚举不得持有 Class 引用"——它是"依赖单向 + 单一职责 + 单一事实源"原则的**派生规范** [inference]；社区中 enum 常量持 Class 引用的注册表式写法并非罕见。**现状对照（观察时点 2026-09-26 @ `05f5a4f`）**：`VerificationChannel` 已不持 `Class<? extends Verification<?>> type` 字段、无 `of(Class<T>)` 反查（普通枚举，映射归基础设施，ADR-0016），`AuthAccountType` 亦无 class 引用——审查时记录的过渡态已按结论 4 的「映射归基础设施」收敛。
 
 ---
 
@@ -163,10 +166,10 @@ sources:
      matching classes**"——官方设想即"开发者集中维护一张映射表"。来源: jackson-databind
      TypeIdResolver（[2.x](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/TypeIdResolver.java)/[3.x](https://github.com/FasterXML/jackson-databind/blob/3.x/src/main/java/tools/jackson/databind/jsontype/TypeIdResolver.java)）、[@JsonTypeIdResolver javadoc](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/annotation/JsonTypeIdResolver.java)
    - **Jackson 3 变化**：3.0.0-rc2（2025-03-28）"#5025: Add support for automatic detection of subtypes (like `@JsonSubTypes`) **from Java 17 sealed types**"——sealed `permits` 子句替代 `@JsonSubTypes` 注册，编译器已强制"有哪些子类"，但 `@JsonTypeName` 的**值**仍无编译期约束，判别串↔枚举一致性问题原样保留。[来源: jackson-databind 3.x release-notes/VERSION](https://github.com/FasterXML/jackson-databind/blob/3.x/release-notes/VERSION)
-3. **Jackson 自身不做判别值唯一性校验**：2.x `TypeNameIdResolver` 源码对重复 id 直接 `idToType.put(id, ...)`（后者覆盖，无 duplicate/conflict 检查）——项目的 `jsonTypeNamesAreUnique` 测试填补了真实空白（[inference: 由源码阅读得出，无 duplicate 检测逻辑]）。[来源: jackson-databind 2.x TypeNameIdResolver](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/impl/TypeNameIdResolver.java)
+3. **Jackson 自身不做判别值唯一性校验**：2.x `TypeNameIdResolver` 源码对重复 id 直接 `idToType.put(id, ...)`（后者覆盖，无 duplicate/conflict 检查）——项目的 `AuthAccountSubtypesMatchesPermitsTest`（含 `@JsonTypeName` 值唯一性断言）填补了真实空白（[inference: 由源码阅读得出，无 duplicate 检测逻辑]）。[来源: jackson-databind 2.x TypeNameIdResolver](https://github.com/FasterXML/jackson-databind/blob/2.x/src/main/java/com/fasterxml/jackson/databind/jsontype/impl/TypeNameIdResolver.java)
 4. **结构性/架构测试是主流**：用测试锁定"编译器管不到的结构不变量"是 Java 社区成熟实践，代表作是 ArchUnit（官方定位即架构/结构测试库，校验包依赖等规则）。[来源: https://www.archunit.org/](https://www.archunit.org/)
 
-**判定**：**符合**。"无法编译期绑定"是 JLS 与 Jackson 双重确认的事实；反射测试（permits 完备性、唯一性、与枚举 name 一致——对应项目 `VerificationSubtypesMatchesPermitsTest`/`AuthAccountSubtypesMatchesPermitsTest`）是务实且主流的兜底。可选的更进一步：用自定义 `TypeIdResolver`（`idFromValueAndType` 返回 `getChannel().name()`）把"单一事实源"从注解移到铁律 3 的实例方法——但 TypeIdResolver 通常落在基础设施层，恰好符合铁律 2 的"映射不进领域层"；在 sealed 自动发现（#5025）下 `@JsonTypeName` 仍是判别串的唯一声明处，测试兜底依然必要。
+**判定**：**符合**。"无法编译期绑定"是 JLS 与 Jackson 双重确认的事实；反射测试（permits 完备性、唯一性、与预期判别符一致——对应项目 `AuthAccountSubtypesMatchesPermitsTest`；观察时点仅 `AuthAccount` 保留密封子类层次）是务实且主流的兜底。可选的更进一步：用自定义 `TypeIdResolver`（`idFromValueAndType` 返回 `getChannel().name()`）把"单一事实源"从注解移到铁律 3 的实例方法——但 TypeIdResolver 通常落在基础设施层，恰好符合铁律 2 的"映射不进领域层"；在 sealed 自动发现（#5025）下 `@JsonTypeName` 仍是判别串的唯一声明处，测试兜底依然必要。
 
 ---
 
@@ -174,7 +177,7 @@ sources:
 
 1. **"@JsonSubTypes 已移除"表述不准确**：jackson-annotations 3.x 分支仍存在 `JsonSubTypes.java` 且无弃用标注（2026-08-04 核验）；实际变化是 3.0.0-rc2 起 sealed 类型自动发现使其对 sealed 层次不再必要。ADR-0004 中"@JsonSubTypes 已移除"的表述建议修正为"对 sealed 层次不再需要"。[来源: jackson-annotations 3.x 目录/源码](https://github.com/FasterXML/jackson-annotations/tree/3.x)、[jackson-databind 3.x release-notes](https://github.com/FasterXML/jackson-databind/blob/3.x/release-notes/VERSION)
 2. **铁律 2 的"查询对象不含判别枚举"与 DDD"查询用领域语言"的张力**：`VerificationChannel` 是领域概念；剔除后靠 `Class<T>` 等价表达（类型安全换可读性），需团队显式确认该取舍；纯数据类统计需求应放基础设施查询模型。
-3. **当前代码与结论的差距（过渡态）**：`VerificationChannel` 持 `Class` 引用 + `of(Class)` 反查（违反铁律 2/4）；`VerificationGateway` 同时有 `VerificationQuery(channel)` 与 `Class<T>` 变体（双轨语义重复）——按结论收敛时应一并清理。
+3. **审查时的过渡态差距已收敛（观察时点 2026-09-26 @ `05f5a4f`）**：`VerificationChannel` 持 `Class` 引用 + `of(Class)` 反查、`VerificationGateway` 双轨（`VerificationQuery(channel)` ＋ `Class<T>` 变体）均已按结论 4/6 收敛——判别值推导归基础设施，新增子类型时按同一结论执行。
 4. **判别短名是持久化/传输合同**：改名破坏 DB 数据（ADR-0005 已承认）；新增子类型同时变更 DB 数据与 JSON 判别串。AIP-126
    建议频繁变化的值集用 string；本项目用枚举锁定 1-4
    字符短名，需接受"变更=迁移"的成本。[来源: https://google.aip.dev/126](https://google.aip.dev/126)、[docs/adr/0005](../adr/0005-enum-short-name.md)
@@ -212,14 +215,15 @@ sources:
 
 ---
 
-## 附录：项目现状对照（代码快照，2026-08-04）
+## 附录：项目现状对照（观察时点 2026-09-26，commit `05f5a4f`）
 
 | 现状 | 对应结论 | 状态 |
 |---|---|---|
-| `AuthAccount`/`Verification` sealed + `@JsonTypeInfo(use=Id.NAME)`，子类 `@JsonTypeName` 短名 | 结论 1/3 | 符合 |
+| `AuthAccount` sealed + `@JsonTypeInfo(use=Id.NAME)`，子类 `@JsonTypeName` 短名（P/S/E/O） | 结论 1/3 | 符合 |
 | `AuthAccount.getAccountType()` 抽象方法由子类实现 | 结论 5（铁律 3） | 符合 |
-| `VerificationChannel` 枚举持 `Class<? extends Verification<?>> type` 字段 + `of(Class<T>)` 反查 | 结论 4/6（铁律 2/4） | **违反，待收敛** |
+| `VerificationRecipient` 密封接口（Sms/Email）——`channel` 按子类型派生，`@JsonCreator` 按 `VerificationChannel` 分派（ADR-0026） | 结论 1/3 | 符合（`Verification` 已非 sealed 实体层次，判别栖身边界值） |
+| `VerificationChannel` 普通枚举——不挂 Class 引用、无 `of(Class)` 反查（映射归基础设施，ADR-0016） | 结论 4/6（铁律 2/4） | 符合（审查时的过渡态已收敛） |
 | `AuthAccountType` 无 class 引用 | 结论 6（铁律 4） | 符合 |
-| `VerificationGateway.VerificationQuery` 含 `VerificationChannel channel` + 另存 `<T extends Verification<?>> Optional<T> findLatestByUserId(..., Class<T>)` 变体 | 结论 4（铁律 2） | 双轨并存，需收敛 |
-| `VerificationSubtypesMatchesPermitsTest` / `AuthAccountSubtypesMatchesPermitsTest`（permits 完备 + 唯一 + 枚举 name 一致） | 结论 7（铁律 5） | 符合 |
+| `VerificationGateway` 按 `source` 键控收参（`findLatestBySourceAndStateIn`）——无 `VerificationQuery(channel)`、无 `Class<T>` 变体 | 结论 4（铁律 2） | 符合（原双轨已收敛） |
+| `AuthAccountSubtypesMatchesPermitsTest`（permits 完备 + `@JsonTypeName` 唯一 + 判别符一致） | 结论 7（铁律 5） | 符合 |
 | `EnumType extends Type` 枚举 DP 体系（`@JsonCreator of(String)`） | 结论 1/2 | 符合 |

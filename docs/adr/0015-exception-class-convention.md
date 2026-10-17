@@ -11,7 +11,7 @@ status: stable
 写侧异常收成两条通道。 **IAE（`IllegalArgumentException`）＝ 格式 / 值不可表示的校验通道**：DP 工具（`ValidateUtils` /
 `ParseUtils` / `UpdateMask`）、domain 断言（`User` / `Verification` 的 `Assert`）、基础设施防御守卫都用它，统一译 400
 ——客户端可改请求的一切（错码、过期、状态前置拒绝、终态写入）都归此通道；校验的写法（构造器 DP 式校验、方法零守卫、带消息 IAE
-业务校验）见 [framework-crosscutting.md](../conventions/framework-crosscutting.md) §5。 **需要被 HTTP
+业务校验）见 [framework-crosscutting.md](../conventions/framework-crosscutting.md) §1。 **需要被 HTTP
 状态码细分的业务拒绝**（资源不存在 /
 唯一键占用 / 条件请求失配）走 `ProblemDetailException` 族，由 app-service 与组件层守卫抛出——类型落点在
 `com.soda.component.api.error`（`soda-component-api-starter`，api 契约层无 spring-web 依赖，故只承载 `int` 状态码、

@@ -17,7 +17,7 @@ import com.soda.component.domain.types.SensitiveValue;
  *       HMAC-SHA256（派生钥于实现层内部管理，与加密钥分离），配密文列组成两列模式。
  * </ul>
  *
- * 轮换语义差异：令牌重发即可；盲索引需全表重算。
+ * <p>轮换语义差异：令牌重发即可；盲索引需全表重算。
  *
  * @see Gateway
  * @see Digest

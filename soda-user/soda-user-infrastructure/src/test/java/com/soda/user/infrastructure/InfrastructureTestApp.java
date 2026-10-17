@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Import;
  *   <li>{@code @Import(JpaAuditingAutoConfiguration)}：审计列填充——自定义自动配置 不在切片装配清单内，须显式引入
  * </ul>
  *
- * 属共享测试基础设施（配置锚点，非数据 fixture/基类，见 test-conventions §3）。
+ * <p>属共享测试基础设施（配置锚点，非数据 fixture/基类，见 test-conventions §3）。
  */
 @SpringBootConfiguration
 @Import({JpaPersistenceConfiguration.class, JpaAuditingAutoConfiguration.class})

@@ -19,9 +19,9 @@ import java.time.Instant;
 /**
  * 审计列 JPA 实体基类（{@code isNew} 判定见 {@link AbstractPersistable}）。
  *
- * <p>{@code isNew} 机制（ADR-0024 merge 全权委托）：基类 {@code isNew() = id == null}—— 服务端生成 id 的实体（{@link
- * com.soda.user.infrastructure.persistence.UserPO}）创建路径 id==null → persist；客户端分配 id 的实体（{@link
- * com.soda.user.infrastructure.persistence.VerificationPO}） 恒已标识 → merge——insert/update 由 merge
+ * <p>{@code isNew} 机制（ADR-0024 merge 全权委托）：基类 {@code isNew() = id == null}—— 服务端生成 id 的实体（{@code
+ * UserPO}）创建路径 id==null → persist；客户端分配 id 的实体（{@code
+ * VerificationPO}） 恒已标识 → merge——insert/update 由 merge
  * 按行存在性统一路由，乐观锁由 {@code @Version} 自动校验。
  *
  * <p>审计列：Spring Data 官方审计机制 ——{@code @CreatedDate}/{@code @LastModifiedDate} + {@code

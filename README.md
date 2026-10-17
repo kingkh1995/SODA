@@ -8,7 +8,7 @@ status: stable
 
 # SODA — DDD 脚手架
 
-基于 yudao-cloud 业务功能改造的 DDD 脚手架项目：写侧 COLA 风格分层（api → adapter → application → domain →
+基于 yudao-cloud 业务功能改造的 DDD 脚手架项目：写侧 COLA 风格分层（api、adapter、application、domain、
 infrastructure），读侧 yudao 混装风格（query-server）。写侧追求领域模型质量，读侧追求查询性能。
 
 ## 技术栈
@@ -29,6 +29,7 @@ V1 脚本建表（ADR-0022）。
 | 模块               | 角色                                                                                                                                                            |
 |--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `soda-components/` | 分层 starter 基类族：api / domain / application / adapter（web·job·consumer）/ infrastructure / query-server / start ＋ domain-types（Domain Primitive 类型库） |
+| `soda-supports/`   | Modulith 架构门禁支撑：唯一全仓 Modulith 架构门禁 `soda-supports/soda-support-modulith`（见 `docs/framework-conventions.md` §3）                                 |
 | `soda-user/`       | 首个业务模块：写侧 + 读服务（模块结构与依赖白名单见 `docs/framework-conventions.md` §1-3）                                                                      |
 
 ## 文档导航
@@ -42,13 +43,14 @@ V1 脚本建表（ADR-0022）。
 
 ## 参考项目（只读）
 
-| 来源           | 角色               |
-|----------------|--------------------|
-| `yudao-cloud/` | 业务功能参考       |
-| `COLA/`        | 架构框架参考（v5） |
-| `kk-ddd/`      | 前序 DDD 尝试      |
+| 来源               | 角色                                     |
+|--------------------|------------------------------------------|
+| `yudao-cloud/`     | 业务功能参考                             |
+| `COLA/`            | 架构框架参考（v5）                       |
+| `kk-ddd/`          | 前序 DDD 尝试                            |
+| `knowledge-catalog/` | OKF 离线快照（只读对照，非规范来源；规范以 canonical 上游为准） |
 
-三个目录只读，禁止修改。
+上表四个目录只读，禁止修改。
 
 ## License
 

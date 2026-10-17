@@ -11,9 +11,9 @@ import java.util.Optional;
  * <p>方法取自 Spring Data JPA 命名约定：
  *
  * <ul>
- *   <li>{@link #save(Object)} — 同 {@code CrudRepository.save(S)}
- *   <li>{@link #findById(Object)} — 同 {@code CrudRepository.findById(ID)}
- *   <li>{@link #findAllById(Iterable)} — 同 {@code CrudRepository.findAllById(Iterable)}
+ *   <li>{@link #save} — 同 {@code CrudRepository.save(S)}
+ *   <li>{@link #findById} — 同 {@code CrudRepository.findById(ID)}
+ *   <li>{@link #findAllById} — 同 {@code CrudRepository.findAllById(Iterable)}
  * </ul>
  *
  * @param <T> 实体类型，必须实现 {@link Entity}
@@ -36,7 +36,7 @@ public interface EntityGateway<T extends Entity<ID>, ID extends Identifier<?>> e
      *   <li>领域终态 → 基础设施按聚合策略裁决（本框架：写终态保留行，无 DELETE 契约， 见 ADR-0017/0023；remove 为演进路径）
      * </ul>
      *
-     * 乐观锁：有 {@code @Version} 的聚合由 merge 自动校验（版本不一致 → 异常 → 事务整体回滚）， 网关不做手动比对。客户端生成 ID（UUID）的聚合：save
+     * <p>乐观锁：有 {@code @Version} 的聚合由 merge 自动校验（版本不一致 → 异常 → 事务整体回滚）， 网关不做手动比对。客户端生成 ID（UUID）的聚合：save
      * 前置必须已标识（{@code isIdentified()}）。
      *
      * @param entity 待保存实体，非 null

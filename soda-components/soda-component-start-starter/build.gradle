@@ -1,17 +1,4 @@
 dependencies {
     // 组件层 start 是纯脚手架：不引入任何组件模块，业务 start 自行注入
     api 'org.springframework.boot:spring-boot-starter-webmvc'
-
-    // ModulithTest 扫描 com.soda.component 需全部模块，仅测试运行时。
-    // 根模块显式声明：adapter/infrastructure/query-server 的 api 边传递覆盖
-    // api、domain；application 无入边（adapter 只在其 runtime classpath 消费），
-    // domain-types 无入边，两者都必须显式声明。
-    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-web')
-    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-job')
-    testRuntimeOnly project(':soda-components:soda-component-adapter-starter-consumer')
-    testRuntimeOnly project(':soda-components:soda-component-infrastructure-starter')
-    testRuntimeOnly project(':soda-components:soda-component-query-server-starter')
-    testRuntimeOnly project(':soda-components:soda-component-application-starter')
-    testRuntimeOnly project(':soda-components:soda-component-domain-types')
-    testImplementation(testFixtures(project(':soda-supports:soda-support-modulith')))
 }

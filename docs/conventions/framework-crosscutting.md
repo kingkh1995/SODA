@@ -1,23 +1,33 @@
 ---
 type: Convention
-title: Framework 编排/异常/Logging/数据库/Code Style
-description: 查编排/异常/JSpecify、Logging、数据库或 Code Style 约定时读——soda-component 跨切面约定；完整定义归代码 javadoc 与专项 ADR。
+title: Framework 跨切面约定 — 编排 / 异常 / Logging / 数据库 / Import
+description: 查编排（DomainService / AppService）、应用层异常与参数契约、入口 Logging、数据库开发或 import 约定时读——soda-component 跨切面约定；判空与代码风格归 STYLEGUIDE，完整定义归代码 javadoc 与专项 ADR。
 tags: [ convention, framework, crosscutting ]
 status: stable
 ---
 
-本文承载「跨切面约定」：编排（DomainService / AppService）、异常、Logging、数据库开发、Code Style。 **先按下方目录定位到关注点**
-——文件 200 行，章节彼此独立无共享概念。
+# Framework 跨切面约定
+
+本文承载「跨切面约定」：编排（DomainService / AppService）、异常、Logging、数据库开发、Import。 **先按下方目录定位到关注点**
+——章节彼此独立，无共享概念。
+
+**适用范围（何时读 / 何时不读）**：查跨聚合编排、应用层异常与入参契约、入口日志、数据库开发、import 规则时读；判空角色与代码风格（含
+JDK 特性、控制流、异常、成员顺序）→ [../STYLEGUIDE.md](../../STYLEGUIDE.md) §2、注释规范 → 其 §4；nullness 标注 →
+[jspecify.md](jspecify.md)；异常类族与 HTTP 状态语义 → [ADR-0015](../adr/0015-exception-class-convention.md) /
+[ADR-0013](../adr/0013-error-response-structure.md)；测试分层 → [../test-conventions.md](../test-conventions.md)。
+
+**级别与来源**：本篇规则默认【强制】·`SODA-POLICY`（项目定案，级别与来源 ID 口径见
+[doc-conventions](../doc-conventions.md) §4.1–§4.2）；取舍理由经关联 ADR 记为 `SODA-DECISION`，正文不复制理由。
 
 | 关注点                             | 章节    | 内容                                                     |
 |------------------------------------|---------|----------------------------------------------------------|
-| 编排（DomainService / AppService） | §5 上半 | 跨聚合编排规则、AppService 编排前置、终态守卫            |
-| 异常 + JSpecify + 参数契约         | §5 下半 | 异常类型族与校验通道、nullness 注解、AppService 入参约定 |
-| Logging                            | §6      | web / application 入口日志                               |
-| 数据库开发                         | §7      | 一行指针 → ADR-0022                                      |
-| Code Style                         | §8      | Import 规范（通配符禁用）                                |
+| 编排（DomainService / AppService） | §1 上半 | 跨聚合编排规则、AppService 编排前置、终态守卫            |
+| 异常 + JSpecify + 参数契约         | §1 下半 | 异常类型族与校验通道、nullness 注解、AppService 入参约定 |
+| Logging                            | §2      | web / application 入口日志                               |
+| 数据库开发                         | §3      | 一行指针 → ADR-0022                                      |
+| Import                             | §4      | import 规范（通配符禁用）                                |
 
-## 5. 编排与异常约定
+## 1. 编排与异常约定
 
 领域服务、应用服务编排、异常约定与 nullness 规范。
 
@@ -41,9 +51,9 @@ status: stable
 **示例**（换绑验证）：`CredentialChangeDomainService` 只承载跨聚合编排 `changeMobile`/`changeEmail`（verify →
 user.changeXxx → use）；验证码发起（UCC）由 `UserAuthService.requestChangeMobile`/`requestChangeEmail`
 编排（前置查询拦截 → `UserVerificationFactory.newCredentialChangeVerification` 构造 INITIALIZED 聚合、注册
-`VerificationCreatedEvent`，见 ADR-0026 Verification 双概念模型），物理发送由投递侧监听器在事务提交后按 recipient 分派（见
-ADR-0011 验证是独立于用户聚合的可复用领域概念/ADR-0026 Verification 双概念模型）。AppService 负责查询前置、加载与 save 顺序（先
-user 后 verification）。
+`VerificationCreatedEvent`，见 ADR-0026 Verification 双概念模型），物理发送由投递侧普通同步监听器在发布方事务内按 recipient
+分派（见
+ADR-0044）。AppService 负责查询前置、加载与 save 顺序（先 user 后 verification）。
 
 ### ApplicationService 编排规范
 
@@ -60,11 +70,10 @@ user 后 verification）。
 2. **外部 domain（其他聚合）的 action 方法禁止在 AppService 中直接调用**（get/读取除外）
 3. 若用例不修改外部 domain：外部聚合作为主体聚合 action 方法的 **参数**传入，逻辑封装进主体聚合内部
 4. 若用例 **修改**外部 domain（调用其 action 即修改其状态）：抽取 `XxxDomainService`，把编排封装进领域服务
-5. **流程副作用**（发送验证码/通知等）随流程所在层执行：发送类副作用在 **投递侧**执行（ **投递时机在事务提交后**）——创建工厂注册
-   `VerificationCreatedEvent`，AppService 持久化后发布，投递侧监听器（`@TransactionalEventListener(AFTER_COMMIT)`）按
-   recipient 类型分派 `SmsSender`/`EmailSender` 并 `markSent` 落库（DB 事务不跨外部投递通道持有；sender 契约保证投递成功才返回，见
-   ADR-0011 验证是独立于用户聚合的可复用领域概念/ADR-0026 Verification 双概念模型）；跨聚合流程的副作用随流程进入
-   `XxxDomainService`（sender 类 gateway 允许注入领域服务）
+5. **流程副作用**（发送验证码/通知等）随流程所在层执行：发送类副作用在投递侧通过普通同步 `@EventListener`
+   执行，并与发布方事务同事务——创建工厂注册 `VerificationCreatedEvent`，AppService 在事务内持久化后发布，listener 直接消费聚合并按
+   recipient 类型分派 `SmsSender`/`EmailSender`，随后 `markSent` 落库。sender 异常继续传播并触发事务回滚；外部发送与数据库提交的双写窗口见
+   ADR-0044，跨聚合流程的副作用随流程进入 `XxxDomainService`（sender 类 gateway 允许注入领域服务）
 6. **外部聚合的工厂构造**（`createBuilder()...build()`）不属于 action，可在 AppService 内与流程副作用一起展开（UCC
    完整示例见 [ADR-0026](../adr/0026-verification-source-recipient.md)（双概念模型））。
 
@@ -104,7 +113,7 @@ public class UserController {
 ```
 
 **Adapter 与 Application 的边界**：`adapter` 的 `build.gradle` 声明 `implementation project(':soda-user-application')`
-（运行时 classpath），但 ModulithTest 强制 adapter 代码只引用 `api` 模块的类，不得 `import` application 模块的任何类。依赖方向为
+（运行时 classpath），但全仓 Modulith 门禁强制 adapter 代码只引用 `api` 模块的类，不得 `import` application 模块的任何类。依赖方向为
 `adapter → api (编译) + application (运行时)`。
 
 ### 模块依赖与 build.gradle 声明规则
@@ -119,8 +128,8 @@ public class UserController {
    `api`
 3. starter 模块：依赖尽量声明为 `api`（承担为整层提供能力的职责），除非明确不需要传递给依赖方
 4. 各层 Spring 能力由对应 starter 提供（如 application 层的 spring-tx 经 application-starter，web 通道的校验能力经
-   adapter-starter-web）；业务模块不重复声明。例外：consumer 的 `@TransactionalEventListener` 所需 spring-tx
-   由业务模块自声明（consumer 通道为空壳，见 ADR-0019 Adapter 组件按入站通道拆分）
+   adapter-starter-web）；业务模块不重复声明。consumer 通道为空壳，其普通 `@EventListener` 所需 Spring 能力由对应 starter
+   提供（见 ADR-0019 Adapter 组件按入站通道拆分）
 5. 临时依赖（如 user-api → domain-types）不视为可传递：其他模块按需自声明，以便将来优化时不受影响
 
 **包结构**：
@@ -187,9 +196,12 @@ null」→ 构造器拦截（ValidateUtils），方法不检查（契约）。
 - `Objects.requireNonNullElse` 仅用于默认值模式（如 `User` 构造器 accounts 缺省），不属于守卫
 - AppService 的 `Assert` 只用于网关加载结果的存在性 / 状态前置检查，不做 Command 属性级校验（见「参数契约」）；Adapter 层不做
   Assert（协议边界由 `@Valid` 负责）；Infrastructure 用 `Optional` 表达可空，正常流程不抛异常
-- HTTP 映射：IAE → 400 `INVALID_ARGUMENT`，`ProblemDetailException` 族按 `ex.status()`（404 / 409 / 412，见 ADR-0015 /
-  ADR-0013），
-  NPE / NoSuchElementException → 500 `INTERNAL`，`MethodArgumentNotValidException` → 400
+- HTTP 映射（错误语义完全由 HTTP 状态码承载，不设 `type` 自定义词表、不用 AIP reason 词——AIP-193 不遵守，见
+  [ADR-0013](../adr/0013-error-response-structure.md)）：IAE → 400（`detail` 取异常消息）；`ProblemDetailException`
+  族按 `ex.status()`（404 / 409 / 412，见 [ADR-0015](../adr/0015-exception-class-convention.md)）；持久层乐观锁竞态
+  `OptimisticLockingFailureException` → 409（`detail` 固定文案 `Concurrent modification`）；未捕获异常（NPE /
+  NoSuchElementException 等 `Exception`）→ 500（`detail` 固定文案 `Internal server error`，并 `log.error`）；框架异常（如
+  `MethodArgumentNotValidException`）由 `ProblemDetailAdvice` 继承的 `ResponseEntityExceptionHandler` 统一翻译，项目不另设 advice
 
 ### JSpecify（nullness 注解规范）
 
@@ -203,20 +215,32 @@ AppService 实现不校验入参（存在性 / 格式 / 业务约束），调用
 {@code @Nullable}（JSpecify，api 包已 {@code @NullMarked}）。 Command 对象属性遵循同一约定：未标注 {@code @Nullable} 的属性默认非空。
 实现中不得对 Command 及其属性做防御性 null 检查。
 
-## 6. Logging（入口日志）
+## 2. Logging（入口日志）
 
 - **web 入口**：controller 打印方法名 + request（`log.info("方法名: request={}", request)`），现行格式
 - **application 入口**：AppService 打印 command（`log.info("方法名: command={}", command)`）——两层层级不同，各自打印一次，不互相替代，也不出现第三处重复
 
-## 7. 数据库开发约定
+## 3. 数据库开发约定
 
-数据源为 H2 内存库（`jdbc:h2:mem:…;MODE=MySQL`，见 soda-user-start `application.yml`）， **不接真实 MySQL**；schema 由 Flyway
-执行 `db/migration/` 下 SQL 创建。 开发阶段约定（单 V1 / 严禁外键 /
+数据源为 H2 内存库（`MODE=MySQL`）， **不接真实 MySQL**；schema 由 Flyway 执行 `db/migration/` 下 SQL 创建——具体连接串与
+`application.yml` 以各 `start` 模块源码为准（代码即事实源，本文不缓存路径）。 开发阶段约定（单 V1 / 严禁外键 /
 严禁存储过程等）见 [ADR-0022](../adr/0022-dev-database-management.md)——本节不重述。
 
-## 8. Code Style
+## 4. Import 约定
 
-### Import conventions
+- 禁止通配符导入（`import com.soda.xxx.*`）：所有导入必须显式声明到具体的 class/interface（【强制】·`SODA-POLICY`）。
 
-禁止通配符导入（`import com.soda.xxx.*`）。所有导入必须显式声明到具体的 class/interface。 IDE 中对应的设置：
-`Preferences → Editor → Code Style → Java → Imports → "Class count to use import with '*'" → 999`。
+代码风格的其余规则（JDK 特性、校验参数顺序、判空角色、控制流、异常、成员顺序）单源在
+[../STYLEGUIDE.md](../../STYLEGUIDE.md) §2，本节不重述。
+
+## 检视清单
+
+1. 编排：跨聚合流程与外部 domain 的 action 修改都进 `XxxDomainService`；AppService 只做加载 → 用例 → save，不直接改外部聚合。
+2. 终态守卫与加载型守卫复用 `AbstractAppService` 基类方法，子类不自铺样板；用例级状态前置仍属业务断言、不进通用守卫。
+3. 异常：客户端可改请求的失败一律带消息 IAE；需 HTTP 状态细分的走 `ProblemDetailException` 族（404 / 409 / 412）；防御编程守卫不携消息。
+4. HTTP 映射只用状态码表述（IAE → 400、未捕获异常 → 500 固定 detail），不引入 AIP reason/type 词表（ADR-0013：语义由状态码承载）。
+5. Logging：web 与 application 入口各打印一次，不互相替代、无第三处重复。
+6. 单源：判空角色与代码风格在 STYLEGUIDE、nullness 在 jspecify.md、数据库开发约定在 ADR-0022、HTTP 错误语义在 ADR-0013——本文只留指针，不复制正文。
+7. 无环境事实缓存：不写具体 `application.yml` 路径、IDE 配置或文件行数等随环境漂移的内容。
+
+**完成判据**：逐条检视无未决项；每个外指单源（STYLEGUIDE、jspecify.md、ADR-0013/0015/0022、test-conventions）均为现存目标；本文无与其他单源重复的规则正文。

@@ -38,9 +38,9 @@ import java.time.Instant;
  * 为内存瞬态（消费流 verify→use 同事务完成，永不落库， 见 {@code CredentialChangeDomainService}）。可变命令风格（与 {@link
  * AuthAccount} 一致）。
  *
- * <p>投递：物理发送由投递侧监听器（AFTER_COMMIT）按 {@code recipient} 模式匹配 sender 执行 （{@code
- * SmsRecipient}→SmsSender、{@code EmailRecipient}→EmailSender），成功后调用 {@link #markSent()} 并落库
- * PENDING（「PENDING 蕴含已送达」不变量，见 ADR-0011）。
+ * <p>投递：物理发送由投递侧普通同步监听器按 {@code recipient} 模式匹配 sender 执行 （{@code SmsRecipient}→SmsSender、{@code
+ * EmailRecipient}→EmailSender），成功后调用 {@link #markSent()} 并在发布方事务内落库 PENDING（「PENDING 蕴含已送达」不变量，见
+ * ADR-0044）。
  *
  * @see VerificationSource
  * @see VerificationRecipient
@@ -113,10 +113,12 @@ public final class Verification extends Aggregate<Uuid> {
 
     // ─── state checks ───
 
+    /** 是否处于 INITIALIZED 状态——精确匹配 I；是否过期由 {@link #isExpiredAt} 派生判断，与本谓词无关。 */
     public boolean isInitialized() {
         return VerificationState.I.equals(state);
     }
 
+    /** 是否处于 PENDING 状态——精确匹配 P；过期的 P 行仍返回 true，可用性由 {@link #isExpiredAt} 另行判断。 */
     public boolean isPending() {
         return VerificationState.P.equals(state);
     }
@@ -147,7 +149,7 @@ public final class Verification extends Aggregate<Uuid> {
      *   <li>输入码匹配
      * </ul>
      *
-     * 验证通过后置：状态变更为 VERIFIED。
+     * <p>验证通过后置：状态变更为 VERIFIED。
      *
      * @param at 校验时刻（应用层传入当前时间，测试可注入固定时刻）
      * @param inputCode 用户输入的验证码

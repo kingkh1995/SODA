@@ -42,7 +42,7 @@ import java.util.function.Predicate;
 /**
  * 用户身份聚合根 — 持有一组 AuthAccount 子实体与用户资料属性。
  *
- * <p>创建时通过 {@link #createBuilder()} 构建，不含 ID（服务端生成）； 持久化恢复通过 {@link #builder()}。
+ * <p>创建时通过 {@code createBuilder()} 构建，不含 ID（服务端生成）； 持久化恢复通过 {@code builder()}。
  *
  * <p>不变量：passwordAccount 为构造期必填独立字段（每 User 恰一个密码账户，ADR-0004 类型化）； accounts 仅存可选账户且同类型至多一条；状态机
  * E/D/R（R 吸收态终态，见 ADR-0017）， 注销后的键释放是基础设施表示决策，领域不感知（见 ADR-0023）。
@@ -176,7 +176,7 @@ public class User extends Aggregate<UserId> implements Versioned {
 
     // ─── accessors ───
 
-    /** 返回可选账户列表的不可修改视图（不包含密码账户，密码账户见 {@link #getPasswordAccount()}）。 */
+    /** 返回可选账户列表的不可修改视图（不包含密码账户，密码账户见 {@code getPasswordAccount()}）。 */
     public List<AuthAccount<?>> getAccounts() {
         return List.copyOf(accounts);
     }
@@ -232,21 +232,25 @@ public class User extends Aggregate<UserId> implements Versioned {
 
     // ─── 属性修改 ───
 
+    /** 修改用户名 — 前置：须启用态（E），D 与 R 终态拒绝（见 ADR-0017）。 */
     public void changeUsername(Username newUsername) {
         mustEnable();
         this.username = newUsername;
     }
 
+    /** 修改昵称 — 前置：须启用态（E），D 与 R 终态拒绝（见 ADR-0017）。 */
     public void changeNickname(Nickname nickname) {
         mustEnable();
         this.nickname = nickname;
     }
 
+    /** 修改性别 — 前置：须启用态（E），D 与 R 终态拒绝（见 ADR-0017）。 */
     public void changeSex(@Nullable Sex sex) {
         mustEnable();
         this.sex = sex;
     }
 
+    /** 修改头像 — 前置：须启用态（E），D 与 R 终态拒绝（见 ADR-0017）。 */
     public void changeAvatar(@Nullable Avatar avatar) {
         mustEnable();
         this.avatar = avatar;
@@ -284,7 +288,7 @@ public class User extends Aggregate<UserId> implements Versioned {
      *   <li>recipient 为 {@link SmsRecipient} 且目标手机号不同于当前值
      * </ul>
      *
-     * 后置：mobile 字段与 SmsAuthAccount 同步替换（联动不变量——二者恒一致）。
+     * <p>后置：mobile 字段与 SmsAuthAccount 同步替换（联动不变量——二者恒一致）。
      *
      * @param verification 已通过验证的验证聚合（recipient 为 {@link SmsRecipient}）
      */
@@ -332,7 +336,7 @@ public class User extends Aggregate<UserId> implements Versioned {
      *   <li>recipient 为 {@link EmailRecipient} 且目标邮箱不同于当前值
      * </ul>
      *
-     * 后置：email 字段与 EmailAuthAccount 同步替换（联动不变量——二者恒一致）。
+     * <p>后置：email 字段与 EmailAuthAccount 同步替换（联动不变量——二者恒一致）。
      *
      * @param verification 已通过验证的验证聚合（recipient 为 {@link EmailRecipient}）
      */

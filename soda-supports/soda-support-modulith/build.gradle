@@ -1,10 +1,15 @@
-plugins {
-    id 'java-test-fixtures'
+dependencies {
+    // 门禁的测试运行时 = 除本模块外的全部叶子子项目：未来新增根自动进类路径，
+    // 扫描范围只由 SodaModulith.additionalPackages 决定（类路径是超集，无害）。
+    rootProject.subprojects
+            .findAll { it.path.count(':') > 1 && it != project }
+            .each { testRuntimeOnly project(path: it.path) }
 }
 
-dependencies {
-    // 本模块只产出测试支撑件（testFixtures），main 为空——测试栈因此结构性地
-    // 进不了任何生产类路径。消费方一律经 testFixtures(...) 变体引入。
-    testFixturesApi 'org.springframework.modulith:spring-modulith-core'
-    testFixturesApi 'org.assertj:assertj-core'
+tasks.register('printModulithStructure', JavaExec) {
+    group = 'verification'
+    description = '打印完整 SODA Modulith 模块结构（人工诊断，不参与测试门禁）。'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.soda.support.architecture.SodaModulithDiagnostics'
 }

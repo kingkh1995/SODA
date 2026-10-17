@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  *   <li>低熵 PII 盲索引：{@code Digester.index(SensitiveValue)} —— 归一化 + 字段级派生钥 HMAC。
  * </ul>
  *
- * 字面值无法自证构造方式（裸 SHA-256 与 HMAC-SHA256 输出不可分辨），故类型只承诺 可证明的契约（定长摘要 + 小写 hex
+ * <p>字面值无法自证构造方式（裸 SHA-256 与 HMAC-SHA256 输出不可分辨），故类型只承诺 可证明的契约（定长摘要 + 小写 hex
  * 唯一线上形态）；算法出处由生产端口决定并记录于调用点。 删除该列即丧失查询/验证能力——它是敏感原值的替代品，与内容寻址指纹（附件角色）分属两域。
  *
  * @see StringLiteralType

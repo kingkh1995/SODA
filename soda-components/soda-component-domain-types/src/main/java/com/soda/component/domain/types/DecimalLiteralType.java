@@ -20,11 +20,11 @@ import java.math.RoundingMode;
  * <ul>
  *   <li>{@link EqualsAndHashCode}（{@code onlyExplicitlyIncluded}，canEqual=instanceof 本类； 子类 {@code
  *       callSuper=true} 且 canEqual 收窄为 instanceof 子类—— 使 {@code
- *       WanYuan("1.00")≠Percentage("1.00")}，见 {@link DecimalLiteralTypeTest}）
+ *       WanYuan("1.00")≠Percentage("1.00")}，见 {@code DecimalLiteralTypeTest}）
  *   <li>{@link Getter}+{@link Accessors}（fluent）生成 {@code value()}/{@code decimalValue()} 访问器
  * </ul>
  *
- * 构造期规范化：null 校验 → maxScale → {@code setScale(UNNECESSARY)} → {@link #validate(BigDecimal)} 钩子。
+ * <p>构造期规范化：null 校验 → maxScale → {@code setScale(UNNECESSARY)} → {@link #validate(BigDecimal)} 钩子。
  * 子类提供 {@code SCALE}（构造器参）+ {@link #validate(BigDecimal)} 不变量钩子（默认空）+ 工厂/单位换算。
  *
  * <p>沿用「abstract 基类承载家族不变量」模式（同 {@link com.soda.component.domain.types.SensitiveValue}，ADR-0033）。

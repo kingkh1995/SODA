@@ -4,5 +4,6 @@ dependencies {
     implementation project(':soda-components:soda-component-adapter-starter-consumer')
     implementation project(':soda-user:soda-user-api')     // compile time — UserService interface, Commands, DTOs
     runtimeOnly project(':soda-user:soda-user-application')    // runtime only — Spring bean injection
-    implementation 'org.springframework:spring-tx'         // consumer 的 @TransactionalEventListener（AFTER_COMMIT）
+    // @WebMvcTest 切片（Boot 4 拆分：切片注解移出 starter-test，与 start 模块同款声明）
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 }

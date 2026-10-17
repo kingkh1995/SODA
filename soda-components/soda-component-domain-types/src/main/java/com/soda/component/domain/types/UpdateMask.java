@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  *   <li><b>{@code *}</b> —— 全量替换：{@link #parse} 展开为白名单全集后与上一条同构。
  * </ul>
  *
- * {@code *} 是<b>请求级指令</b>而非可存储的掩码值：解析期需白名单才能确定「全部字段」的外延， 故典范构造器拒绝未展开的 {@code *}（{@code ["*"]}
+ * <p>{@code *} 是<b>请求级指令</b>而非可存储的掩码值：解析期需白名单才能确定「全部字段」的外延， 故典范构造器拒绝未展开的 {@code *}（{@code ["*"]}
  * 无法离线反序列化，见 ADR-0038）。
  *
  * <p>字符串入口 {@link #parse} 同时施加 <b>资源级</b>白名单（白名单外字段名 → {@link IllegalArgumentException} → 400

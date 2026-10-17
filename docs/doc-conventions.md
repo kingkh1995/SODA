@@ -1,134 +1,145 @@
 ---
 type: Convention
 title: Doc Conventions — 文档体系标准
-description: 写/改任何文档、ADR 或 frontmatter 时读——SODA 文档体系唯一标准落盘处：分层模型、schema 契约、bundle 布局、链接约定、写作原则、ADR 模板、合规基准。
+description: 写/改任何文档、ADR 或 frontmatter 时读——SODA 文档体系唯一标准：北极星判据、权威层级与适用面、bundle 布局与保留名、frontmatter 契约、来源登记与级别、文档 profile、链接与注册、写·检视双清单、合规硬门与 V1 覆盖。
 tags: [convention, docs, okf]
 status: stable
 ---
 
 # Doc Conventions
 
-SODA 文档体系标准（OKF v0.2 适配 × Google 注释规范 × agent 写作原则）。本文件是**唯一标准落盘处**：新文档类、新 frontmatter 键、写作规则、ADR 模板的变更都改这里；其余文档只做指针（单源原则）。
+SODA 文档体系唯一标准落盘处：新文档类型、新 frontmatter 键、写作/检视规则、ADR 模板的变更都改这里，其余文档只做指针（单源）。
 
-## 1. 知识分层模型（四类知识各归其位）
+> **单源指针**
+>
+> - **本篇**＝文档体系的**定案层**：权威层级 / 布局 / frontmatter / 来源登记 / profile / 双清单 / 合规硬门 / V1 覆盖。
+> - **上游事实**归 Research 层（`docs/research/`，OKF 适配研究见 [research/okf-code-repo-adaptation.md](research/okf-code-repo-adaptation.md)）：本篇只引来源 ID 与钉住版本（§4.2），不复制研究叙事。
+> - **代码注释**单源在 [../STYLEGUIDE.md](../STYLEGUIDE.md) §4；本篇只在 §1、§5 留指针。
+> - **词汇**归 [../CONTEXT.md](../CONTEXT.md)，**决策理由**归 [adr/](adr/)，**入口路由**归 [index.md](index.md) 与 [../AGENTS.md](../AGENTS.md)。
 
-| 知识类型                                         | 归属                                                                                                                    | 载体                                                                                                                                    |
-|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| **词汇**（概念是什么、用什么词）                 | `CONTEXT.md`（业务词汇）                                                                                                | 定义 + `_Avoid_`。**框架层无词汇**——类型即代码，定义在 javadoc；防混淆是命名约定（`framework-conventions.md` §4 类型与契约，DP 清单表） |
-| **决策**（为什么这样设计）                       | `docs/adr/`                                                                                                             | Context / Decision / Consequences（V1 阶段限制见 §9）                                                                                   |
-| **契约**（不变量、前置、副作用）                 | **与代码同处的注释**（Javadoc）                                                                                         | STYLEGUIDE §4 规范                                                                                                                      |
-| **约定**（怎么写代码 / 怎么写文档 / 框架怎么用） | `STYLEGUIDE.md`、`docs/doc-conventions.md`、`docs/framework-conventions.md`（索引）+ `docs/conventions/*`（类型规范族） | 规则 + 示例                                                                                                                             |
+## 1. 目的、范围与权威层级
 
-禁止跨层重复：词汇的语义不进 ADR 正文；实现细节不进词汇表；决策的理由不进注释（注释只留 ADR 锚点）；同一种约定不写进两份约定文档。判断标准——一处改了，别处不需要跟着改。
+**北极星**【强制】（`SODA-POLICY`）：文档体系的唯一服务对象是 coding agent（其次是人）——每条规则、每节结构、每个表列以 agent 上下文负荷与「准确 / 一致 / 可判定」为判据；形式工具（三档标定、❌/✅、四列规则表）是手段不是目的，不提升判据的结构一律删。
 
-## 2. Bundle 布局
+### 1.1 何时读 / 何时不读
 
-**docs/ 为 OKF bundle**（`type` 是唯一必填 frontmatter 键）。`.scratch/`（tracker 工作流数据）与根文档在 bundle 之外——bundle 合规只约束 docs/ 内文件。
+- **何时读**：新建或修改 `docs/` 内任何 Markdown；写根文档 frontmatter、ADR、Research、导航文件；判定某条文档规则的级别与来源；执行迁移审计。
+- **何时不读**：写随代码提交的注释（Java/SQL/YAML/Gradle）→ [../STYLEGUIDE.md](../STYLEGUIDE.md) §4；写某个库/框架的用法规则 → 对应 Convention 篇；查上游规范原文 → `docs/research/`。
 
-docs/ 树本身是事实源（filesystem 即真相，块内文件清单将漂移）；下表只标 **语义归属**：
+### 1.2 适用范围
 
-| 路径                                       | 语义归属                                                                                               |
-|--------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| `index.md`                                 | bundle 入口（渐进披露，无 frontmatter，仅目录）                                                        |
-| `adr/`                                     | 决策记录（`000N-slug.md`，极简模板见 §4；下划线前缀 `_xxx.md` 为目录导航，不进 ADR 编号与合规审计）    |
-| `research/`                                | 研究笔记（引用外部材料）                                                                               |
-| `agents/`                                  | agent 技能契约（setup 产物，不在 OKF schema 约束内）                                                   |
-| `framework-conventions.md`                 | 框架约定索引：分层总览 · Modulith 治理 · 单源指针                                                      |
-| `test-conventions.md`                      | 测试规范：分层映射 + 通用写法 + 覆盖率政策                                                             |
-| `dp-conventions.md`                        | Domain Primitive 设计规范（位于 docs 根，不在 conventions/ 下）                                        |
-| `conventions/`                             | 专项规范族（按复杂度渐进补齐，模板见 §2.4）                                                            |
-| `conventions/framework-type-contracts.md`  | 框架类型契约（与 framework-conventions.md 互链；DP 清单表承载 types 包覆盖判据）                       |
-| `conventions/framework-crosscutting.md`    | 跨切面规范（编排 / 异常 / JSpecify / Logging / 数据库 / Code Style）                                   |
-| `conventions/dp-json-conventions.md`       | DP 序列化契约族（模式总表 / 类型映射 / BigDecimal DP 模式 / 禁止 Serializable）                        |
-| `conventions/dp-validation-conventions.md` | DP 校验与归一化（三入口职责 / 校验收敛 / 编排 / 归一化细则）                                           |
-| `conventions/dp-test-conventions.md`       | DP 必测分组与 @Nested 分组矩阵                                                                         |
-| `conventions/aip-api-conventions.md`       | HTTP API 设计规范（资源 / 方法 / 字段 / 分页 / 错误处理）                                              |
-| `conventions/jackson.md`                   | Jackson 3 使用规范（接入与共享 / 注解落位 / 多态 / 3.0 行为基线）                                      |
-| `conventions/jspecify.md`                  | JSpecify 空性标注规范（`@NullMarked` 基线 / `@Nullable` 位置契约 / 泛型与覆写 / 外部库边界）           |
-| `conventions/lombok.md`                    | Lombok 使用规范（注解准入与禁用集 / 访问器与 fluent / 构造器与 Builder / 相等与调试 / 日志与构建接线） |
-| `conventions/mapstruct.md`                 | MapStruct 使用规范（`@Mapper` 与注入 / 映射语义 / 构建接线 / Null 与 JSpecify 缺口）                   |
-| `conventions/spring.md`                    | Spring Framework 使用规范（DI / 组件与自动配置 / 事务 / 事件 / Web MVC 扩展点 / 校验）                 |
-| `conventions/modulith.md`                  | Spring Modulith 使用规范（`@ApplicationModule` / `allowedDependencies` / verify 与反向校验）           |
-| `doc-conventions.md`                       | 本文件                                                                                                 |
+| 范围                                            | 治理来源                                  | 本标准的作用                    |
+|-------------------------------------------------|-------------------------------------------|---------------------------------|
+| `docs/` 内非保留名 Markdown（含 `docs/agents/`） | OKF MUST ＋ SODA 项目政策                 | 全部九节规则                    |
+| `docs/index.md`、任何 `log.md`                   | OKF 保留名结构                            | §2.1                            |
+| 根文档（README / CONTEXT / STYLEGUIDE / AGENTS） | SODA 项目政策（OKF 不适用，bundle 外）    | §3.3 frontmatter、§6 链接与注册 |
+| `.scratch/` 工作数据                             | 不治理（非正式文档）                      | §6.2：正式内容不引用            |
+| 随代码提交的解释性文本                           | Google Java Style ＋ 项目扩展（经 STYLEGUIDE §4） | 仅 §1.3、§5 指针          |
 
-`docs/index.md` 只列一级条目（目录 + 一句话定位，不承载正文——OKF §8）；conventions/ 族在 index 的 conventions/
-条目下列举（adapter / dp-test-conventions / framework-type-contracts / framework-crosscutting /
-dp-validation-conventions / dp-json-conventions / aip-api-conventions / jackson / jspecify / lombok / mapstruct /
-spring / modulith），详细契约经 framework-type-contracts.md 类型清单表触达。
+### 1.3 权威层级
 
-**不引入 `log.md`**（OKF §9 为 MAY，非合规必需）：变更史由 git log/blame 承载；V1 零残留条款（§9）禁止历史回溯内容入库——log 条目本身即历史回溯。
+| 来源                                            | 职责                                                        | 优先级规则                                                          |
+|-------------------------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------|
+| OKF（钉住 commit，见 §4.2）                     | bundle、frontmatter、保留名、链接与一致性要求              | 只在 `docs/` bundle 内成立；MUST 是硬门，SHOULD/MAY 只进 §4.4       |
+| `writing-for-agents`（钉住 commit，见 §4.2）    | agent-consumed 文档的 context pointer、两负荷、层级与完成判据 | 只在 §7.3 的 agent-consumed 分支生效                                |
+| Google Java Style（钉住 commit，见下）          | Java 注释词法与 Javadoc 格式                                | 只经 STYLEGUIDE §4 单源；非 Java 文本不得援引                      |
+| SODA 项目政策                                   | 本项目的硬门与语言/形式政策                                 | 可以比上游更严，但必须标 `SODA-POLICY`，不得归因给上游             |
+| 项目决策（ADR / 已裁定取舍）                    | 取舍与理由                                                  | 经 `SODA-DECISION` 关联；理由不复制规则正文                         |
 
-### 2.4 类型设计规范模板
+Google Java Style 钉住 `google/styleguide@e4d272e`，只治理 Java 注释；它不是本文件规则表的来源 ID。
 
-每个基类 / 接口标记类型（domain-starter 基类、AbstractAppService 等） **必须有一份设计规范**——覆盖清单见
-`conventions/framework-type-contracts.md` 类型清单表（合规第 8 条）。条目模板：
+| 规则                                                                                            | 级别     | 来源                          | SODA 落地                                             |
+|-------------------------------------------------------------------------------------------------|----------|-------------------------------|-------------------------------------------------------|
+| 超出上游适用面的要求必须改标项目政策，不得以 OKF 或 Google 名义写成硬门                          | 【强制】 | `OKF-MUST` + `SODA-POLICY`    | §8.1 硬门表按「来源/级别」分列两层，逐行标适用范围    |
+| 同一规则只在一个知识单源；其余位置只留指针                                                        | 【强制】 | `SODA-POLICY`                 | §6.1 归属表；本文件是文档规则的唯一正文               |
+| 正文以中文撰写，术语与代码标识符保留英文并对齐 [../CONTEXT.md](../CONTEXT.md)                     | 【强制】 | `SODA-POLICY`                 | §7.1 写清单第 3 条                                    |
 
-- **识别行**：类型名 + 包 + 角色（基类 / 标记接口 / DP）
-- **设计规则**：不变式、契约、怎么写子类 / 实现
-- **反模式**：禁止用法
-- **测试要求**：引用 dp-test-conventions 或本类测试约定
-- **关联 ADR**
+### 1.4 单源分工
 
-组织：按**复杂度拆分 + 关联性合并**——复杂类型独立成文（Entity/Aggregate、DP 谱系），简单关联类型合并一篇（字面值类型族、infrastructure 持久化基类）。边界实施时调整。
+| 层       | 拥有                                                                 | 不拥有                                   |
+|----------|----------------------------------------------------------------------|------------------------------------------|
+| Research | 外部来源的事实、版本、适用范围、引文与现状差距（`docs/research/`）   | SODA 规则、项目定案                      |
+| 标准     | 项目最终规则、profile、例外、门禁与完成判据（本文件及各规范篇）       | 研究叙事、外部原文                       |
+| ADR      | 取舍的理由（背景 / 决策 / 为什么，见 §5.3）                          | 规则正文、实现细节                       |
+| 入口     | 能触发正确单源的短指针与导航（[index.md](index.md)、[../AGENTS.md](../AGENTS.md)） | 规则正文、研究事实、审计过程             |
+| 审计产物 | 发现、来源、处置与复核证据（工作区本地文件，不入库）                 | 正式规则；正式内容不回引审计记录         |
 
-### 2.5 跨文档链接约定
+判断标准：一种内容出现在两层里就是 bug——改一处，别处不需要跟着改。
 
-**链接形式：全仓库统一相对路径**（从链接所在文件出发，如 ADR 链词汇表写 `../../CONTEXT.md`）。不用根相对 `/…`——OKF §6.1 推荐该形式换文档移动稳定性，但 GitHub 渲染把 `/…` 解析到域根造成断链；本仓库不用 OKF 工具链，docs/ 结构由本标准固定、不预期重组。断链容忍（OKF §6.1）：目标未写不构成错误，渐进写作友好。
+## 2. Bundle 布局、保留名与文档路由
 
-跨知识层互链规则：
+**`docs/` 是 OKF bundle**（`type` 是唯一必填键）；`.scratch/` 与根文档在 bundle 之外。文件系统是布局事实源，本节只写语义归属，完整文件清单单源在 [index.md](index.md)。
 
-| 方向            | 规则                                                                                                         |
-|-----------------|--------------------------------------------------------------------------------------------------------------|
-| 代码 → 文档     | javadoc 文字锚点「见 ADR-0021」——非 markdown 链接，grep 可达                                                 |
-| ADR → 代码      | prose 符号名（如 `VerificationService`），不写文件路径 / 链接——代码是事实源，路径易腐                        |
-| CONTEXT ↔ 其他  | 互不挂链接——纯词汇表（matt CONTEXT-FORMAT 硬契约），术语靠词表寻址，grep 即达                                |
-| 文档 ↔ 文档     | markdown 相对路径（根文档 ↔ docs/、docs/ 内部同一规则；AGENTS.md 指针同此）                                  |
-| 任意 → 需求票据 | **禁止**——不引用 `.scratch/` 票据（编号 / 路径）；票据闭环即归档删除，锚定只走 ADR / 约定文档 / 源码 javadoc |
+| 路径                             | 语义归属                                                    | 约束                                  |
+|----------------------------------|-------------------------------------------------------------|---------------------------------------|
+| `index.md`（bundle 根）          | 入口目录：一级条目 ＋ 一句话定位，不承载概念正文            | OKF 保留名，见 §2.1                   |
+| `adr/`                           | 决策记录 `000N-slug.md`；`_index.md` 等为主题导航           | profile §5.3 / §5.4，V1 条款 §9       |
+| `research/`                      | 研究笔记（事实层：外部来源、版本、差距）                    | profile §5.2                          |
+| `conventions/` 及 bundle 根规范文 | 规范文档（约定、规范、测试、DP 等）                         | profile §5.1                          |
+| `agents/`                        | agent 工作流文档                                            | 特殊边界，见 §5.5                       |
 
-**根文档**（README / AGENTS / CONTEXT / STYLEGUIDE）在 bundle 外：加 frontmatter 是推荐扩展（喂搜索/索引），不加不违规。
+### 2.1 保留名
 
-## 3. Frontmatter schema 契约
+| 规则                                                                       | 级别     | 来源            | SODA 落地                                   |
+|----------------------------------------------------------------------------|----------|-----------------|---------------------------------------------|
+| `index.md` 只作入口（目录＋一句话定位），不作为概念文档                    | 【强制】 | `OKF-MUST`      | §2 布局表；§6.3 注册                        |
+| `log.md` 在 V1 不创建；变更史由 `git log` / `git blame` 承载                | 【强制】 | `SODA-POLICY`   | §9.1                                        |
+| `_` 前缀导航文件（如 `adr/_index.md`）不参加 ADR 编号与正文合规             | 【强制】 | `SODA-POLICY`   | §5.4 导航 profile                           |
 
-### 3.1 type 词表（6 值，自解释）
+### 2.2 文档路由
 
-| type              | 文档类                                                      | 必填键                                | 按类可选键                        |
-|-------------------|-------------------------------------------------------------|---------------------------------------|-----------------------------------|
-| `Repo Overview`   | 根 README                                                   | type, title, description              | tags, status                      |
-| `Agent Guide`     | AGENTS.md                                                   | type, title, description              | tags, status                      |
-| `Glossary`        | CONTEXT.md                                                  | type, title, description              | tags, status                      |
-| `Convention`      | 约定类文档（root 规范＋docs/ 下规范文，含 conventions/ 族） | type, title, description              | tags, status                      |
-| `Decision Record` | docs/adr/*                                                  | type, title, description              | tags, status                      |
-| `Research`        | docs/research/*                                             | type, title, description, **sources** | tags, status, generated, verified |
+新文档按 §6.1 的四类知识落位（词汇 → `CONTEXT.md`、理由 → ADR、事实 → Research、规则 → Convention、入口 → `index.md` / `AGENTS.md`）；落位后按 §6.3 注册、按 §8.2 走完成判据。
 
-未知 type 必须被宽容消费（OKF §11）——词表可扩展，不集中注册。OKF 的 `resource` 键（数据目录的资源绑定语义）不采纳：research 的 provenance 由 `sources` 覆盖，代码仓库中代码本身是事实源。
+## 3. Frontmatter、命名与元数据契约
+
+### 3.1 type 词表
+
+词表按需扩展：`docs/` 内概念文档优先取下列登记值，新增 `type` 必须带登记说明（§8.1 项目元数据门）。
+
+| type              | 适用范围                     | 必填键                            | 来源                                          |
+|-------------------|------------------------------|-----------------------------------|-----------------------------------------------|
+| `Convention`      | 规范文档（`docs/` 及根规范文） | `type`、`title`、`description`    | `OKF-MUST`（type）＋`SODA-POLICY`（元数据）   |
+| `Decision Record` | `docs/adr/000N-*.md`         | `type`、`title`、`description`    | 同上                                          |
+| `Research`        | `docs/research/*.md`         | `type`、`title`、`description`、`sources` | 同上（`sources` 为项目硬门）          |
+| `Agent Workflow`  | `docs/agents/*.md`           | `type`（`title`/`description` 推荐） | `OKF-MUST`（frontmatter 与 `type` 必填）    |
+| `Navigation`      | `docs/` 内 `_` 前缀导航文件  | `type`、`title`、`description`    | `SODA-POLICY`（导航不带生命周期元数据，§5.4） |
+| `Repo Overview`、`Glossary` | 根文档（bundle 外，frontmatter 可选） | 可选；填写时三项齐备 | `SODA-POLICY`（§3.3）              |
+
+未知 `type` 必须被宽容消费（`OKF-MUST`：消费者不得因未知 type 拒收）——宽容条款约束消费者，不降低本文档的词表要求。OKF 的 `resource` 键（数据目录的资源绑定）不采纳：Research 的 provenance 由 `sources` 覆盖。
 
 ### 3.2 键契约
 
-| 键            | 必填                                       | 语义                                                                  | 说明                                                                                                                                                                                                                                                                     |
-|---------------|--------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `type`        | ✅                                         | 文档类（§3.1 词表）                                                   | 唯一必填键（OKF §4.1）                                                                                                                                                                                                                                                   |
-| `title`       | 除 index 外 ✅                             | 人类标题                                                              |                                                                                                                                                                                                                                                                          |
-| `description` | ✅                                         | 一句话定位，**即 context pointer**                                    | 措辞决定 agent 何时触达（writing-for-agents）                                                                                                                                                                                                                            |
-| `tags`        |                                            | 主题标签                                                              | 数组                                                                                                                                                                                                                                                                     |
-| `status`      | 推荐（含 ADR；OKF 仅 `type` 必填，可省略） | draft \| stable \| deprecated \| superseded（V1 §9 限 draft\|stable） | 生命周期（OKF §5.4 词表为 draft/stable/deprecated；**superseded 为项目扩展**——承 matt ADR「被替代，链接指向替代者」语义），**全文档类统一词表**（ADR 同表，不用 matt 的 proposed/accepted）。**V1 阶段仅用 draft/stable**（过时即删，不设 deprecated/superseded）——见 §9 |
-| `sources`     | Research ✅                                | `[{resource, id, title, author}]`                                     | provenance（OKF §5.1）；research 必用，其余不用                                                                                                                                                                                                                          |
-| `generated`   | agent 独立产物时                           | `{by, at}`                                                            | 整份文档由 agent 生成为独立产物时填（research 输出等）；人写/结对文档不填（git blame 已覆盖）                                                                                                                                                                            |
-| `verified`    | agent 生成文档经人工复核后                 | `[{by, at}]`                                                          | `by` 用 `human:<id>`——人类复核提升信任层级（OKF §5.3）                                                                                                                                                                                                                   |
-| `stale_after` | 引用易变外部事实时                         | ISO 8601 datetime（显式 UTC 偏移，如 `2026-06-30T14:00:00Z`）         | 默认省略                                                                                                                                                                                                                                                                 |
-| 扩展键        |                                            | 任意                                                                  | 消费者不得拒绝（OKF §4.1 Extensions / §11）；`usage_count` 等 OKF 数据目录键留扩展、不预置（01）                                                                                                                                                                         |
+| 键            | 必填                                            | 语义                                             | 说明                                                                  |
+|---------------|-------------------------------------------------|--------------------------------------------------|-----------------------------------------------------------------------|
+| `type`        | `docs/` 内非保留名文件 ✅                        | 文档类（§3.1 词表）                              | `OKF-MUST`：唯一强制键，非空                                          |
+| `title`       | 概念文档与导航 ✅（`index.md` 除外）             | 人类标题                                         | `SODA-POLICY`；上游本为建议，项目升为硬门（§4.4）                  |
+| `description` | 概念文档与导航 ✅（`index.md` 除外）             | 一句话定位，**即 context pointer**               | `SODA-POLICY` ＋ `WFA`：措辞决定 agent 何时触达正文                    |
+| `tags`        | —                                               | 主题标签（数组）                                 | `OKF-MAY`                                                             |
+| `status`      | 推荐                                            | `draft` \| `stable`（V1 词表，见 §9.1）          | 缺省视为 `stable`（`OKF-MUST`：规范默认语义）；V1 禁用 `deprecated`/`superseded` |
+| `sources`     | Research ✅                                      | `[{resource, id, title, author}]`                | `SODA-POLICY`（上游本为可选族）；`resource` 必填，正文引用时补 `id`   |
+| `generated`   | 可选                                            | `{by, at}`——整份文档由 agent 独立产出时填写      | 出现即必须带 `by`（`OKF-MUST`）；人写文档不填                          |
+| `verified`    | 可选                                            | `[{by, at}]`——人工复核记录                      | 一律写列表形式；`by` 用 `human:` 前缀（`OKF-MUST`）                    |
+| `stale_after` | 可选                                            | ISO 8601 时刻（显式 UTC 偏移）                   | 引用易变外部事实时填写                                                 |
+| 扩展键        | —                                               | 任意                                             | `OKF-MAY`；消费者不得拒绝                                             |
 
+**actor 约定**（`generated.by` / `verified[].by`，照采纳 `OKF-MUST`）：
 
-**actor 约定**（`generated.by` / `verified[].by` 取值，照采纳 OKF §7）：
+| 角色       | 格式              | 示例                    |
+|------------|-------------------|-------------------------|
+| agent/工具 | `<producer>/<version>` | `wayfinder/01`     |
+| 人         | `human:<id>`（git 用户名） | `human:mm`     |
+| 自动流程   | `process:<id>`    | `process:nightly-sync`  |
 
-| 角色 | 格式 | 示例 |
-|---|---|---|
-| agent/工具 | `<producer>/<version>` | `wayfinder/01` |
-| 人 | `human:<id>`（git 用户名） | `human:mm` |
-| 自动流程 | `process:<id>` | `process:nightly-sync` |
+人工确认的内容必须用 `human:` 前缀（`OKF-MUST`）；无 `verified` 即未复核，信任分级只是建议、不是门禁。
 
-信任分级（OKF §5.3）以 `human:` 前缀为键——人工确认的内容必须用 `human:` 前缀记录。
+### 3.3 命名与根文档边界
 
-### 3.3 示例
+| 规则                                                                                      | 级别     | 来源            | SODA 落地                                          |
+|-------------------------------------------------------------------------------------------|----------|-----------------|----------------------------------------------------|
+| ADR 文件名 `000N-slug.md` 顺序递增；`_` 前缀导航不进编号                                   | 【强制】 | `SODA-POLICY`   | §5.3、§5.4；编号空洞合法（§9.1）                   |
+| 根文档在 bundle 外，frontmatter 是推荐扩展（加不加都不违规）；填写时按 §3.1 根文档词表取值  | 【推荐】 | `SODA-POLICY`   | `AGENTS.md` 是否带 frontmatter 由其独立 agent 契约决定 |
+
+### 3.4 示例
 
 ```yaml
 ---
@@ -146,7 +157,7 @@ type: Research
 title: OKF 在代码仓库文档场景的适配研究
 description: OKF v0.2 对 SODA 文档体系的适用性：type 词表、status 采纳、bundle 布局。
 sources:
-  - resource: https://github.com/GoogleCloudPlatform/knowledge-catalog
+  - resource: https://github.com/GoogleCloudPlatform/open-knowledge-format
     id: okf-spec
     title: OKF v0.2 SPEC.md
     author: GoogleCloudPlatform
@@ -160,21 +171,97 @@ verified:
 ---
 ```
 
-## 4. ADR 模板
+## 4. 规则表达、来源登记与偏离
 
-ADR 按 matt ADR-FORMAT：**标题 + 1-3 句**（背景 + 决策 + 为什么）。价值在"记下定了什么、为什么"，不在填章节。实现细节（代码片段、端点表、编排伪码）不写——代码是事实源。可选节只在该节有真实价值时写：
+### 4.1 级别
 
-- **Consequences** — 非显然的连带影响才写（如 api 临时依赖 domain）
-- **Considered Options**（被否方案）— **V1 阶段禁止**（零残留，§9）；退出 V1 后按 matt 恢复为可选
+- **【强制】**：违反即审计缺陷；只能由 `OKF-MUST` 或明确的 `SODA-POLICY` 硬门支撑。`OKF-SHOULD`/`OKF-MAY` 不因被引用而升格。
+- **【推荐】**：官方 SHOULD、项目强烈建议或 `WFA` 的适用建议；偏离要记录理由，但不自动判缺陷。项目要把建议变硬门，必须改写成明确的 `SODA-POLICY` 规则。
+- **【参考】**：解释、示例、背景或边缘信息；不产生通过/不通过结论。
 
-V1 阶段（§9）：只写最终态——status 仅 draft/stable（推荐键，可省略）、不写修订沿革、过时即删。
+### 4.2 来源登记
+
+规则表的「来源」列只写下列封闭 ID；版本与锚点集中在本表，不在每行重复。
+
+| 来源 ID        | 含义                          | 钉住版本                                                                                                                                                                              | 适用边界                                  |
+|----------------|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|
+| `OKF-MUST`     | OKF normative MUST            | `GoogleCloudPlatform/open-knowledge-format@ad30107c31c06aec8a7d5636e0d1058118604e6f`（SPEC v0.2，2026-08-21）                                                                        | 只约束映射为 `docs/` bundle 的 Markdown    |
+| `OKF-SHOULD`   | OKF SHOULD                    | 同上                                                                                                                                                                                  | 建议层（§4.4），不构成合规失败             |
+| `OKF-MAY`      | OKF MAY                       | 同上                                                                                                                                                                                  | 可选能力/形式（§4.4）                      |
+| `WFA`          | `writing-for-agents` 补充规则 | `mattpocock/skills@c55ee46073ed923f86ce59a5eb3b6d895095d1b7`；`SKILL.md` SHA-256 `1c0c4ebf2d221917591144f0ced4fe46dae13301cb3d6d93fc88ecf0dda6aed2` | 只用于 agent-consumed 分支（§7.3）          |
+| `SODA-POLICY`  | 本项目硬门或项目政策          | 本文件（无外部版本）                                                                                                                                                                  | 必须标「项目政策/项目扩展」，不得归因上游  |
+| `SODA-DECISION` | 已裁定的项目取舍             | 关联 ADR / 决策记录                                                                                                                                                                   | 理由经链接指向，不复制规则正文             |
+
+### 4.3 规则表与示例的表达约定
+
+- 规则表只允许四列：`| 规则 | 级别 | 来源 | SODA 落地 |`；空值写 `—`；不新增语义列（关联理由写进 §4.5 的 `关联 ADR` 列）。
+- 规则组按需给 ❌/✅ 反例正例，不设「每组至少一对」的数量门；版本表、偏离表与纯清单不适用。
+- 形式先例：本文件与各规范篇的适用面、来源指针、三级级别、❌/✅、偏离表与双清单，采纳依据＝[ADR-0036](adr/0036-p3c-surface-format-retrofit.md)；**不照搬**任何外部手册的库专属版本基线、代码命中计数、模块/类型白名单——外部手册只作形式先例，不作规则权威。
+
+### 4.4 建议层：上游条款逐条处置
+
+每条上游 SHOULD/MAY 都必须有结论；未列出即视为未评估。消费者侧条款在此一并登记，但**本表任何一行都不改变 §8.1 的硬门集合**。
+
+| 建议项（上游条款）                                                     | 来源          | 项目处置                     | 落点            |
+|------------------------------------------------------------------------|---------------|------------------------------|-----------------|
+| `type` 取描述性、自解释的值（§4.1）                                    | `OKF-SHOULD`  | 采纳为建议                   | §3.1 词表        |
+| `title`/`description`/`tags` 为建议键，缺省可由文件名派生（§4.1）      | `OKF-SHOULD`  | 由 `SODA-POLICY` 替代        | §3.2（概念文档必填） |
+| 正文优先结构化 Markdown；`# Schema`/`# Examples`/`# Computation` 为惯例章节（§4.2） | `OKF-SHOULD` | 不采纳 | §5 按文档类型 profile 组织章节 |
+| 生产者可加任意额外 frontmatter 键（§4.1）                              | `OKF-MAY`     | 采纳为建议                   | §3.2 扩展键      |
+| 消费者宽容条款：保留未知键（§4.1）；容忍断链，且不得因未知 type/键、缺可选键、断链、缺索引拒收（§4.1/§6.1/§11） | `OKF-SHOULD` / `OKF-MUST` | 不进文档级硬门（宽容消费者、不宽容文档） | §8.1 排除说明、D2 |
+| `sources[]` 内 `resource` 必填、正文引用时给 `id`（§5.1）               | `OKF-MUST`    | 采纳；`sources` 整体必填为项目硬门 | §3.2      |
+| `sources[]` 可覆盖 `usage_window`；`usage_count` 按趋势读（§5.1）       | `OKF-MAY`/`OKF-SHOULD` | 不采纳（不使用 usage 族键） | —                |
+| `generated` 出现则 `generated.by` 必填（§5.2）                         | `OKF-MUST`    | 采纳                          | §3.2             |
+| 单个 `verified` 可写裸映射，消费者归一为单元素列表（§5.2）             | `OKF-MAY`/`OKF-MUST` | 采纳其归一语义，项目只写列表形式 | §3.2         |
+| 无 `verified`＝未复核；信任分级是建议、非门禁（§5.3）                   | `OKF-SHOULD`  | 采纳为建议                    | §3.2 actor 表    |
+| 人工确认内容必须用 `human:` 前缀（§7）                                 | `OKF-MUST`    | 采纳                          | §3.2 actor 表    |
+| 缺 `status` 视为 `stable`（§5.4）                                      | `OKF-MUST`    | 采纳为规范默认语义；值域由 V1 收窄 | §3.2、§9.1 |
+| `stale_after` 为可选绝对时刻，到期即过期（§5.5）                       | `OKF-MAY`     | 采纳为可选键                  | §3.2             |
+| 可选族存在时生产者应遵循 §§5–10 结构（§11）                            | `OKF-SHOULD`  | 采纳为建议（用到该族即按其结构写） | §3.2         |
+| 推荐用 bundle-relative `/…` 链接（§6.1）                               | `OKF-MAY`     | 不采纳                        | 偏离表 D1        |
+| 任意目录可放 `index.md`，条目可带链接描述，索引可选（§8）               | `OKF-MAY`     | 由 `SODA-POLICY` 替代（新文档必须注册入口） | §6.3、偏离表 D5 |
+| `log.md` 可记变更史，日期用 ISO 8601（§9）                             | `OKF-MAY`     | 不采纳（V1 不创建）           | 偏离表 D3、§9.1  |
+| bundle 可为仓库、压缩包或子目录（§3）                                  | `OKF-MAY`     | 采纳                          | §1.2（`docs/` 子目录即 bundle） |
+| 根 `index.md` 可声明 `okf_version`（§12）                              | `OKF-MAY`     | 不采纳（版本钉在 §4.2，不写进正文） | §4.2         |
+
+### 4.5 偏离表
+
+| 偏离项           | 上游/参考做法                                            | SODA 做法                                  | 理由                                                                       | 关联 ADR |
+|------------------|----------------------------------------------------------|--------------------------------------------|----------------------------------------------------------------------------|----------|
+| D1 链接形式      | OKF §6.1 推荐 bundle-relative `/…`                       | 从所在文件出发的相对路径，禁用根相对 `/…`  | GitHub 把 `/…` 解析到域根造成断链；docs 结构由本标准固定                   | —        |
+| D2 断链容忍      | OKF §6.1/§11 要求消费者容忍断链                          | 文档级硬门：目标与锚点必须可达             | 审计需要可判定的通过/不通过；宽容条款约束消费者而非文档                    | —        |
+| D3 变更史        | OKF §9 允许 `log.md`                                     | V1 不创建 `log.md`                         | 历史回溯内容与 V1 零残留冲突；`git log` 承载                                | —        |
+| D4 status 词表   | OKF §5.4 `draft`/`stable`/`deprecated`，缺省 `stable`    | V1 只用 `draft`/`stable`，过时直接删除      | V1 零残留（§9.1）                                                           | —        |
+| D5 入口注册      | OKF §8 索引为可选                                        | 新文档必须注册 `index.md`，必要时注册入口   | 入口是 agent 触达的唯一路由，属项目硬门                                    | —        |
+| D6 来源可追溯    | OKF §5 provenance 全族可选                               | Research 必填 `sources`                     | 审计要求逐条可追溯；这是 `SODA-POLICY`，不是 OKF 要求                       | —        |
+| D7 治理范围      | OKF 只治理知识 bundle；Google Java Style 只治理 Java 注释 | 只把 `docs/` 映射为 bundle；非 Java 文本用项目扩展 | 防止 OKF 越权治理代码注释、防止 Google 规则外推到非 Java 文本              | —        |
+
+## 5. 文档类型 profile
+
+### 5.1 Convention（规范文档）
+
+- **职责**：项目定案与落地——适用面、来源指针、规则表、偏离表、写·检视双清单。
+- **必备**：frontmatter（§3.1）；适用范围与「何时读/何时不读」；按主题分组的规则（带级别与来源 ID）；偏离/项目扩展；检视清单。
+- **维护**：BOM / 直接依赖升级时逐项复核本篇规则表、版本登记与禁用清单（依据＝官方 release notes / 迁移指南），改动就地更新。
+- **例外**：只有来源确有版本语义时才写版本基线（如库规范篇），不把库专属版本表变成所有 Convention 的固定章节；索引型规范（如 `framework-conventions.md`）只承担路由，不承载规则正文。
+
+### 5.2 Research（研究笔记）
+
+- **职责**：事实层——外部来源、方法、引文、钉住的版本/hash、现状差距与研究结论。
+- **必备**：`sources` 非空（§3.2）；每条事实可回到钉住版本。
+- **禁止**：把建议写成 SODA 已定规则；规则正文只回链本标准或对应规范篇。
+
+### 5.3 Decision Record（决策记录，ADR）
+
+- **职责**：理由层——只记录背景、决策、为什么。
+- **V1 形态**：正文 1–3 句；`Consequences` 仅在有非显然连带影响时写；不写代码片段、实现细节、被否方案或修订沿革（§9.1）。
 
 ```markdown
 ---
 type: Decision Record
 title: <决策名>
 description: <一句话：决策内容>
-status: stable    # 推荐键（OKF 仅 type 必填，可省略）；V1 阶段仅 draft|stable（§9）
+status: stable
 ---
 
 # 000N — <决策名>
@@ -185,57 +272,169 @@ status: stable    # 推荐键（OKF 仅 type 必填，可省略）；V1 阶段�
 - ...
 ```
 
-## 5. 写作原则
+### 5.4 导航文件（`index.md`、`_index.md`）
 
-- **`description` 与 AGENTS.md 每行指针写「何时读」的分支**（用上文触发词），不写文档身份；措辞决定 agent 何时加载正文
-- **同一种约定不写进两份约定文档**（同 §1 禁止跨层重复的落地版）——一处改了别处不需要跟着改
-- **正文以中文撰写**；术语 / 代码标识符保留英文原文，对齐 `CONTEXT.md`
+- **职责**：入口、目录与一句话定位；不承载规则正文。
+- **必备**：`docs/index.md` 为保留名，无 frontmatter（§2.1）；`_` 前缀导航文件带 `type: Navigation` ＋ `title`/`description`，**不带** `status`/`tags` 等概念文档生命周期元数据（§3.1）。
+- **边界**：导航文件不参加 ADR 编号与正文合规，但仍有链接可达与注册要求。
 
-## 6. 注释规范
+### 5.5 agent 工作流文档
 
-编码注释标准在 `STYLEGUIDE.md §4`（Google Java Style §7 适配）。本文档不复制正文——注释标准变更改 STYLEGUIDE，本文件仅指。
+- `docs/agents/` 在 bundle 树内：frontmatter 可解析、`type` 非空（登记 `Agent Workflow`）是 `OKF-MUST`；除此之外只执行 frontmatter、链接与单源要求，**不套**概念文档正文模板。
+- 根 `AGENTS.md` 在 bundle 外：采用独立 agent 契约，其 frontmatter 取舍由该契约决定（`SODA-DECISION`）。
+- 两者都不复制本文件的规则正文；agent 入口只留能触发正确单源的短指针（§6.3）。
 
-## 7. 合规基准（机械可检查）
+## 6. 知识分层、链接与注册
 
-docs/ 内每个非保留名 .md（docs/agents/ 除外——setup 产物，见 §2）：
+### 6.1 四类知识各归其位
 
-- [ ] YAML frontmatter 可解析，`type` 非空且在词表（或明确扩展）
-- [ ] `title`/`description` 非空（index.md 除外）
-- [ ] ADR：`status` ∈ {draft, stable}（V1 阶段，§9；推荐键可省略）；文件名 `000N-slug.md` 顺序递增（下划线前缀导航文件除外）；正文
-  1-3 句 + 可选 Consequences（§4）
-- [ ] Research：`sources` 非空
-- [ ] 分层合规：CONTEXT.md 只含业务词汇（无实现细节）；ADR 无代码片段
-- [ ] 链接与锚点：markdown 链接全相对路径（从所在文件出发，§2.5）、无根相对 `/…`、目标可达；「见 ADR-NNNN」prose 锚点须对应 adr/
-  现存文件且语义一致； **不引用需求票据**（§2.5）；本判据适用 **全仓**（根四文档＋代码注释），编号空洞合法——V1
-  过时即删，引用不得悬空
-- [ ] 不破坏技能契约：CONTEXT.md 含 `## Language`；ADR 位置/编号不变；docs/agents/ 三件套存在
-- [ ] 类型覆盖：framework-type-contracts.md 清单表覆盖 types 包全部 DP（表即 DP 覆盖清单，逐行核对）；基类/标记接口由
-  conventions/framework-type-contracts.md
-  小节承载，人工审计核存在性；已有专项规范的在行内锚点可达（conventions/ 族、dp-conventions）
-- [ ] 渲染完整性：代码围栏逐对闭合（围栏行数偶数、无孤立开口）；无编辑残迹（行首 `*NN:` 前缀、代码块内孤立 `…`
-  行）；代码行无硬换行截断（样例续行不得被空行劈开——续行特征如行尾 `.` / `(` / `,` / `->`、孤立 `new` / `case` 行）；
-  关键模板区（dp-conventions §1.4/§9 模板、conventions/ 完整示例）抽查渲染
+| 知识类型                                         | 归属                                                                    | 载体                                     |
+|--------------------------------------------------|-------------------------------------------------------------------------|-------------------------------------------|
+| **词汇**（概念是什么、用什么词）                 | [../CONTEXT.md](../CONTEXT.md)（业务词汇）                             | 定义 ＋ `_Avoid_`；框架层类型定义在 Javadoc，防混淆约定见 [framework-conventions.md](framework-conventions.md) |
+| **决策**（为什么这样设计）                       | [adr/](adr/)                                                            | 背景 / 决策 / 为什么（V1 见 §9.1）        |
+| **契约**（不变量、前置、副作用）                 | 与代码同处的注释                                                        | [../STYLEGUIDE.md](../STYLEGUIDE.md) §4   |
+| **约定**（怎么写代码 / 怎么写文档 / 框架怎么用） | STYLEGUIDE、本文件、`framework-conventions.md` ＋ `conventions/*`       | 规则 ＋ 示例                              |
 
-检查方式：
+禁止跨层重复：词汇语义不进 ADR 正文；实现细节不进词汇表；决策理由不进注释（注释只留 ADR 锚点）；同一种约定不写进两份约定文档。判断标准——一处改了，别处不需要跟着改。
 
-- **代码侧锚点**：code-review 标准轴按本规范 §7 核查——新增「见 ADR-NNNN」锚点对应 adr/ 现存文件且语义一致，commit 时点拦截错配
-- **机械项**（frontmatter / 词表 / status / ADR 编号 / `## Language` / 链接与锚点 / 围栏配对与残迹）：脚本检查不做，由 agent
-  审计按上方基准逐项承载；漂移复发至人工不可承受时再评估工具化
-- **内容过期不是 lint 项**：分层模型（§1）保证文档不重复代码/环境事实——过期源在设计上消除；git blame 是唯一辅助工具
+### 6.2 链接形式与互链方向
 
-## 8. 文档生命周期
+| 规则                                                                                 | 级别     | 来源            | SODA 落地                                   |
+|--------------------------------------------------------------------------------------|----------|-----------------|---------------------------------------------|
+| 跨文档 Markdown 链接用从所在文件出发的相对路径；禁用根相对 `/…`                       | 【强制】 | `SODA-POLICY`   | 偏离表 D1；§8.1 可达性硬门                  |
+| 目标文件与锚点必须可达；「见 ADR-NNNN」prose 锚点须对应现存 ADR 且语义一致（全仓适用） | 【强制】 | `SODA-POLICY`   | §8.4 检视项；编号空洞合法                   |
+| 正式文档与入口不引用 `.scratch/` 票据（编号或路径）                                   | 【强制】 | `SODA-POLICY`   | §8.1、§8.4 检视项                        |
 
-- **新增文档**（完成判据——任一不满足即未完工）：按 §3 契约补 frontmatter → 落 bundle 位置 → 在 `docs/index.md` 加一行（bundle
-  入口）→ 在 AGENTS.md 加指针行（如需要触发，触发词与正文描述一致）→ `frontmatter` 通过 §7 基准 → `git grep` 验证锚点可达。
-- **status 流转**：draft（起草）→ stable（定案）→ deprecated / superseded（被替代，正文链接指向替代者）。**V1 阶段例外见 §9**（仅 draft/stable，过时即删，决策变更就地更新）
-- **删除**：过时/被替代文档删除（git 历史保留；index.md 移除条目）。**V1 阶段**：过时即删，零残留（§9）
+| 方向             | 规则                                                                                         |
+|------------------|----------------------------------------------------------------------------------------------|
+| 代码 → 文档      | Javadoc 文字锚点（如「见 ADR-0021」），非 Markdown 链接，grep 可达                            |
+| ADR → 代码       | prose 符号名（如 `VerificationService`），不写文件路径——代码是事实源，路径易腐               |
+| CONTEXT ↔ 其他   | 互不挂链接——纯词汇表，术语靠词表寻址，grep 即达                                              |
+| 文档 ↔ 文档      | Markdown 相对路径（根文档 ↔ `docs/`、`docs/` 内部、agent 入口同此）                          |
+| 任意 → 需求票据  | 禁止；锚定只走 ADR / 约定文档 / 源码 Javadoc                                                  |
 
-## 9. V1 阶段条款（退出 V1 时整节删除）
+### 6.3 注册
 
-代码库始终处于 V1：文档与注释**只记录最终决策结论**，不做决策回溯；历史过时内容直接删除，项目内零残留（git 历史承载过往）。本节是对 §3.2 / §4 / §8 默认生命周期的**阶段覆盖**：
+| 规则                                                                                 | 级别     | 来源            | SODA 落地                             |
+|--------------------------------------------------------------------------------------|----------|-----------------|---------------------------------------|
+| `docs/` 内每份新文档在 [index.md](index.md) 注册一行（入口＋一句话定位）              | 【强制】 | `SODA-POLICY`   | 偏离表 D5；§8.2 完成判据              |
+| agent 需要按场景触达的新文档，在 [../AGENTS.md](../AGENTS.md) 对应触发行登记短指针      | 【强制】 | `SODA-POLICY`   | 指针措辞写「何时读」的分支，不写文档身份 |
+| `description` 与入口指针写触发分支、不写身份陈述                                      | 【推荐】 | `WFA`           | §7.3                                  |
 
-1. `status` 仅用 `draft | stable`——§3.2 默认词表的 deprecated / superseded 暂停
-2. ADR 正文不写被否方案、修订沿革——决策变更**就地更新**为最终状态，不另开 ADR
-3. 过时内容**直接删除**，不标记状态
+## 7. 写作、检视与完成判据
 
-**退出 V1**：删除本节，§3.2 / §4 / §8 默认恢复。agent 按正常生命周期写作（完整 status 词表、superseded 链、被替代文档标记），无需其他改动。
+### 7.1 写清单（服务 agent 写作）
+
+按序执行，完成判据在末条：
+
+1. 确认文档类型、profile、适用面和唯一知识单源。
+2. 读取对应的登记来源；agent-consumed 文档先触发 `WFA` 分支（§7.3），普通文档只检查本次改动影响的 agent-facing properties。
+3. 按 profile 写 frontmatter、标题、描述、位置和必要注册。
+4. 每条规则同时写级别、来源 ID、SODA 落地/例外和必要 ADR 链接。
+5. 需要时补偏离/项目扩展及 ❌/✅；不把库专属事实伪装成通用规则。
+6. 检查相对链接、锚点、index/AGENTS 路由、无 `.scratch` 引用和知识层不重复。
+7. 对 agent-consumed 文档检查 context pointer 的触发分支、context/cognitive load、渐进披露、共置、leading words、单源/no-op 和清晰完成判据。
+8. **完成判据**：每项要求有落点、每个来源 ID 可追溯、每个链接可达、无重复规则正文。
+
+### 7.2 检视清单（服务迁移审计）
+
+逐项记录发现，不把清单变成新的 lint 工具；审计流程见 §8.3，机械可检项单源在 §8.4。**处置核心（全 effort 共享）**：每项发现写 `修/删/移/保留`、目标归属、依赖、复核方法——各批次审计表只增补证据列，不另立第二套处置词表；修改后逐项回放。
+
+写清单与检视清单的分组形式沿用依赖规范的形式先例（AIP/Jackson/Modulith），是推荐的项目写作形式，不是 OKF MUST；条目数量不设硬性上下限，以每条可判定、互不重复为准。
+
+### 7.3 `writing-for-agents` 触发分支
+
+1. **写/改 agent-consumed 文档时加载**：skills、`AGENTS.md`/`CLAUDE.md`、context pointer、README/入口说明、供 agent 按指针加载的 reference——按 §7.1 第 7 条逐项检查。
+2. **普通知识文档**：只执行与本次改动相关的 context pointer、单源、渐进披露与完成判据检查，不要求无条件加载整份 `WFA`。
+
+「每次写任何文档都强制加载 `WFA`」不是本项目的门（违背其自身两负荷与渐进披露原则）；`WFA` 只在本分支生效，不替代 OKF 或 Google。
+
+## 8. 生命周期、合规与迁移审计
+
+### 8.1 合规硬门
+
+两层硬门的边界；「SODA 项目政策」不是 OKF MUST，但属于本项目审计的缺陷条件。
+
+| 门     | 适用范围                                                     | 硬门                                                                       | 来源/级别                        | 落点       |
+|--------|--------------------------------------------------------------|----------------------------------------------------------------------------|----------------------------------|------------|
+| 解析与类型 | `docs/` 内非保留名 Markdown（含 `docs/agents/`）          | YAML frontmatter 可解析，`type` 非空                                       | `OKF-MUST`【强制】               | §3.1、§5.5 |
+| 项目元数据 | `docs/` 内概念文档与导航                                  | `title`、`description` 非空；Research `sources` 非空；扩展 `type` 有登记说明 | `SODA-POLICY`【强制】            | §3.1、§3.2 |
+| 保留名   | bundle 根 `index.md`、任何 `log.md`                          | `index.md` 只作入口；V1 不创建 `log.md`                                     | `OKF-MUST` + `SODA-POLICY`【强制】 | §2.1、§9.1 |
+| profile  | 各文档类型                                                    | 满足 §5 对应 profile；ADR V1 极简；Research 不承载规范正文                  | `SODA-POLICY`【强制】            | §5         |
+| 链接与注册 | `docs/`、根文档、源码中的正式指针                          | 相对路径、目标与锚点可达、禁用 `/…`；新文档注册 index，必要时注册 AGENTS；不引用 `.scratch/` 票据 | `SODA-POLICY`【强制】 | §6.2、§6.3 |
+| 知识分层 | 全仓正式文档与入口                                          | CONTEXT 只放词汇；ADR 不放实现细节；同一规则只在一个知识单源；入口只做指针   | `SODA-POLICY`【强制】            | §6.1       |
+| 生命周期 | V1 的 `docs/` 正式文档                                      | `status` 只用 `draft`/`stable`；过时内容删除，不留 deprecated/superseded 残留 | `SODA-POLICY`【强制】            | §9.1       |
+| 审计与复核 | 每次迁移批次                                                | 先只读审计，再按逐项处置表修改，再以双清单与 code-review 复核；不新增构建门禁 | `SODA-POLICY`【强制】            | §8.3       |
+
+`OKF-SHOULD`/`OKF-MAY` 只在 §4.4 建议表与检视清单中评估，不进本表；OKF 的消费者宽容条款（未知 `type`、未知扩展键、缺可选键、断链不得拒收）约束消费者而非文档，同样不进本表。根文档在 bundle 外，OKF 硬门不适用；`docs/agents/` 在 bundle 树内，frontmatter 与 `type` 必填，但不套概念文档 profile。
+
+### 8.2 生命周期与完成判据
+
+- **新增文档**（任一不满足即未完工）：按 §3 补 frontmatter → 落 bundle 位置（§2、§6.1）→ 在 `index.md` 加一行 → 需要 agent 触达时在入口加触发指针 → 通过 §8.1 硬门 → 复检链接与锚点可达。
+- **变更**：规则改动只改本文件（或对应规范篇）的单源正文；引用方只更新指针，不复制正文。
+- **删除**：过时/被替代内容直接删除，同步移除 `index.md` 条目（V1 语义见 §9.1）。
+
+### 8.3 迁移审计流程
+
+1. 每批次先出**只读审计**，发现按 §7.2 处置核心逐项登记。
+2. 按处置表**先审后改**：处置表复核通过后再动正式文件。
+3. 修改后用 §7.2 检视清单 ＋ code-review **逐项回放**，不留未处置项。
+4. **不新增构建门禁**：不引入 Checkstyle/DocLint/markdownlint/CI；门禁＝来源映射 ＋ 审计处置 ＋ 复核清单。
+
+### 8.4 审计检视项（机械可检查）
+
+1. frontmatter 可解析、`type` 非空且在词表或有登记说明（§3.1）。
+2. 概念文档 `title`/`description` 非空；Research `sources` 非空（§3.2）。
+3. ADR 文件名 `000N-slug.md` 顺序递增，`_` 前缀导航不编号；正文 1–3 句 ＋ 可选 `Consequences`（§5.3）。
+4. `status` ∈ {`draft`, `stable`}（§9.1）。
+5. Markdown 链接为相对路径、目标与锚点可达、无 `/…`、无 `.scratch` 引用；「见 ADR-NNNN」prose 锚点对应现存 ADR 且语义一致（全仓适用，编号空洞合法）。
+6. 知识分层：`CONTEXT.md` 只含业务词汇；ADR 无代码片段与实现细节；同一规则只有一个正文落点（§6.1）。
+7. 渲染完整性：代码围栏成对闭合、无编辑残迹（行首 `*NN:` 前缀、孤立 `…` 行）、代码样例无硬换行截断；关键模板区抽查渲染。
+8. 类型覆盖：`conventions/framework-type-contracts.md` 的清单表覆盖 types 包全部 DP，行内锚点可达。
+9. 技能契约不被破坏：`CONTEXT.md` 含 `## Language`；ADR 位置与编号不变；`docs/agents/` 三件套存在且有 frontmatter。
+10. 承载方式：机械项由 agent 审计逐项承载（不新增脚本与工具）；内容过期不是 lint 项——分层模型保证文档不重复代码/环境事实，`git blame` 是唯一辅助工具。
+11. agent-consumed 分支：`WFA` 检查只适用于写/改 agent-consumed 文档（§7.3）；普通文档不要求无条件加载 `WFA`；`docs/agents/` 三件套存在且 frontmatter 可解析。
+
+## 9. V1 覆盖与来源维护
+
+### 9.1 V1 覆盖条款
+
+代码库始终处于 V1：文档与注释只记录最终结论，不做决策回溯，过时内容直接删除，项目内零残留（git 历史承载过往）。本节是对 §3.2、§5.3、§8.2 默认生命周期的**永久覆盖**：
+
+1. `status` 仅用 `draft`|`stable`——默认词表的 `deprecated`/`superseded` 暂停使用。
+2. ADR 正文不写被否方案与修订沿革；决策变更**就地更新**为最终状态，不另开 ADR。
+3. 过时内容**直接删除**，不标记状态；不创建 `log.md`（§2.1）。
+
+### 9.2 来源维护与漂移
+
+本节是来源维护的**唯一流程正文**：`STYLEGUIDE.md` §4.1 只登记注释侧来源与钉住版本，流程指回本节。
+
+| 规则                                                                                 | 级别     | 来源            | SODA 落地                                    |
+|--------------------------------------------------------------------------------------|----------|-----------------|----------------------------------------------|
+| 来源版本变化时先开研究复核钉住新 commit/hash，再更新登记表与受影响规则；不静默漂移   | 【强制】 | `SODA-POLICY`   | §4.2 与 `STYLEGUIDE` §4.1/§4.5 登记表；Research 记录事实，本文件记录定案 |
+| 新增来源必须先进 §4.2 登记（封闭 ID），未登记来源不得支撑规则                         | 【强制】 | `SODA-POLICY`   | §4.1 级别定义                                |
+| 仓库内离线快照只作对照，不是权威来源                                                 | 【强制】 | `SODA-POLICY`   | §4.2 钉住 canonical commit                    |
+| **终检比对**：每个 effort 的全量终检对全部登记来源各跑一次比对，逐源在对应 Research 留「已比对、影响面」记录；不设逐引用比对门 | 【强制】 | `SODA-POLICY`   | 下方「比对命令」块；各 Research 笔记          |
+| **到期即检**：Research `stale_after`（§3.2）到期 ⇒ 该来源下次规范触碰时优先复核       | 【推荐】 | `SODA-POLICY`   | 各 Research frontmatter 与本节维护句          |
+| **分级处置**：判定漂移后按 L1/L2/L3 分级处置，切换顺序恒为「先研究钉住、后改规范」    | 【强制】 | `SODA-POLICY`   | 下方「分级与切换」块                          |
+| **维护 owner** = `human:mm`：比对与研究复核由触发它的会话执行，是否采纳新版本由 owner 裁定 | 【强制】 | `SODA-POLICY` | 本节；单人仓不建 CODEOWNERS                   |
+
+**比对命令**（内联执行；不新增脚本、CI 或构建门禁）
+
+| 来源类型                             | 判据                                                                                                  |
+|--------------------------------------|-------------------------------------------------------------------------------------------------------|
+| git 来源（`OKF-*`、`GOOGLE-JAVA`、`WFA`、有仓库的 `FORMAT-*`） | `git ls-remote <canonical> HEAD`：≠ 登记 commit ⇒ 漂移；`==` ⇒ 无漂移                                 |
+| `WFA` 本地一致性                     | `Get-FileHash -Algorithm SHA256 <skill>/SKILL.md` 对 §4.2 登记的 SHA-256                              |
+| 非 git 来源（`JLS`、`JAVADOC`、无仓库 `FORMAT-*`） | 抓取一手页面，比对**页面声明的规范版本/日期**是否等于 §4.1/§4.5 登记值；HTTP `ETag`/`Last-Modified` 不作判据（CDN 假变） |
+
+例外：`GOOGLE-JAVA` 走 git 路径——被引 `javaguide.html` 就在 `google/styleguide` 仓内。
+
+**分级与切换**（判据 = `git diff <pinned>..HEAD` 是否命中被引文本路径：`OKF-*` = `SPEC.md` 被引章节，`GOOGLE-JAVA` = `javaguide.html`，`WFA` = `SKILL.md`）
+
+| 级    | 条件                                            | 处置                                                                                                      |
+|-------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| L1 锚点更新 | 未命中被引文本                                  | Research 记「已比对、影响面：无」＋日期；钉住版本与规范**零改动**                                          |
+| L2 规范重审 | 命中且影响已引条款（章节号变动、MUST 增删、措辞改变适用性） | 研究复核钉新 commit/hash → 更新登记表行 → 重审受影响规则行与建议层处置 → 重跑受影响的审计切面             |
+| L3 全仓重审 | 来源仓库归档/更名/license 变更、规范大版本升级  | 新开研究复核 ＋ 规范全文重审 ＋ 全仓终检                                                                  |
+
+切换恒为「先研究钉住、后改规范」：同一批完成登记表行、受影响规则行与 Research `sources`/`verified`/`stale_after` 三处；既有强制行在切换完成前保持有效。

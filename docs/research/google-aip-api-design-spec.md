@@ -1,7 +1,7 @@
 ---
 type: Research
-title: SODA API 设计规范（基于 Google AIP）
-description: 锚点：设计或评审 SODA REST API（Adapter/API 层资源、HTTP 方法、字段、错误、兼容性）时，按 Google AIP 适配规则逐条溯源执行。
+title: Google AIP 设计规范研究（SODA 参考）
+description: 锚点：查 Google AIP 关于资源设计、HTTP 方法、字段、错误、兼容性的外部事实与来源时读——逐条标注 AIP 编号；SODA 的定案与偏离读 `conventions/aip-api-conventions.md`。
 tags: [api-design, google-aip, rest]
 status: stable
 generated:
@@ -16,9 +16,11 @@ sources:
     author: Google
     title: Google API Improvement Proposals（AIP）
 ---
-# SODA API 设计规范（基于 Google AIP）
+# Google AIP 设计规范研究（SODA 参考）
 
 > **唯一信息来源**：[google.aip.dev](https://google.aip.dev) — Google API Improvement Proposals。
+>
+> **责任边界**：本文件只承载 AIP 原文事实、来源与覆盖/证据缺口；SODA 的定案、偏离与检查清单在 [../conventions/aip-api-conventions.md](../conventions/aip-api-conventions.md)（决策在 [../adr/](../adr/)），本文件不承载 SODA 适配规则。
 >
 > **引用格式说明**：
 > - 表格中 `AIP` 列标注源 AIP 编号
@@ -36,7 +38,6 @@ sources:
 6. [命名规范](#6-命名规范)
 7. [错误处理](#7-错误处理)
 8. [向后兼容性](#8-向后兼容性)
-9. [SODA 项目适配说明](#9-soda-项目适配说明)
 
 ---
 
@@ -63,10 +64,13 @@ Google AIP 的核心原则 [来源: AIP-1](https://google.aip.dev/1)：
 3. **自定义方法**（挂载到资源或集合上）
 4. **流式方法**（最后手段）
 
-### 1.3 适用范围
+### 1.3 覆盖范围与证据缺口
 
-本规范适用于 SODA 项目的 **Adapter 层**（HTTP 边界）和 **API 层**（共享 DTO/Command）。
-领域层和基础设施层遵循各自的 DDD 约定，不受本规范约束。
+**已覆盖**：资源设计（AIP-121 ~ 126、156）、方法选择与标准/自定义方法（AIP-130 ~ 136）、字段设计（AIP-140 ~ 149、202、203、216）、设计模式（AIP-158 ~ 164）、命名（AIP-190）、错误处理（AIP-193）、向后兼容（AIP-180）；逐条出处见各节 `AIP` 列与文末 [参考 AIP 索引](#参考-aip-索引)。
+
+**未覆盖**：批处理方法（BatchGet / BatchCreate 等）与流式方法只有 §1.2 的选型提及，细则未展开；需要时回上游原文，不在本文件补写。
+
+**证据缺口**：frontmatter `sources` 只钉到站点级（`https://google.aip.dev`），没有 AIP 修订版本、commit 或抓取日期——每条事实只能回到 AIP 编号，回不到不可变快照；上游修订时本文件可能静默漂移，复核方法是按编号回上游重读，不补写未核实的版本号。
 
 ---
 
@@ -187,16 +191,6 @@ users/vhugo1802/userEvents/birthday-dinner-226
 | **不应当** 有 `body` | MUST NOT | [AIP-131](https://google.aip.dev/131) |
 | 响应 **必须** 是资源本身（无独立 Response 类型） | MUST | [AIP-131](https://google.aip.dev/131) |
 
-**Request 模式**：
-
-```java
-record GetUserRequest(
-    @JsonProperty("id") Long id    // 资源标识符，映射到 URI 路径
-) {}
-```
-
-**SODA 适配**：使用 `{id}` 路径变量，而非 AIP 的 `name` 字符串路径（DDD 中 ID 是强类型）。
-
 ### 3.3 List 方法 [来源: AIP-132](https://google.aip.dev/132)
 
 | 规则 | 级别 | AIP |
@@ -206,27 +200,6 @@ record GetUserRequest(
 | 集合标识符 **必须** 是字面字符串 | MUST | [AIP-132](https://google.aip.dev/132) |
 | 响应 **必须** 包含资源列表和 `next_page_token` | MUST | [AIP-132](https://google.aip.dev/132) |
 | **应当** 支持 `filter` 和 `order_by` 可选字段 | SHOULD | [AIP-132](https://google.aip.dev/132) |
-
-**Request 模式**：
-
-```java
-record ListUsersRequest(
-    @JsonProperty("page_size") @Nullable Integer pageSize,
-    @JsonProperty("page_token") @Nullable String pageToken,
-    @JsonProperty("filter") @Nullable String filter,
-    @JsonProperty("order_by") @Nullable String orderBy
-) {}
-```
-
-**Response 模式**：
-
-```java
-record ListUsersResponse(
-    @JsonProperty("users") List<UserResponse> users,
-    @JsonProperty("next_page_token") @Nullable String nextPageToken,
-    @JsonProperty("total_size") @Nullable Integer totalSize
-) {}
-```
 
 ### 3.4 Create 方法 [来源: AIP-133](https://google.aip.dev/133)
 
@@ -238,8 +211,6 @@ record ListUsersResponse(
 | **必须** 允许用户指定资源 ID（管理平面） | MUST | [AIP-133](https://google.aip.dev/133) |
 | ID 字段 **必须** 在 Request 上，不在资源本身 | MUST | [AIP-133](https://google.aip.dev/133) |
 | 重复创建 **必须** 返回 `ALREADY_EXISTS` | MUST | [AIP-133](https://google.aip.dev/133) |
-
-**SODA 适配**：DDD 中服务端生成 ID，不暴露 `{resource}_id` 字段给前端。
 
 ### 3.5 Update 方法 [来源: AIP-134](https://google.aip.dev/134)
 
@@ -257,8 +228,6 @@ record ListUsersResponse(
 **为什么不用 PUT** [来源: AIP-134](https://google.aip.dev/134)：
 
 > PUT 是全量替换。当 API 新增字段时，之前的 PUT 请求会静默丢失新字段的数据。PATCH 只更新指定字段，是向后兼容的。
-
-**SODA 适配**：项目已决定禁止 PUT（ADR-0012），与 AIP-134 一致。
 
 **Etag 乐观锁** [来源: AIP-134](https://google.aip.dev/134), [AIP-154](https://google.aip.dev/154)：
 
@@ -288,38 +257,8 @@ record ListUsersResponse(
 | URI **必须** 使用 `:` 后跟自定义动词（`:archive`） | MUST | [AIP-136](https://google.aip.dev/136) |
 | 自定义动词 **必须** 使用 `camelCase` | MUST | [AIP-136](https://google.aip.dev/136) |
 | `body` **应当** 是 `"*"` | SHOULD | [AIP-136](https://google.aip.dev/136) |
-
-**SODA 适配**：项目使用 `POST /{resource}/{id}:{action}` 模式（如 `POST /users/1:disable`），与 AIP-136 一致。集合级自定义方法（无
-parent 顶层集合）同样允许：`POST /collection:verb`（如 Firebase Identity Toolkit `POST /v1/accounts:signUp`、
-`accounts:sendOobCode`）——预认证/无资源场景（ULG/UPR/URG 发码）适用，见 ADR-0026 Verification 双概念模型。
-
-**SODA 自定义方法命名规范**（[来源: AIP-136](https://google.aip.dev/136)）：
-
-| 规则 | 级别 | AIP |
-|---|---|---|
-| URI 中的自定义动词 **必须** 使用 `camelCase` | MUST | [AIP-136](https://google.aip.dev/136) |
 | RPC 名称与 URI 动词 **必须** 匹配 | MUST | [AIP-136](https://google.aip.dev/136) |
-| 方法名 **应当** 是 `动词 + 名词`（VerbNoun） | SHOULD | [AIP-136](https://google.aip.dev/136) |
-| 方法名 **不得** 包含介词（for, with 等） | MUST NOT | [AIP-136](https://google.aip.dev/136) |
-
-**user 模块自定义方法示例**：
-
-| 操作 | URI | RPC 名 | 语义 |
-|---|---|---|---|
-| 修改密码 | `POST /users/{id}:changePassword` | `ChangePassword` | 领域行为，触发密码校验 |
-| 修改用户名 | `POST /users/{id}:changeUsername` | `ChangeUsername` | 领域行为，触发唯一性校验 |
-| 修改手机号 | `POST /users/{id}:changeMobile` | `ChangeMobile` | 领域行为，需要验证码验证 |
-| 修改邮箱 | `POST /users/{id}:changeEmail` | `ChangeEmail` | 领域行为，需要验证码验证 |
-| 验证手机号 | `POST /users/{id}:verifyMobile` | `VerifyMobile` | 发送换绑手机号的验证码 |
-| 验证邮箱 | `POST /users/{id}:verifyEmail` | `VerifyEmail` | 发送换绑邮箱的验证码 |
-| 禁用用户 | `POST /users/{id}:disable` | `Disable` | 单词动词，无需驼峰 |
-| 启用用户 | `POST /users/{id}:enable` | `Enable` | 单词动词，无需驼峰 |
-
-**命名原则**：
-1. **语义自明** — URL 本身应表达操作意图，不依赖文档
-2. **动词 + 名词** — `changePassword`、`verifyMobile` 而非 `password`、`mobile`
-3. **camelCase** — AIP-136 硬性要求，不使用 kebab-case 或 snake_case
-4. **单动词优先** — `disable`/`enable` 是单动词，无需后缀
+| 自定义方法可挂载到集合（无父资源，`POST /collection:verb`） | MAY | [AIP-136](https://google.aip.dev/136) |
 
 ---
 
@@ -523,8 +462,6 @@ parent 顶层集合）同样允许：`POST /collection:verb`（如 Firebase Iden
 | **不得** 允许通过索引访问重复字段元素 | MUST NOT | [AIP-161](https://google.aip.dev/161) |
 | 输出字段在掩码中出现时，服务端 **必须** 忽略 | MUST | [AIP-161](https://google.aip.dev/161) |
 
-**SODA 适配**：Java 中使用 `String` 逗号分隔列表模拟 FieldMask（如 `"nickname,mobile"`），而非 protobuf FieldMask。
-
 ### 5.4 变更验证 [来源: AIP-163](https://google.aip.dev/163)
 
 | 规则 | 级别 | AIP |
@@ -599,6 +536,8 @@ _来源: [AIP-190](https://google.aip.dev/190)_
 
 _来源: [AIP-193](https://google.aip.dev/193)_
 
+> 本节记录 AIP-193 的外部事实。SODA **不采纳** `ErrorInfo` 与 reason 词表，错误语义完全由 HTTP 状态码承载；对照与偏离见 [../conventions/aip-api-conventions.md](../conventions/aip-api-conventions.md) §8.2 / §9.2（[ADR-0013](../adr/0013-error-response-structure.md)）。
+
 ### 7.1 错误响应结构
 
 服务端 **必须** 返回结构化错误响应 [来源: AIP-193](https://google.aip.dev/193)，包含：
@@ -662,33 +601,6 @@ _来源: [AIP-193](https://google.aip.dev/193)_
 | 无权限时 **必须** 返回 `PERMISSION_DENIED`（HTTP 403） | MUST | [AIP-193](https://google.aip.dev/193) |
 | 无权限时 **不得** 暴露资源是否存在 | MUST NOT | [AIP-193](https://google.aip.dev/193) |
 
-### 7.6 SODA 错误响应格式
-
-```java
-record Result<T>(
-    @JsonProperty("code") int code,
-    @JsonProperty("msg") String msg,
-    @JsonProperty("data") @Nullable T data
-) {}
-```
-
-错误示例：
-
-```json
-{
-  "code": 404,
-  "msg": "User not found",
-  "data": null,
-  "error": {
-    "reason": "USER_NOT_FOUND",
-    "domain": "soda-user.example.com",
-    "metadata": {
-      "userId": "42"
-    }
-  }
-}
-```
-
 ---
 
 ## 8. 向后兼容性
@@ -726,62 +638,6 @@ _来源: [AIP-180](https://google.aip.dev/180)_
 | 删除字段 | 是 | [AIP-180](https://google.aip.dev/180) |
 | 更改字段名 | 是 | [AIP-180](https://google.aip.dev/180) |
 | 添加分页到已有方法 | 是 | [AIP-158](https://google.aip.dev/158) |
-
----
-
-## 9. SODA 项目适配说明
-
-### 9.1 已有约定与 AIP 的对齐
-
-SODA 项目已有约定（ADR-0012）与 Google AIP 高度一致：
-
-| SODA 约定 | AIP 对应 | 一致性 |
-|---|---|---|
-| `POST /users` 创建 | [AIP-133](https://google.aip.dev/133) | ✅ 一致 |
-| `GET /users/{id}` 获取 | [AIP-131](https://google.aip.dev/131) | ✅ 一致（ID 替代 name） |
-| `PATCH /users/{id}` 部分更新 | [AIP-134](https://google.aip.dev/134) | ✅ 一致 |
-| `DELETE /users/{id}` 删除 | [AIP-135](https://google.aip.dev/135) | ✅ 一致 |
-| `POST /users/{id}:disable` 自定义方法 | [AIP-136](https://google.aip.dev/136) | ✅ 一致 |
-| 禁止 PUT | [AIP-134](https://google.aip.dev/134) 推荐 | ✅ 一致 |
-| `Result<T>` 信封 | [AIP-193](https://google.aip.dev/193) HTTP 表示 | ✅ 适配 |
-| `XxxRequest` / `XxxResponse` | [AIP-131](https://google.aip.dev/131)~[136](https://google.aip.dev/136) Request/Response | ✅ 一致 |
-| `XxxWebAssembler` 转换 | 无直接 AIP 对应 | SODA 扩展 |
-
-### 9.2 SODA 特有约定（与 AIP 差异）
-
-| 差异点 | SODA 做法 | AIP 做法 | 原因 | ADR |
-|---|---|---|---|---|
-| 资源标识 | `{id}`（Long） | `name`（string 路径） | DDD 强类型 ID | — |
-| 分页 | 委托给查询服务 | `page_size` / `page_token` | 读写分离架构 | — |
-| 字段掩码 | 不使用 FieldMask | `google.protobuf.FieldMask` | Java REST 无 protobuf | — |
-| 错误详情 | `ErrorInfo` + `reason`/`domain`/`metadata` | `google.rpc.Status` | 适配 REST 信封 | ADR-0013 |
-| URL 命名 | camelCase（集合名、方法动词） | camelCase | 遵循 AIP-136 | ADR-0012 |
-| 枚举值 | 短名存储（`E`/`D`），DTO 返回短名，desc 为英文 i18n key | UPPER_SNAKE_CASE | 保持简洁，为国际化保留扩展性 | ADR-0005 |
-| 状态字段 | `state`（状态机）vs `status`（独立状态值） | `state` | 遵循 AIP-148 | ADR-0005 |
-| 写操作响应 | 返回部分字段（无时间戳） | 返回完整资源 | 写接口不需要 | — |
-| validate_only | `Command` 接口，默认 false，子类按需实现 | 每个变更方法 | 支持 | — |
-| 权限检查 | 当前不实现 | 先于存在性检查 | 后续实现 | — |
-### 9.3 新模块 API 设计检查清单
-
-创建新的业务模块时，对照以下清单：
-
-- [ ] **资源**：是否以资源为中心建模？（[AIP-121](https://google.aip.dev/121)）
-- [ ] **标准方法**：是否优先使用 Get/List/Create/Update/Delete？（[AIP-130](https://google.aip.dev/130)）
-- [ ] **自定义方法**：是否仅在标准方法无法表达时使用？（[AIP-136](https://google.aip.dev/136)）
-- [ ] **HTTP 方法**：POST/GET/PATCH/DELETE 是否正确映射？（[AIP-130](https://google.aip.dev/130)）
-- [ ] **URL 模式**：是否无冗余动词？（[AIP-133](https://google.aip.dev/133): `POST /users` 而非 `POST /users/create`）
-- [ ] **URL 命名**：集合名和方法动词是否使用 camelCase？（[AIP-136](https://google.aip.dev/136)）
-- [ ] **字段命名**：是否使用美式英语、camelCase、无介词？（[AIP-140](https://google.aip.dev/140)）
-- [ ] **字段行为**：所有字段是否标注 REQUIRED/OPTIONAL/OUTPUT_ONLY？（[AIP-203](https://google.aip.dev/203)）
-- [ ] **字段格式**：是否使用 Bean Validation 注解（`@Email`、`@Pattern`）？（[AIP-202](https://google.aip.dev/202)）
-- [ ] **标准字段**：是否使用标准字段名（name, create_time, update_time）？（[AIP-148](https://google.aip.dev/148)）
-- [ ] **状态字段**：状态机字段是否叫 `state`？（[AIP-148](https://google.aip.dev/148)）
-- [ ] **枚举值**：RPC/HTTP 接口是否使用 String 类型？desc 是否为英文 i18n key？（[AIP-126](https://google.aip.dev/126)）
-- [ ] **分页**：List 方法是否从一开始就包含分页？（[AIP-158](https://google.aip.dev/158)）
-- [ ] **错误**：是否使用 ErrorInfo + reason/domain/metadata？（[AIP-193](https://google.aip.dev/193)）
-- [ ] **权限检查**：是否先于存在性检查？（[AIP-193](https://google.aip.dev/193)）
-- [ ] **软删除**：如适用，是否提供 Undelete？（[AIP-164](https://google.aip.dev/164)）
-- [ ] **向后兼容**：是否避免破坏性变更？（[AIP-180](https://google.aip.dev/180)）
 
 ---
 

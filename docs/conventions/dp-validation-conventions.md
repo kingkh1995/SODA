@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: DP 校验与归一化规范
-description: 写或测 DP 的校验/归一化时读——三入口职责（构造器＝唯一校验点）、校验收敛、编排规则与归一化细则。工具 API 以源码为准，判空角色单源在 STYLEGUIDE §2.3。P3C【强制/推荐/参考】三级标定 + ❌/✅ 反例正例。
+description: 写或测 DP 的校验/归一化时读——三入口职责（构造器＝唯一校验点）、校验收敛、编排规则与归一化细则；含检视清单。工具 API 以源码为准，判空角色单源在 STYLEGUIDE §2.3。三级【强制/推荐/参考】标定 + ❌/✅ 反例正例。
 tags: [ convention, dp, testing ]
 status: stable
 ---
@@ -16,21 +16,22 @@ status: stable
 [§3 构造与工厂命名](../dp-conventions.md#3-构造与工厂命名)；
 Entity / Aggregate 的校验不归本文裁判。
 
+**级别与来源**：本篇三级级别按 [doc-conventions §4.1 级别](../doc-conventions.md#41-级别) 标定，规则来源 `SODA-POLICY`
+（封闭来源列见 [§4.2 来源登记](../doc-conventions.md#42-来源登记)）。
+
 ## 1. 职责分层
 
-下表各行均为【强制】：
-
-| 入口                                               | 职责                                                                                                | 校验位置                             | 示例                                             |
-|----------------------------------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------|--------------------------------------------------|
-| 构造器（record 公共紧凑构造器 / class 私有构造器） | **唯一校验点**；格式归一化（不改语义）                                                              | `ValidateUtils`（禁 `ParseUtils`）  | `new LongId(long)`、`record Fen(int)` 紧凑构造器 |
-| `of(T)`                                            | 反序列化入口；**T ≡ 序列化值类型**（int DP → `of(int)`）；直达构造器（缓存 / 单例分派是允许的中介） | 无业务校验（线形态格式守卫见下）     | `ConcurrencyVersion.of(int)`                     |
-| `parse(Object/String)`                             | 不可靠输入入口                                                                                      | `ParseUtils`（含 `notNull`）→ 构造器 | `PositiveInt.parse(String)`                      |
-| `from(...)` / `fromXxx(...)`                       | 跨类型转换（含转换前置校验，允许与构造器重复；守卫保护转换表达式本身）                              | `ParseUtils` + `ValidateUtils` 守卫  | `WanYuan.fromYuan(BigDecimal, RoundingMode)`     |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| 构造器（record 公共紧凑构造器 / class 私有构造器）＝**唯一校验点**；只做格式归一化（不改语义） | 【强制】 | `SODA-POLICY` | `ValidateUtils`（禁 `ParseUtils`）；例 `new LongId(long)`、`record Fen(int)` 紧凑构造器 |
+| `of(T)` ＝ 反序列化入口；**T ≡ 序列化值类型**（int DP → `of(int)`）；直达构造器（缓存 / 单例分派是允许的中介） | 【强制】 | `SODA-POLICY` | 无业务校验（线形态格式守卫见下）；例 `ConcurrencyVersion.of(int)` |
+| `parse(Object/String)` ＝ 不可靠输入入口 | 【强制】 | `SODA-POLICY` | `ParseUtils`（含 `notNull`）→ 构造器；例 `PositiveInt.parse(String)` |
+| `from(...)` / `fromXxx(...)` ＝ 跨类型转换（含转换前置校验，允许与构造器重复；守卫保护转换表达式本身） | 【强制】 | `SODA-POLICY` | `ParseUtils` + `ValidateUtils` 守卫；例 `WanYuan.fromYuan(BigDecimal, RoundingMode)` |
 
 **判据句**：去掉该检查，非法值还能不能构造出来？能 → 必须在构造器；不能（只是转换表达式会以错误类型爆炸）→ 允许留在转换入口，但与构造器
 重复时 **不得成为不变量的唯一校验点**。
 
-**两条入口/构造器边界**（【强制】，2026-09-13 裁定）：
+**两条入口/构造器边界**（【强制】，来源 `SODA-POLICY`）：
 
 - **class 形态私有构造器只接收语义形态**：构造器内只允许 `ValidateUtils` 与不改变语义的格式归一化，**不得调用
   `ParseUtils`**——「不可靠输入 → 基础类型」的转换一律留在 `of` / `from` / `parse` 工厂。构造器内出现 `ParseUtils` ＝
@@ -52,9 +53,8 @@ Entity / Aggregate 的校验不归本文裁判。
 | 不可靠输入（String / Object，外部来源）                         | `parse(...)`（`ParseUtils`）                               | `ParseUtils` 内建 | 错误（IAE）       |
 | 「无值」                                                        | 不构造                                                     | —                 | 用 `Optional<DP>` |
 
-- 【强制】调用方 **不得静默拆箱**——实参静态类型为包装类型时一律走 `from(包装)`；`of` / 构造器只接受原语。
-- 【强制】枚举的编译器生成入口 `valueOf(String)` 在生产代码不得暴露或调用——公开入口一律 `of(String)`（委托
-  `ParseUtils.parseEnum`）；测试可用 `valueOf` 作为 `of` 的对照。
+- 【强制】原语优先、禁止静默拆箱与生产代码禁 `valueOf` 的规则正文单源见
+  [dp-conventions §3.1 三层维护与两层入口](../dp-conventions.md#31-三层维护与两层入口)（入口矩阵的守卫 / null 语义按上表落地）。
 - 【推荐】`from(包装)` 按需补齐（出现包装入参调用点时新增，不预建）；`from` 无 `@JsonCreator`，不影响 round-trip 与 JSON 入口。
 
 **前置守卫 vs 业务校验**（本文单源）：`from(BigDecimal)` 中的 `notNull(value)` 防止 `value.toPlainString()` NPE，不是 DP
@@ -95,19 +95,19 @@ public static SoftwareVersion from(int major, int minor, int patch) {
 
 ## 2. 校验收敛
 
-下表各行均为【强制】—— **场景 → 唯一入口 → 禁止替代**的收敛边界（不承诺穷举 API；方法名 / 签名以源码为准）：
+下表为 **场景 → 唯一入口 → 禁止替代** 的收敛边界（不承诺穷举 API；方法名 / 签名以源码为准；级别与来源见各列）：
 
-| 场景               | 唯一入口                                                             | 禁止替代                          |
-|--------------------|----------------------------------------------------------------------|-----------------------------------|
-| null 检查          | `ValidateUtils.notNull(value)`                                       | `Objects.requireNonNull`          |
-| blank              | `ValidateUtils.hasText(value)`                                       | `String.isBlank() + if/throw`     |
-| 字符串长度         | `ValidateUtils.maxLength(value, max)`                                | 内联 `if/throw`                   |
-| 数值范围           | `ValidateUtils.minValue` / `range`                                   | 内联比较                          |
-| 正则格式           | `ValidateUtils.matches(value, pattern)`                              | 内联 `if (!pattern.matcher(...))` |
-| 前缀校验           | `ValidateUtils.hasPrefix(value, prefix)`                             | 内联 `startsWith` + `if/throw`    |
-| URI                | `ValidateUtils.validUrl(uri)`                                        | `try/catch URI` 校验              |
-| Base64 / Base64url | `ParseUtils.parseBase64` / `parseBase64Url`（解码校验归 ParseUtils） | try/catch 解码校验                |
-| 类型转换           | `ParseUtils.parseXxx(value)`                                         | 手动 cast / 类型推断              |
+| 规则 | 级别 | 来源 | SODA 落地 |
+|------|------|------|------------|
+| null 检查不内联、不用标准库顶替 | 【强制】 | `SODA-POLICY` | `ValidateUtils.notNull(value)`；禁 `Objects.requireNonNull` |
+| blank 判定不内联 | 【强制】 | `SODA-POLICY` | `ValidateUtils.hasText(value)`；禁 `String.isBlank() + if/throw` |
+| 字符串长度校验不内联 | 【强制】 | `SODA-POLICY` | `ValidateUtils.maxLength(value, max)`；禁内联 `if/throw` |
+| 数值范围校验不内联 | 【强制】 | `SODA-POLICY` | `ValidateUtils.minValue` / `range`；禁内联比较 |
+| 正则格式校验不内联 | 【强制】 | `SODA-POLICY` | `ValidateUtils.matches(value, pattern)`；禁内联 `if (!pattern.matcher(...))` |
+| 前缀校验不内联 | 【强制】 | `SODA-POLICY` | `ValidateUtils.hasPrefix(value, prefix)`；禁内联 `startsWith` + `if/throw` |
+| URI 校验不 try/catch | 【强制】 | `SODA-POLICY` | `ValidateUtils.validUrl(uri)`；禁 `try/catch URI` 校验 |
+| Base64 / Base64url 解码校验归解析层 | 【强制】 | `SODA-POLICY` | `ParseUtils.parseBase64` / `parseBase64Url`；禁 try/catch 解码校验 |
+| 类型转换不手动 cast | 【强制】 | `SODA-POLICY` | `ParseUtils.parseXxx(value)`；禁手动 cast / 类型推断 |
 
 适用范围：本表只约束 DP 类型与 DP 侧工具；域对象基类（Entity / Aggregate）的判空与校验不在本表裁判（角色划分见
 [STYLEGUIDE §2.3 空值校验角色](../../STYLEGUIDE.md#23-空值校验角色)）。
@@ -215,3 +215,14 @@ this.value = raw.setScale(2, RoundingMode.HALF_UP);
 ValidateUtils.maxScale(raw, 2);
 this.value = raw.setScale(2, RoundingMode.UNNECESSARY);
 ```
+
+## 检视清单
+
+按落点逐条核对（每条可判定；对应规则见括号内落点）：
+
+1. 构造器＝唯一校验点：业务校验只落构造器；判据句边界成立——转换入口的检查不成为不变量的唯一校验点（§1）
+2. class 形态私有构造器内零 `ParseUtils`；线形态格式守卫落在线形态入口（§1 两条入口/构造器边界）
+3. 单值校验全经 `ValidateUtils`，无内联 `if/throw`、无 `Objects.requireNonNull` 顶替（§2、§3）
+4. 编排顺序 `ParseUtils` 转换 → `ValidateUtils` 校验 → 构造器 / 工厂编排；DP 语义不变量消息英文、首字母小写、无句号（§3）
+5. 归一化不改语义：构造器零 trim、零隐式舍入；金额舍入走显式 `RoundingMode` 转换层工厂（§4）
+6. 新增校验场景已在 §2 收敛表登记一行且 `build` 绿（§2 完成判据）

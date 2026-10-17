@@ -1,7 +1,7 @@
 ---
 type: Research
-title: Google AIP 全谱拉取（66 个主文档按 7 类分组 + 子目录清单）
-description: 锚点：为 AIP 逐类对齐（API 规范整改）提供全谱输入——按 google.aip.dev/general 7 类分组,每条 MUST/MUST NOT/SHOULD/SHOULD NOT/MAY 规则逐行收录,标注 SODA 现有 Research doc 已涵盖项。仅记录,不评价、不修复。
+title: Google AIP 全谱拉取（7 类 66 个主文档清单 + 4 类 51 个 AIP 规则逐行收录）
+description: 锚点：为 AIP 逐类对齐（API 规范整改）取全谱输入时读——google.aip.dev/general 的 7 类 66 个主文档编号与类别清单，以及其中 4 类 51 个 AIP 的 MUST/MUST NOT/SHOULD/SHOULD NOT/MAY 规则逐行收录并标注已有 Research 覆盖项；仅记录，不评价。
 tags: [ aip, google, api-design, inventory ]
 status: stable
 sources:
@@ -14,7 +14,7 @@ sources:
     title: AIPs site source
     author: aip-dev
 generated:
-  by: wayfinder/02 (main session, scout agents failed to write)
+  by: wayfinder/02
   at: 2026-09-02T00:00:00Z
 ---
 
@@ -22,13 +22,13 @@ generated:
 
 > 引文格式：`AIP-NNN` 引用 https://google.aip.dev/NNN；规则行引用 `https://google.aip.dev/NNN` 对应页面锚点。
 >
-> 索引来源：https://google.aip.dev/general（共 7 大类 + Meta/Process/Protocol Buffers 杂项,合计 66 个主文档）。
+> 索引来源：https://google.aip.dev/general（共 7 大类 + Meta/Process/Protocol Buffers 杂项，合计 66 个主文档）。
 >
-> 本调研为 AIP 逐类规范对齐的输入源；不评价、不修复,仅清单。
+> 抓取日期：2026-09-02（frontmatter `generated.at`）；来源维护与漂移流程见 [doc-conventions.md](../doc-conventions.md) §9.2。
 >
-> **本次会话覆盖**：§1.3 Resource Design（9 AIP）、§1.5 Fields（13 AIP）、§1.6 Operations（12 AIP）、§1.7 Design Patterns（17 AIP）共
-> **51 个 AIP 的规则逐行收录**。§1.1 Meta、§1.2 Process、§1.4 API Concepts、§1.8 Compatibility and Versioning、§1.9
-> Polish、§1.10 Protocol Buffers 由后续会话补齐（原始 AIP 页可读；本次会话 budget 受限）。
+> 本调研为 AIP 逐类规范对齐的输入源；不评价、不修复，仅清单。
+>
+> **覆盖**：§1.3 Resource Design（9 AIP）、§1.5 Fields（13 AIP）、§1.6 Operations（12 AIP）、§1.7 Design Patterns（17 AIP）共 **51 个 AIP** 规则逐行收录；其余 **15 个 AIP**（§1.1 Meta、§1.2 Process、§1.4 API Concepts、§1.8 Compatibility and Versioning、§1.9 Polish、§1.10 Protocol Buffers）只有下方编号与类别清单，未逐行收录，需要时按同样格式补拉。
 
 ## 0. AIP 编号与类别映射（全集）
 

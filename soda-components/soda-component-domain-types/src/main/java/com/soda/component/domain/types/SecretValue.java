@@ -17,7 +17,7 @@ import com.soda.component.domain.util.ValidateUtils;
  *   <li>引用级相等（不声明 equals/hashCode）——秘密值不参与值比较
  * </ul>
  *
- * 生命周期为瞬态输入载体：不写入日志、不保留引用、使用后尽快丢弃。
+ * <p>生命周期为瞬态输入载体：不写入日志、不保留引用、使用后尽快丢弃。
  *
  * @see com.soda.component.domain.gateway.PasswordHasher
  * @see PasswordHash 哈希后的可安全序列化形态

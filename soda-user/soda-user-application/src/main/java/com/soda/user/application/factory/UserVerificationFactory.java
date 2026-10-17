@@ -30,7 +30,7 @@ import java.time.Duration;
  *       DEFAULT_SMS/DEFAULT_EMAIL</b>——策略决策属调用方场景，见 ADR-0026）
  * </ul>
  *
- * 边界：<b>纯构造</b>——业务前置（跨实例查询）与持久化/事件发布由 AppService 执行。 当前仅 UCC；ULG/UPR/URG（未来票）落地时按各自场景加构造方法。
+ * <p>边界：<b>纯构造</b>——业务前置（跨实例查询）与持久化/事件发布由 AppService 执行。 当前仅 UCC；ULG/UPR/URG 场景落地时按各自场景加构造方法。
  */
 @Component
 @RequiredArgsConstructor

@@ -10,7 +10,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 被注解的元素必须是指定枚举类型中某一常量的 {@link Enum#name()}。
+ * 校验被注解元素为指定枚举类型中某一常量的 {@link Enum#name()}。
  *
  * <p>适用于 {@link String} 类型元素；也可标注在容器元素类型上，逐个校验元素 （如 {@code List<@EnumName String>}）。常与
  * {@code @Nullable} 组合使用： null 由 {@code @Nullable} 负责，此注解仅校验非 null 值是否匹配枚举常量名。

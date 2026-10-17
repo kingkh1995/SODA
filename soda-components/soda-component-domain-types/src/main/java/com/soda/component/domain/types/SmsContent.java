@@ -14,6 +14,7 @@ import com.soda.component.domain.util.ValidateUtils;
  */
 public record SmsContent(String value) implements StringLiteralType {
 
+    /** 短信内容长度上限（字符）——提供方可经 {@link TypeConfig} 覆盖，70（主流平台单条上限）为不可下探的地板值。 */
     public static final int MAX_LENGTH = Math.max(70, TypeConfig.PROVIDER.smsContentMaxLength());
 
     public SmsContent {

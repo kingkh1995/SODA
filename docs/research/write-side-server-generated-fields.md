@@ -289,8 +289,7 @@ sources:
 - 本笔记是 **输入**，不是决策：落地时按仓库惯例落 ADR（就地更新 [ADR-0024](../adr/0024-gateway-save-unified-routing.md) 的
   save 契约与 [ADR-0037](../adr/0037-optimistic-lock-version-guard.md) 的 assignVersion 机制；身份生成时机若改，另立新
   ADR）。[ADR-0031](../adr/0031-wire-semantic-literals-decimal-epochmilli.md) 不变。
-- 与 [aip-api-conventions.md](../conventions/aip-api-conventions.md) §3.4/§3.5/§9.2 的偏离表联动：F-03
-  类「响应是资源本身」的合规不依赖领域感知，可在本形态下保持。
+- 与 [aip-api-conventions.md](../conventions/aip-api-conventions.md) §3.4/§3.5/§9.2 的偏离表联动：「响应是资源本身」的合规不依赖领域感知，可在本形态下保持。
 
 ## 6. 未找到 / 未核实
 

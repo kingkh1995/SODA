@@ -13,17 +13,17 @@ status: stable
 注释规范），不动章节结构、不动规则语义、不重组文档、不引入工具链（checkstyle/Sonar），总估算 ~21.5h。AIP Research 文档 **不升格**
 为 spec（V1 阶段 OKF §3.1 type=Research 与项目 research 不当 spec 用原则保留）；现有优于 P3C 表层的部分（DP Locked 标记 /
 测试分组注册表 / 校验单一权威镜像表 / 跨切面典型反例 / ADR 单源引用链 / AIP Research 规则表三列固定 / 注释 §4.2 ❌/✅
-代码示例 + §4.5 写不写对比表 + §4.7 TODO 双语格式）保留作为单源。完整调研、改造路径、ROI
+代码示例 + §4.4 写不写对比表 + §4.3 TODO 双语格式）保留作为单源。完整调研、改造路径、ROI
 表与必要性论证单源在 [docs/research/p3c-surface-format-retrofit.md](../research/p3c-surface-format-retrofit.md)——本 ADR
 只承载为什么这么定。
 
 ## Consequences
 
-- 改造 **不引入** checkstyle/Sonar/ArchUnit——STYLEGUIDE §4 明确「机械格式可加
-  checkstyle，漂移真实出现时再评估启用」（现行无需）；doc-conventions §7 合规基准明确「机械项脚本检查不做，由 agent 审计按基准逐项承载」
+- 改造 **不引入** checkstyle/Sonar/ArchUnit——STYLEGUIDE §4.7 code-review 清单明确「不引入新的构建门禁」，
+  doc-conventions §8.3 迁移审计流程明确「不新增构建门禁」，机械项由 agent 审计逐项承载（doc-conventions §8.4）
 - 条形化后 agent / code-review 按带级别列的标准规则表稳定检索（`规则 | 级别 | 说明` 等），与 writing-for-agents
   原则一致（description 决定何时触达、正文结构稳定便于解析）；不破坏 OKF 单源原则（不引入第二份规范文档）
-- 不替代现有 ADR 极简三句格式（doc-conventions §4）——本 ADR 自身即是极简三句（背景 + 决策 + 为什么）；不替代 doc-conventions
+- 不替代现有 ADR 极简三句格式（doc-conventions §5）——本 ADR 自身即是极简三句（背景 + 决策 + 为什么）；不替代 doc-conventions
   §9 V1 阶段「决策变更就地更新」原则
 - 不改 docs/research/google-aip-api-design-spec.md 状态（仍为 Research，§3 type 词表）——research 文档的 provenance
   与「单源决策 + 单源规则」分离，符合 OKF §5.1；SODA 适配差异段（L242/L257/L292/L524）已优于 P3C 表层

@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: DP JSON 与序列化规范
-description: 设计或修改 DP 的 JSON/序列化行为时读——Jackson 3 模式总表（行键＝构造器可见性）、Java↔JSON 类型映射、BigDecimal DP 模式与禁止 Serializable 口径。P3C【强制/推荐/参考】三级标定 + ❌/✅ 反例正例。
+description: 设计或修改 DP 的 JSON/序列化行为时读——Jackson 3 模式总表（行键＝构造器可见性）、Java↔JSON 类型映射、BigDecimal DP 模式与禁止 Serializable 口径；含写·检视双清单。三级【强制/推荐/参考】标定 + ❌/✅ 反例正例。
 tags: [ convention, dp, json, jackson ]
 status: stable
 ---
@@ -13,6 +13,23 @@ status: stable
 成立）；不依赖全局 Jackson 配置或隐式推断。DP 设计总则见 [dp-conventions](../dp-conventions.md)；测试侧要求见
 [dp-test-conventions](dp-test-conventions.md)。 Jackson 侧的注解落位机制与形态取值理由见 [jackson.md](jackson.md)
 §3（3.0 行为基线见 §5）——本篇只定 DP 域内的取值与形态。
+
+**级别与来源**：本篇规则组（§1 模式总表、§2 类型映射、§3 BigDecimal DP 模式、§5 JDK 序列化）按
+[doc-conventions §4.1 级别](../doc-conventions.md#41-级别) 三级标定，规则来源 `SODA-POLICY`；行内 ADR 锚点（ADR-0028 /
+ADR-0005 / ADR-0031 / ADR-0007）为 `SODA-DECISION` 关联决策（封闭来源列见
+[§4.2 来源登记](../doc-conventions.md#42-来源登记)）。
+
+## 写清单
+
+新增或修改 DP 的 JSON/序列化行为时按序执行（括号内为落点）：
+
+1. 按构造器可见性在 §1 模式总表取注解落位：record 家族零注解、非家族 component 标 `@JsonValue`、多字段 record 零注解、class 显式 `@JsonCreator` 挂 `of(T)`、enum `of(String)`（§1）
+2. 密封族按边界声明类型取入口：单值字面量族子类各自 `of(String)`、基类零入口；对象形态族基类 `PROPERTIES` 按判别字段路由——判据见 [dp-conventions §1.3](../dp-conventions.md#13-继承形态场景判据)（§1 密封两行）
+3. 不可反序列化类型按 [dp-conventions §1.4 形态模板](../dp-conventions.md#14-形态模板) 五要素落（`@JsonCreator(mode = DISABLED)` 等，§1 表末行）
+4. Java↔JSON 类型映射按 §2 取值（`BigDecimal` → 字符串、领域时间点 DP → `EpochMilli`、多字段内嵌时间组件按 JSR-310 默认）
+5. BigDecimal DP 按 §3 要点：规范值 `String` + `toPlainString()`、`BigDecimal` 只作派生缓存、creator `DELEGATING` + `String` 参数；构造链校验与舍入口径见 [dp-validation-conventions §4 归一化细则](dp-validation-conventions.md#4-归一化细则)
+6. 不实现 `Serializable`（§5）
+7. **完成判据**：round-trip 成立（`value()` 即线上值、`of` 入参类型 ≡ 序列化值类型）；注解落位与 §1 总表逐行一致；不依赖全局 Jackson 配置或隐式推断；文末检视清单无未决项
 
 ## 1. 模式总表
 
@@ -146,10 +163,9 @@ public final class WanYuan extends DecimalLiteralType implements Comparable<WanY
 - **`BigDecimal` 为派生缓存**：不参与 `equals` / `hashCode` / `@JsonValue`（该不变量由 `DecimalLiteralType` 基类收敛）。
 - **`@JsonCreator` 必须 `mode = DELEGATING`** 且参数为 `String`，内部走 `ParseUtils.parseBigDecimal`，不受 ObjectMapper
   配置影响。
-- **构造链校验 + 归一化**：`ValidateUtils.maxScale(raw, scale)` 拒超精度、`setScale(UNNECESSARY)` 为防御断言（非舍入）；归一化幂等——
-  `of(x).value()` 对同一数值 `equals` 恒成立。
-- **舍入走显式转换层工厂**（`Percentage.from(BigDecimal, RoundingMode)` / `WanYuan.fromYuan(BigDecimal, RoundingMode)`
-  ），构造器零舍入。
+- **构造链校验 + 归一化**：`ValidateUtils.maxScale(raw, scale)` 拒超精度；归一化幂等——`of(x).value()` 对同一数值 `equals`
+  恒成立。防御断言（非舍入）与显式 `RoundingMode` 转换层工厂（构造器零舍入）的口径单源见
+  [dp-validation-conventions §4 归一化细则](dp-validation-conventions.md#4-归一化细则)。
 
 ❌ BigDecimal DP 输出科学计数法 / 字段裸露 `BigDecimal`：
 
@@ -261,3 +277,14 @@ public final class LongId implements LongLiteralType, Serializable {
 // ✅ 不实现；JSON 契约由 @JsonValue / @JsonCreator 承载
 public record LongId(long value) implements LongLiteralType { }
 ```
+
+## 检视清单
+
+按落点逐条核对（每条可判定；对应规则见括号内落点）：
+
+1. 注解落位与 §1 模式总表逐行一致（行键＝构造器可见性；密封两行按边界声明类型）
+2. 多字段 record 零注解；private 构造器 class 显式 creator 挂 `of(T)`，未挂 `from` / `parse`（§1、[dp-conventions §3.1](../dp-conventions.md#31-三层维护与两层入口)）
+3. 枚举无 `@JsonValue`、未覆写 `toString()`；显式 `@JsonValue` 为 public 方法（§1、§2）
+4. BigDecimal DP 规范值为 `String`（`toPlainString()`），无科学计数法 / `@JsonFormat(shape = STRING)` / 自定义序列化器；`BigDecimal` 不参与 `equals` / `hashCode` / `@JsonValue`（§3）
+5. 无 `Serializable` / `serialVersionUID` 残留（§5）
+6. 无全局 ObjectMapper 配置或隐式推断依赖；round-trip 与非法输入拒绝有用例（测试侧 `Serialization` 见 [dp-test-conventions §1.1](dp-test-conventions.md#11-record--class-dp不含缓存)）

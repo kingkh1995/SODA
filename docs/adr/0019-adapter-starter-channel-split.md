@@ -16,4 +16,4 @@ Modulith 边界早已三分而 Gradle 打包滞后，属打包对齐；adapter �
 ## Consequences
 
 - consumer 空壳为有意保留（待 MQ 集成）；rpc starter 与 BOM 平台等首个真实消费者出现再建。
-- 三通道不配独立 ModulithTest，由组件家族级测试经 testRuntimeOnly 覆盖。
+- 三通道不配独立 Modulith 架构测试；全仓 Modulith 门禁由 `soda-supports/soda-support-modulith` 统一承担。

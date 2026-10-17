@@ -7,6 +7,7 @@ import com.soda.component.domain.types.Email;
 import com.soda.component.domain.types.Mobile;
 import com.soda.component.domain.types.PasswordHash;
 import com.soda.component.domain.types.Sex;
+import com.soda.user.domain.EmailAuthAccount;
 import com.soda.user.domain.SmsAuthAccount;
 import com.soda.user.domain.User;
 import com.soda.user.domain.types.Nickname;
@@ -169,6 +170,33 @@ class UserGatewayImplPersistenceTest {
             assertThat(userRepository.findByUsername("alice")).isEmpty();
             assertThat(userRepository.findByMobile("13800138000")).isEmpty();
         }
+
+        @Test
+        @DisplayName("键释放后同用户名可再次 INSERT（NULL 键不撞唯一索引，ADR-0023）")
+        void should_allowReregistration_when_keysReleased() {
+            var oldId = gateway.save(newUser());
+            var loaded = gateway.findById(oldId).orElseThrow();
+            loaded.disable();
+            loaded.deregister();
+            gateway.save(loaded);
+            em.flush();
+            em.clear();
+
+            var reRegistered =
+                    User.createBuilder()
+                            .username(new Username("alice"))
+                            .nickname(new Nickname("再注册"))
+                            .passwordHash(PasswordHash.of(HASH))
+                            .build();
+            var newId = gateway.save(reRegistered);
+            em.flush();
+            em.clear();
+
+            assertThat(newId).isNotEqualTo(oldId);
+            assertThat(gateway.findById(oldId).orElseThrow().getState()).isEqualTo(UserState.R);
+            assertThat(gateway.findByUsername(new Username("alice")))
+                    .hasValueSatisfying(u -> assertThat(u.getId()).isEqualTo(newId));
+        }
     }
 
     @Nested
@@ -220,6 +248,85 @@ class UserGatewayImplPersistenceTest {
             assertThat(loaded.getAccounts()).singleElement().isInstanceOf(SmsAuthAccount.class);
             var sms = (SmsAuthAccount) loaded.getAccounts().getFirst();
             assertThat(sms.isActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("激活写回：sms_login_enabled 由 false 置 true 且再加载派生为 active 账户")
+        void should_persistActivation_when_smsAccountActivated() {
+            var po = new UserPO();
+            po.setUsername("carol");
+            po.setNickname("卡罗尔");
+            po.setState("E");
+            po.setPasswordHash(HASH);
+            po.setMobile("13800138001");
+            po.setSmsLoginEnabled(false);
+            po.setEmailLoginEnabled(true);
+            var saved = userRepository.saveAndFlush(po);
+            em.clear();
+
+            var loaded = gateway.findById(new UserId(saved.getId())).orElseThrow();
+            var sms = (SmsAuthAccount) loaded.getAccounts().getFirst();
+            assertThat(sms.isActive()).isFalse();
+            sms.activate();
+            gateway.save(loaded);
+            em.flush();
+            em.clear();
+
+            assertThat(userRepository.findById(saved.getId()).orElseThrow().isSmsLoginEnabled())
+                    .isTrue();
+            var reloaded =
+                    (SmsAuthAccount)
+                            gateway.findById(new UserId(saved.getId()))
+                                    .orElseThrow()
+                                    .getAccounts()
+                                    .getFirst();
+            assertThat(reloaded.isActive()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("派生组装查询")
+    class QueryPaths {
+
+        @Test
+        @DisplayName("findByUsername 命中：password_hash 列还原口令账户、mobile 列派生 Sms 账户")
+        void should_reconstituteAccounts_when_findByUsernameHits() {
+            var id =
+                    gateway.save(
+                            User.createBuilder()
+                                    .username(new Username("alice"))
+                                    .nickname(new Nickname("爱丽丝"))
+                                    .mobile(Mobile.of("13800138000"))
+                                    .passwordHash(PasswordHash.of(HASH))
+                                    .build());
+            em.flush();
+            em.clear();
+
+            var loaded = gateway.findByUsername(new Username("alice")).orElseThrow();
+
+            assertThat(loaded.getId()).isEqualTo(id);
+            assertThat(loaded.getPasswordAccount().getPasswordHash().value()).isEqualTo(HASH);
+            assertThat(loaded.getAccounts()).singleElement().isInstanceOf(SmsAuthAccount.class);
+            var sms = (SmsAuthAccount) loaded.getAccounts().getFirst();
+            assertThat(sms.getMobile()).isEqualTo(Mobile.of("13800138000"));
+            assertThat(loaded.getState()).isEqualTo(UserState.E);
+        }
+
+        @Test
+        @DisplayName("findByMobile / findByEmail 命中：Sms + Email 双账户派生")
+        void should_reconstituteDualAccounts_when_findByMobileAndEmail() {
+            gateway.save(newUser());
+            em.flush();
+            em.clear();
+
+            var byMobile = gateway.findByMobile(Mobile.of("13800138000")).orElseThrow();
+            assertThat(byMobile.getUsername()).isEqualTo(new Username("alice"));
+            assertThat(byMobile.getAccounts()).hasSize(2);
+            assertThat(byMobile.getAccounts()).anyMatch(a -> a instanceof SmsAuthAccount);
+            assertThat(byMobile.getAccounts()).anyMatch(a -> a instanceof EmailAuthAccount);
+
+            var byEmail = gateway.findByEmail(Email.of("alice@example.com")).orElseThrow();
+            assertThat(byEmail.getUsername()).isEqualTo(new Username("alice"));
         }
     }
 }

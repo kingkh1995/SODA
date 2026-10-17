@@ -38,10 +38,10 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * {@link VerificationCreatedEventHandler} 单元测试 — 验证码投递（AFTER_COMMIT 事件监听）。
+ * {@link VerificationCreatedEventHandler} 单元测试 — 验证码投递（普通同步事件监听）。
  *
- * <p>契约（见 ADR-0011/0025）：sender 保证投递成功后才返回（无重试）；分派按投递端点 （target 类型——UCC 场景 subject 是用户无通道语义）选择
- * sender；投递返回后经 {@code markSent} 转 PENDING 并落库（PENDING 蕴含已送达）；投递抛异常（契约违反）时 异常上抛、记录保持 INITIALIZED。
+ * <p>契约（见 ADR-0025/0044）：sender 保证投递成功后才返回（无重试）；分派按投递端点（target 类型——UCC 场景 subject 是用户无通道语义）选择
+ * sender；投递返回后经 {@code markSent} 转 PENDING 并落库（PENDING 蕴含已送达）；投递抛异常时异常继续传播，发布方事务负责回滚。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("VerificationCreatedEventHandler")
@@ -111,7 +111,7 @@ class VerificationCreatedEventHandlerTest {
     }
 
     @Test
-    @DisplayName("发送失败（契约违反）：异常上抛，不落库，记录保持 INITIALIZED")
+    @DisplayName("发送失败（契约违反）：异常上抛、不落库，内存聚合保持 INITIALIZED")
     void should_notPersist_when_sendFails() {
         var verification = initializedVerification(NEW_MOBILE);
         doThrow(new IllegalStateException("sms channel down"))

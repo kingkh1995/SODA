@@ -13,6 +13,7 @@ import com.soda.component.domain.util.ValidateUtils;
  */
 public record EmailContent(String subject, String body) implements Type {
 
+    /** 主题长度上限（字符）——提供方可经 {@link TypeConfig} 覆盖，255 为不可下探的地板值。 */
     public static final int SUBJECT_MAX_LENGTH =
             Math.max(255, TypeConfig.PROVIDER.emailSubjectMaxLength());
 

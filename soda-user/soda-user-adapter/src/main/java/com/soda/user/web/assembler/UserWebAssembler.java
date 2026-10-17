@@ -37,7 +37,7 @@ import java.util.List;
  *   <li>出站：{@link UserDTO DTO → Response}
  * </ul>
  *
- * 由 MapStruct 在编译期生成实现， {@code componentModel = MappingConstants.ComponentModel.SPRING} 使实现为 Spring
+ * <p>由 MapStruct 在编译期生成实现， {@code componentModel = MappingConstants.ComponentModel.SPRING} 使实现为 Spring
  * Bean。
  */
 @Mapper(

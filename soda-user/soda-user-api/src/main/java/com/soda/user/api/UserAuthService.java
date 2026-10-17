@@ -18,7 +18,7 @@ import com.soda.user.api.command.RequestChangeMobileCommand;
  *       #changeEmail(ChangeEmailCommand)}
  * </ol>
  *
- * 密码修改走单步流程 → {@link #changePassword(ChangePasswordCommand)}。
+ * <p>密码修改走单步流程 → {@link #changePassword(ChangePasswordCommand)}。
  *
  * <p>实现在 {@code soda-user-application} 模块。
  *

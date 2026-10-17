@@ -12,8 +12,8 @@ status: stable
 recipient（密封多态 DP——channel 派生＋类型化地址 Mobile/Email，通道判别只栖身此处，持久化 channel/target 双列）。Verification
 对 source 零解析、领域内零 channel 行为；scene 是调用方词汇（UserVerificationScene，方法即场景、不进 api 命令）；码形策略为
 create 必传参数，由调用方工厂按用例场景选择（UCC 双通道统一纯数字短时效）。预认证/无资源场景的发码端点用集合级自定义方法（如
-POST /api/users:requestRegisterCode），认证态换绑维持资源级端点。Verification 为独立聚合根与协助方、发送走 AFTER_COMMIT 事件，见
-ADR-0021。
+POST /api/users:requestRegisterCode），认证态换绑维持资源级端点。Verification 为独立聚合根与协助方，发送由普通同步事件在发布方事务内处理，见
+ADR-0021 与 ADR-0044。
 
 ## Consequences
 

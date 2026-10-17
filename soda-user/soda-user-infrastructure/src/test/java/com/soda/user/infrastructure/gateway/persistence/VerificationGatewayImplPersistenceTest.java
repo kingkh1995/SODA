@@ -226,5 +226,18 @@ class VerificationGatewayImplPersistenceTest {
                                         .isEqualTo(new SmsRecipient(Mobile.of(MOBILE)));
                             });
         }
+
+        @Test
+        @DisplayName("空库或仅他源行时按 source 键控返回 empty")
+        void should_returnEmpty_when_noMatchingRowForSource() {
+            assertThat(gateway.findLatestBySourceAndStateIn(SOURCE, List.of(VerificationState.P)))
+                    .isEmpty();
+
+            verificationRepository.saveAndFlush(
+                    seedRow(uuid(), OTHER_SOURCE, VerificationState.P, FUTURE));
+
+            assertThat(gateway.findLatestBySourceAndStateIn(SOURCE, List.of(VerificationState.P)))
+                    .isEmpty();
+        }
     }
 }

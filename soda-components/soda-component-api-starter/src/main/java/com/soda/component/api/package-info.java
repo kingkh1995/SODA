@@ -12,7 +12,7 @@
  *   <li>{@code context/} — 请求上下文（用户身份、租户等）
  * </ul>
  *
- * Service 接口直接放在 {@code com.soda.xxx.api} 根包。
+ * <p>Service 接口直接放在 {@code com.soda.xxx.api} 根包。
  */
 @NullMarked
 @ApplicationModule(

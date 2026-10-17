@@ -29,8 +29,6 @@ replay_pid*
 # Agent harness / tooling
 .agents/
 
-# Eclipse/Gradle Buildship
-
 # Eclipse annotation processor config
 *.factorypath
 

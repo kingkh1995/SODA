@@ -6,10 +6,22 @@ tags: [ convention, framework, types ]
 status: stable
 ---
 
-## 4. 类型与契约
+# Framework 类型与契约
 
-条目格式＝识别行＋契约注记；类型的完整定义即代码 javadoc（单源），本节只给定位与防混淆约定。 **DP 类型清单表是 doc-conventions
-§7 第 8 条「类型覆盖」判据的机械载体**：新增基类/接口/标记类型必须登记成行。
+条目格式＝识别行＋契约注记；类型的完整定义即代码 Javadoc（单源），本文只给定位与防混淆约定。 **DP 类型清单表即「类型覆盖」的单源判据**
+：新增基类/接口/标记类型必须登记成行（审计检视口径见 [doc-conventions](../doc-conventions.md) §8.4 第 8 条）。
+
+**适用范围（何时读 / 何时不读）**：新增或查阅领域类型、确认契约 / 覆盖清单 / 归属时读；要查某类型的完整定义或 Javadoc 写法 → 代码
+Javadoc（写法与内容政策见 [../STYLEGUIDE.md](../../STYLEGUIDE.md) §4）。
+
+> **级别与来源**
+> - **本文规则**：默认【强制】·`SODA-POLICY`（类型契约与覆盖矩阵的唯一正文；级别与来源 ID 口径见 [doc-conventions](../doc-conventions.md) §4.1–§4.2）。
+> - **取舍理由**：经关联 ADR 记为 `SODA-DECISION`，正文只留锚点不复制理由。
+> - **机制与写法**：不进本文——Javadoc 写法归 [../STYLEGUIDE.md](../../STYLEGUIDE.md) §4，JSON 机制归 [jackson.md](jackson.md)，空性归 [jspecify.md](jspecify.md)，DP 不变式与校验归 [../dp-conventions.md](../dp-conventions.md)。
+
+## 1. 类型与契约
+
+**识别行（缺省定位）**：本节接口与标记类型除另有标注外均位于 `com.soda.component.domain`（`soda-component-domain-starter`）；公共 DP 位于 `soda-component-domain-types` 的 `com.soda.component.domain.types`——单个条目另有包名的以条目为准。
 
 ### Domain Primitive（领域原语）
 
@@ -173,31 +185,12 @@ sealed class + `@JsonTypeInfo`/`@JsonTypeName`（Jackson 3 从 `permits` 子句�
 边界保护）；`SoftwareVersion` 不是 `ConcurrencyVersion`（乐观锁计数器）也不是 SemVer（无 pre-release/build）；审计列属基础设施、保持裸
 `Instant`。
 
-### Cacheable
-
-应用层缓存关注点。通过 Spring `@Cacheable` 在 ApplicationService 上声明缓存区域和 key，领域层零缓存感知。不允许在
-Entity/Aggregate 上添加与缓存相关的接口或基类方法。
-
-### Lockable
-
-应用层锁定关注点。通过自定义 `@Lockable` 注解声明锁资源 key，领域层零锁定感知。不允许在 Entity/Aggregate 上添加与锁相关的接口或基类方法。
-
-### Trackable
-
-基础设施层持久化优化。Repository 实现层基于 snapshot/diff 做部分更新，Aggregate 本身无追踪逻辑。不允许在 Aggregate
-上添加变更追踪接口或基类方法。
-
-### KeyUtils
-
-工具方法（`com.soda.component.domain.util`），用于从 Entity 推导缓存/锁资源 key。不在 Entity 基类上实现 `cacheKey()`/
-`lockKey()`。
-
 ### Gateway
 
 标记接口，无方法无泛型。供 IOC 容器扫描和 AOP 切面识别。所有 Gateway 接口的根。 **接口 Javadoc 契约原则**
 ：只承载调用方契约（方法语义、前后置、异常语义、领域 ADR 交叉引用），禁止引用基础设施实现类、基础设施 ADR，或以 `@see`
-指向基础设施包——接口是稳定契约面，与基础设施实现解耦。Javadoc 写法与不得写什么的契约见 [STYLEGUIDE](../../STYLEGUIDE.md)
-§4.5（意图与契约）。
+指向基础设施包——接口是稳定契约面，与基础设施实现解耦。Javadoc 写法（[STYLEGUIDE](../../STYLEGUIDE.md) §4.2）与内容边界（只写签名表达不了的契约、不变量、意图——其 §4.4）单源在彼处，本节不重述。
+
 ### EntityGateway
 
 实体持久化契约，继承 `Gateway`。泛型 `<T extends Entity<ID>, ID extends Identifier<?>>`。提供 `save(T)`、`findById(ID)`、
@@ -208,8 +201,8 @@ Entity/Aggregate 上添加与缓存相关的接口或基类方法。
 merge 自动校验（`@Version` 版本不一致 → 异常 → 事务回滚），网关不做手动比对/行数判断；② convertor `toPersistence` 全量构造（含显式
 null），是 merge 拷贝的唯一来源，无覆写原语；③ 终态守卫/归档等聚合级策略在 gateway 内裁决；④ 客户端生成 id 的聚合 save
 前置：必须已标识；⑤ 同事务加载享一级缓存 ctx 命中，update 路径零额外 SQL；⑥ insert-only 表（如 `user_archive`）id 恒有 → 恒
-merge，insert 多一次 PK SELECT，低频可接受；⑦ 持久化防御编程用 JDK 设施/裸抛（终态拒写裸抛 ISE、未标识
-`Objects.requireNonNull` → NPE、行不存在 `orElseThrow()` → NSE），不携消息——异常类型 + 栈帧即语义；不建守卫工具类、不散落自定义消息。
+merge，insert 多一次 PK SELECT，低频可接受；⑦ 持久化侧防御编程守卫（终态拒写、未标识加载、行不存在）用 JDK 设施裸抛、不携消息，不建守卫工具类、不散落自定义消息——消息策略与
+`ISE`/`NPE`/`NSE` 清单单源在 [framework-crosscutting.md](framework-crosscutting.md) §1「Exception」，此处不重述。
 
 ### API・Adapter 类型指针
 
@@ -236,8 +229,9 @@ Data auditing 填充，`created_date` 不可更新（`updatable=false`）；`toP
 反模式：PO 不继承统一基类自造 `isNew()`；convertor 手工写审计列；基类实现 `equals`/`hashCode`/`toString`（PO
 不参与业务相等性，保持最小面）。
 
-测试要求：审计列行为经 `PersistenceEndToEndTest` 实证（`should_updatePreserveAuditColumns`）；PO 基类契约随 repository
-`@DataJpaTest` 覆盖。
+测试要求：审计列行为经 repository `@DataJpaTest` 实证（
+`UserRepositoryTest.should_keepCreatedDate_andRefreshLastModified_when_update`
+）；PO 基类契约随同一测试覆盖。
 
 关联 ADR：ADR-0024（save 统一路由）、ADR-0022（数据库开发约定）。
 
@@ -260,7 +254,7 @@ Data auditing 填充，`created_date` 不可更新（`updatable=false`）；`toP
 - **不原地覆写托管实例**（ADR-0024）：save 对 id 有值走 `em.merge`，托管实例是加载快照供版本校验；变异它会使乐观锁冲突检测失效
 - **审计列自动处理**：`toPersistence` 不构造审计列（null 即可）——created_date 由基类 `updatable=false` 保护（不进
   UPDATE）、last_modified_date 由 auditing `@PreUpdate` 刷新；merge 的 null 不会覆盖审计列（实证：
-  `PersistenceEndToEndTest.should_updatePreserveAuditColumns`）
+  `UserRepositoryTest.should_keepCreatedDate_andRefreshLastModified_when_update`）
 - **一持久化形状一 convertor**：归档/审计等第二张表用独立 convertor 类（如 `UserArchiveConvertor.toPersistence(User)` →
   `UserArchivePO`），不塞进聚合 convertor
 - **不设共享的「逐列应用」私有方法**：`toPersistence` 内联全量构造，避免半转换 helper（部分构造 +
@@ -292,9 +286,10 @@ Data auditing 填充，`created_date` 不可更新（`updatable=false`）；`toP
 领域事件基接口，泛型 `<ID extends Identifier<?>>`。提供 `entityId()` 和 `occurredAt()`。业务模块用 `record` 实现，类型参数
 `ID` 与 Entity 一致。
 
-**事件载荷约定**：事件携带 **值数据**（`entityId` + `occurredAt` + 业务事实），构造参数不携带聚合引用——不可变快照、可序列化（outbox）、可测试。
-`UserCreatedEvent` 是唯一例外：创建时 id 尚未分配，持 `user` 引用延迟求值 `entityId()`（assignId 前返回 null，契约要求持久化后取，见
-ADR-0015）。
+**事件载荷约定**：默认事件携带 **值数据**（`entityId` + `occurredAt` + 业务事实），构造参数不携带聚合引用——不可变快照、可序列化（outbox）、可测试。
+`UserCreatedEvent` 与 `VerificationCreatedEvent` 是本仓库的本地进程内事件例外：两者均携带对应聚合引用，由普通同步
+`@EventListener` 直接消费；不承诺不可变快照、outbox 或序列化（见 ADR-0044）。`UserCreatedEvent` 的 `entityId()` 仍须在
+`assignId()` 后调用。
 
 ### DomainEventBus
 
@@ -328,4 +323,15 @@ flush 后回填权威版本——落库版本单调不减，回退即基础设�
 测试要求：失配抛 `PreconditionFailedException` 且 `save` 未调用；匹配放行；缺失（null）= 放行，三分组见 `UserServiceImplTest`。
 
 关联 ADR：ADR-0037；基类便捷方法清单（`require` / `requireNotTerminal` / `requireIfMatch` / `saveAndPublishEvents`）见
-[framework-crosscutting.md](framework-crosscutting.md) §5「基类便捷方法」。
+[framework-crosscutting.md](framework-crosscutting.md) §1「基类便捷方法」。
+
+## 检视清单
+
+1. 每个类型条目有识别行 ＋ 契约 ＋ 来源/ADR ＋ owner（本文、专项规范篇或代码 Javadoc），机制细节不复制进正文。
+2. 新增公共 DP 在「DP 类型清单表」登记一行；样例场景登记进「样例覆盖矩阵」，缺口如实登记（[doc-conventions](../doc-conventions.md) §8.4 第 8 条）。
+3. 单源分工不越界：JSON 机制 → jackson.md、注解落位 → lombok.md、空性 → jspecify.md、DP 不变式/校验 → dp-conventions、Javadoc 写法 → STYLEGUIDE §4。
+4. 实体族不重写 `equals`/`hashCode`、值对象保持值相等（ADR-0040）；判别值反查只在 gateway 实现，domain/app 无反查与强转。
+5. HTTP 状态细分的拒绝只在 app-service/组件守卫抛 `ProblemDetailException` 族（ADR-0015），domain 层不建异常族。
+6. 不因本文机械扩充 Javadoc：完整定义归代码 Javadoc，本文只写定位与防混淆约定。
+
+**完成判据**：清单逐条无未决项；每个类型条目的 owner 唯一；清单表与样例覆盖矩阵覆盖 types 包全部公共 DP（[doc-conventions](../doc-conventions.md) §8.4 第 8 条）。

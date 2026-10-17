@@ -92,10 +92,11 @@ public final class PasswordAuthAccount extends AuthAccount<PasswordAuthAccountId
     /**
      * 修改密码。
      *
+     * <p>不在此处注册 PasswordChangedEvent（泛型 ID 不匹配，事件需 {@code UserId}）； 事件由 {@code
+     * User.changePassword} 在调用本方法后注册。
+     *
      * @param credential 新原始凭证
      * @param hasher 凭证哈希器
-     * @implNote 不在此处注册 PasswordChangedEvent（泛型 ID 不匹配，事件需 {@code UserId}）； 事件由 {@code
-     *     User.changePassword} 在调用本方法后注册。
      */
     public void changePassword(SecretValue credential, PasswordHasher hasher) {
         this.passwordHash = hasher.hash(credential);

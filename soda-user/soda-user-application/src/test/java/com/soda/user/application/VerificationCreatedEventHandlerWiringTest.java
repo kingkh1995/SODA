@@ -1,7 +1,9 @@
 package com.soda.user.application;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -15,7 +17,6 @@ import com.soda.user.domain.Verification;
 import com.soda.user.domain.event.VerificationCreatedEvent;
 import com.soda.user.domain.gateway.VerificationGateway;
 import com.soda.user.domain.types.SmsRecipient;
-import com.soda.user.domain.types.UserId;
 import com.soda.user.domain.types.VerificationCode;
 import com.soda.user.domain.types.VerificationSource;
 import com.soda.user.domain.types.VerificationState;
@@ -29,33 +30,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.annotation.AnnotationConfigUtils;
 import org.springframework.context.support.GenericApplicationContext;
-import org.springframework.transaction.event.TransactionalEventListenerFactory;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.Instant;
 
 /**
- * {@link VerificationCreatedEventHandler} 事务接线测试 — AFTER_COMMIT 语义。
+ * {@link VerificationCreatedEventHandler} 事件接线测试 — 普通 {@code @EventListener} 同步语义。
  *
- * <p>单元测试（直接调用 {@code onVerificationCreated}）无法覆盖的接线由本测试补齐： 用真实的 Spring 监听器发现机制（{@link
- * GenericApplicationContext} + {@link TransactionalEventListenerFactory} 处理
- * {@code @TransactionalEventListener}） 驱动事件发布，配合 {@link TransactionSynchronizationManager}
- * 模拟事务提交/回滚，验证：
- *
- * <ul>
- *   <li>事务中发布不立即投递，提交后才投递并落库（AFTER_COMMIT）
- *   <li>事务回滚不投递（AFTER_COMMIT 监听器不触发）
- * </ul>
- *
- * 行为契约（发送 → PENDING → 落库、发送失败语义）见 {@link VerificationCreatedEventHandlerTest}。
+ * <p>使用真实 Spring 事件监听器发现机制验证事件在发布调用栈内立即处理；不绑定事务完成阶段，也不创建独立事务。发送、 {@code markSent} 与保存的领域行为见 {@link
+ * VerificationCreatedEventHandlerTest}。
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("VerificationCreatedEventHandler 事务接线")
+@DisplayName("VerificationCreatedEventHandler 同步事件接线")
 class VerificationCreatedEventHandlerWiringTest {
 
-    private static final UserId USER_ID = new UserId(1L);
     private static final Mobile NEW_MOBILE = Mobile.of("13900139000");
     private static final String VALID_CODE = "123456";
 
@@ -81,10 +69,6 @@ class VerificationCreatedEventHandlerWiringTest {
                 new VerificationCreatedEventHandler(smsSender, emailSender, verificationGateway);
         context = new GenericApplicationContext();
         AnnotationConfigUtils.registerAnnotationConfigProcessors(context);
-        context.getBeanFactory()
-                .registerSingleton(
-                        "transactionalEventListenerFactory",
-                        new TransactionalEventListenerFactory());
         context.getBeanFactory().registerSingleton("verificationCreatedEventHandler", handler);
         context.refresh();
     }
@@ -92,39 +76,31 @@ class VerificationCreatedEventHandlerWiringTest {
     @AfterEach
     void tearDown() {
         context.close();
-        TransactionSynchronizationManager.clear();
     }
 
     @Test
-    @DisplayName("事务提交后投递并落库（AFTER_COMMIT）")
-    void should_sendAndPersist_when_transactionCommits() {
-        TransactionSynchronizationManager.initSynchronization();
-        TransactionSynchronizationManager.setActualTransactionActive(true);
-
+    @DisplayName("事件发布时同步投递并落库")
+    void should_sendAndPersist_when_eventPublished() {
         context.publishEvent(new VerificationCreatedEvent(initializedSmsVerification()));
-
-        // 提交前不投递（仅注册事务同步，AFTER_COMMIT 前不执行）
-        verify(smsSender, never()).send(any(), any());
-
-        TransactionSynchronizationManager.getSynchronizations()
-                .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
 
         verify(smsSender).send(eq(NEW_MOBILE), any(SmsContent.class));
         verify(verificationGateway).save(any(Verification.class));
     }
 
     @Test
-    @DisplayName("事务回滚不投递（AFTER_COMMIT 监听器不触发）")
-    void should_notSend_when_transactionRollsBack() {
-        TransactionSynchronizationManager.initSynchronization();
-        TransactionSynchronizationManager.setActualTransactionActive(true);
+    @DisplayName("发送失败向事件发布方传播且不保存 PENDING")
+    void should_propagateFailure_when_senderFails() {
+        doThrow(new IllegalStateException("sms channel down"))
+                .when(smsSender)
+                .send(eq(NEW_MOBILE), any(SmsContent.class));
 
-        context.publishEvent(new VerificationCreatedEvent(initializedSmsVerification()));
+        assertThatThrownBy(
+                        () ->
+                                context.publishEvent(
+                                        new VerificationCreatedEvent(initializedSmsVerification())))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("sms channel down");
 
-        TransactionSynchronizationManager.getSynchronizations()
-                .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
-
-        verify(smsSender, never()).send(any(), any());
-        verify(verificationGateway, never()).save(any());
+        verify(verificationGateway, never()).save(any(Verification.class));
     }
 }
